@@ -196,25 +196,25 @@ function M.display_inline_diff(buffer, hunks)
 
         -- Critically important: Show only the CONTENT of the deleted line
         -- Don't show any line numbers or additional markers to avoid the "-  11" issue
-        
+
         -- We need to determine the best position to show the deleted line.
         -- For most scenarios, we want to show the deletion at the current position.
-        -- Using virt_lines_above=true ensures it appears before (above) the current 
+        -- Using virt_lines_above=true ensures it appears before (above) the current
         -- line, which gives the visual effect of inserting deleted content.
         local attach_line = line_idx
-        
+
         -- If we're at the end of the buffer, attach to the previous line
         if line_idx >= vim.api.nvim_buf_line_count(buffer) then
           attach_line = line_idx - 1
         end
-        
+
         -- Add ONLY virtual line, no sign (as signs on real lines cause confusion)
         -- When a line is deleted, we show its content as a virtual line but don't
         -- add signs to real lines that might make it look like they're deleted
         local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, attach_line, 0, {
           -- Content as virtual line - ONLY show the actual line text
           virt_lines = { { { line_text, hl_group } } },
-          
+
           -- Position virtual line ABOVE current line
           virt_lines_above = true,
         })
@@ -352,22 +352,22 @@ end
 -- Set up auto-refresh for current buffer
 function M.setup_auto_refresh(buffer)
   buffer = buffer or vim.api.nvim_get_current_buf()
-  
+
   -- Only set up if auto-refresh is enabled
   if not M.config.auto_refresh then
     return
   end
-  
+
   -- Remove existing autocommand group if it exists
   if M.auto_refresh_augroup then
     vim.api.nvim_del_augroup_by_id(M.auto_refresh_augroup)
   end
-  
+
   -- Create a unique autocommand group for this buffer
   M.auto_refresh_augroup = vim.api.nvim_create_augroup("UnifiedDiffAutoRefresh", { clear = true })
-  
+
   -- Set up autocommand to refresh diff on text change
-  vim.api.nvim_create_autocmd({"TextChanged", "TextChangedI"}, {
+  vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
     group = M.auto_refresh_augroup,
     buffer = buffer,
     callback = function()
@@ -375,21 +375,21 @@ function M.setup_auto_refresh(buffer)
       if M.is_diff_displayed(buffer) then
         M.show_git_diff()
       end
-    end
+    end,
   })
-  
+
   vim.api.nvim_echo({ { "Auto-refresh enabled for diff display", "Normal" } }, false, {})
 end
 
 -- Show diff (always use git diff)
 function M.show_diff()
   local result = M.show_git_diff()
-  
+
   -- If diff was successfully displayed, set up auto-refresh
   if result and M.config.auto_refresh then
     M.setup_auto_refresh()
   end
-  
+
   return result
 end
 
@@ -412,13 +412,13 @@ function M.toggle_diff()
     -- Clear diff display
     vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
     vim.fn.sign_unplace("unified_diff", { buffer = buffer })
-    
+
     -- Remove auto-refresh autocmd if it exists
     if M.auto_refresh_augroup then
       vim.api.nvim_del_augroup_by_id(M.auto_refresh_augroup)
       M.auto_refresh_augroup = nil
     end
-    
+
     vim.api.nvim_echo({ { "Diff display cleared", "Normal" } }, false, {})
   else
     -- Show diff based on config

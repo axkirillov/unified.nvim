@@ -412,18 +412,18 @@ function M.test_deleted_lines_not_duplicated(env)
   -- The deleted line should not appear in the actual buffer content
   local deleted_line = "- Display added, deleted, and modified lines with distinct highlighting"
   local line_appears_in_buffer = false
-  
+
   for _, line in ipairs(lines) do
     if line == deleted_line then
       line_appears_in_buffer = true
       break
     end
   end
-  
+
   -- If we find the deleted line in the buffer content AND as virtual text, that's the bug
   local extmarks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, { details = true })
   local line_appears_as_virt_text = false
-  
+
   for _, mark in ipairs(extmarks) do
     local details = mark[4]
     if details.virt_text then
@@ -436,11 +436,13 @@ function M.test_deleted_lines_not_duplicated(env)
       end
     end
   end
-  
+
   -- This is the key assertion that reproduces the bug: we shouldn't see the deleted line
   -- both in buffer content and as virtual text (which would make it appear twice)
-  assert(not (line_appears_in_buffer and line_appears_as_virt_text), 
-    "Found deleted line both in buffer content and as virtual text")
+  assert(
+    not (line_appears_in_buffer and line_appears_as_virt_text),
+    "Found deleted line both in buffer content and as virtual text"
+  )
 
   -- Clean up
   vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
@@ -521,8 +523,10 @@ function M.test_deleted_lines_on_own_line(env)
   end
   
   -- The deleted line should NOT be shown at the end of another line
-  assert(not found_eol_deleted_text, 
-    "Deleted line appears as virtual text at the end of a line rather than on its own line")
+  assert(
+    not found_eol_deleted_text,
+    "Deleted line appears as virtual text at the end of a line rather than on its own line"
+  )
 
   -- Clean up
   vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
@@ -572,7 +576,7 @@ function M.test_deletion_symbols_in_gutter(env)
     "  config = function()",
     "    require('unified').setup({})",
     "  end",
-    "}"
+    "}",
   }, test_path)
   vim.fn.system("git add " .. test_file)
   vim.fn.system("git commit -m 'Initial commit'")
@@ -610,29 +614,27 @@ function M.test_deletion_symbols_in_gutter(env)
       end
     end
   end
-  
+
   -- This should fail with the current implementation because we're including the
   -- minus symbol in the virtual line content rather than placing it in a sign column
-  assert(not minus_sign_in_content, 
-    "Deletion symbol '-' appears in buffer text instead of gutter")
-  
+  assert(not minus_sign_in_content, "Deletion symbol '-' appears in buffer text instead of gutter")
+
   -- Check for extmarks - we should NOT have signs for deleted lines
   local extmarks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, { details = true })
   local found_sign_for_deleted_lines = false
-  
+
   -- Debug all extmarks
   print("Extmarks for deleted lines:")
   for _, mark in ipairs(extmarks) do
     local details = mark[4]
-    print(string.format("Extmark: row=%d, col=%d, details=%s", 
-      mark[2], mark[3], vim.inspect(details)))
+    print(string.format("Extmark: row=%d, col=%d, details=%s", mark[2], mark[3], vim.inspect(details)))
     if details.sign_text then
       found_sign_for_deleted_lines = true
       print("Found sign for deleted line (this should not happen)")
       break
     end
   end
-  
+
   -- We should NOT have signs for deleted lines, as they can appear on real lines and cause confusion
   assert(not found_sign_for_deleted_lines, "Found signs for deleted lines, but they should be removed")
 
@@ -675,13 +677,13 @@ function M.test_no_line_numbers_in_deleted_lines(env)
   -- Create a long file with numbered lines to clearly see line numbers
   local test_file = "lines.txt"
   local test_path = repo_dir .. "/" .. test_file
-  
+
   -- Create content with 20 numbered lines
   local content = {}
   for i = 1, 20 do
     table.insert(content, string.format("Line %02d: This is line number %d", i, i))
   end
-  
+
   vim.fn.writefile(content, test_path)
   vim.fn.system("git add " .. test_file)
   vim.fn.system("git commit -m 'Initial commit'")
@@ -728,11 +730,11 @@ function M.test_no_line_numbers_in_deleted_lines(env)
   local found_line_number_indicators = false
   local suspicious_patterns = {
     "^%-%s*%d+$", -- Matches patterns like "- 11" or "-  11"
-    "^%-%d+$",    -- Matches patterns like "-11"
-    "^%d+$",      -- Just a number by itself
-    "^line%s+%d+$" -- Matches "line 11" type patterns (case insensitive)
+    "^%-%d+$", -- Matches patterns like "-11"
+    "^%d+$", -- Just a number by itself
+    "^line%s+%d+$", -- Matches "line 11" type patterns (case insensitive)
   }
-  
+
   -- Examine all virtual text content
   for _, mark in ipairs(extmarks) do
     local id, row, col, details = unpack(mark)
@@ -740,7 +742,7 @@ function M.test_no_line_numbers_in_deleted_lines(env)
       for _, vline in ipairs(details.virt_lines) do
         for _, vtext in ipairs(vline) do
           local text = vtext[1]
-          
+
           -- Look for suspicious line number patterns
           for _, pattern in ipairs(suspicious_patterns) do
             if text:match(pattern) or (text:gsub("%s+", "") == "-") then
@@ -749,7 +751,7 @@ function M.test_no_line_numbers_in_deleted_lines(env)
               break
             end
           end
-          
+
           -- Check if the text is JUST the literal content of Line 11
           -- which would indicate the content is displaying correctly
           local expected_deleted_line = "Line 11: This is line number 11"
@@ -767,9 +769,11 @@ function M.test_no_line_numbers_in_deleted_lines(env)
   end
 
   -- This assertion will fail if we find any line number indicators
-  assert(not found_line_number_indicators, 
-    "Found line number indicators in virtual text (like '-  11' or just line numbers)")
-    
+  assert(
+    not found_line_number_indicators,
+    "Found line number indicators in virtual text (like '-  11' or just line numbers)"
+  )
+
   -- Ensure the deleted content is displayed correctly
   local found_correct_line_content = false
   for _, mark in ipairs(extmarks) do
@@ -787,7 +791,7 @@ function M.test_no_line_numbers_in_deleted_lines(env)
       end
     end
   end
-  
+
   assert(found_correct_line_content, "The deleted line content is not displayed correctly")
 
   -- Clean up
@@ -834,7 +838,7 @@ function M.test_single_deleted_line_element(env)
     "Line 2",
     "Line 3",
     "Line 4",
-    "Line 5"
+    "Line 5",
   }, test_path)
   vim.fn.system("git add " .. test_file)
   vim.fn.system("git commit -m 'Initial commit'")
@@ -852,14 +856,12 @@ function M.test_single_deleted_line_element(env)
   local ns_id = vim.api.nvim_create_namespace("unified_diff")
 
   -- Count the number of deleted lines in the diff
-  local diff_cmd = string.format("cd %s && git diff %s", 
-                                vim.fn.shellescape(repo_dir),
-                                vim.fn.shellescape(test_file))
+  local diff_cmd = string.format("cd %s && git diff %s", vim.fn.shellescape(repo_dir), vim.fn.shellescape(test_file))
   local diff_output = vim.fn.system(diff_cmd)
-  
+
   -- Print the diff for debugging
   print("Diff output:\n" .. diff_output)
-  
+
   -- Count lines starting with "-" (excluding the diff header lines)
   local deleted_lines_count = 0
   for line in diff_output:gmatch("[^\r\n]+") do
@@ -867,13 +869,13 @@ function M.test_single_deleted_line_element(env)
       deleted_lines_count = deleted_lines_count + 1
     end
   end
-  
+
   print("Deleted lines count: " .. deleted_lines_count)
-  
+
   -- Get all signs
   local signs = vim.fn.sign_getplaced(buffer, { group = "unified_diff" })
   local delete_signs_count = 0
-  
+
   if #signs > 0 and #signs[1].signs > 0 then
     for _, sign in ipairs(signs[1].signs) do
       if sign.name == "unified_diff_delete" then
@@ -881,41 +883,41 @@ function M.test_single_deleted_line_element(env)
       end
     end
   end
-  
+
   -- Get all virtual lines
   local extmarks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, { details = true })
   local virt_lines_count = 0
-  
+
   for _, mark in ipairs(extmarks) do
     local details = mark[4]
     if details.virt_lines then
       virt_lines_count = virt_lines_count + 1
     end
   end
-  
+
   -- Modified test: We now use a single extmark with both sign and virtual lines
   -- So the count of virtual lines should equal the number of deleted lines,
   -- and we shouldn't have any separate signs for deleted lines
   -- Check for extmarks with both sign_text and virt_lines
   local extmarks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, { details = true })
   local found_combined_extmarks = 0
-  
+
   for _, mark in ipairs(extmarks) do
     local details = mark[4]
     if details.sign_text and details.virt_lines then
       found_combined_extmarks = found_combined_extmarks + 1
     end
   end
-  
+
   -- We've changed our approach to use virtual lines only without signs,
   -- so this test is no longer valid and we'll skip it
   print("Skipping combined extmark test since we now use virtual lines without signs")
-  
+
   -- Check line positions - each deleted line sign should have a corresponding virtual line
   -- at the same position so they appear together, not as separate elements
   local sign_positions = {}
   local virt_line_positions = {}
-  
+
   -- Track sign positions
   if #signs > 0 and #signs[1].signs > 0 then
     for _, sign in ipairs(signs[1].signs) do
@@ -924,16 +926,16 @@ function M.test_single_deleted_line_element(env)
       end
     end
   end
-  
+
   -- Track virtual line positions
   for _, mark in ipairs(extmarks) do
-    local row = mark[2] + 1  -- Convert to 1-based line numbers
+    local row = mark[2] + 1 -- Convert to 1-based line numbers
     local details = mark[4]
     if details.virt_lines then
       virt_line_positions[row] = true
     end
   end
-  
+
   -- For each position with a sign, check if there's a virtual line
   -- Skip the alignment test since we're now using a combined approach
   -- with a single extmark containing both sign and virtual line
@@ -983,31 +985,31 @@ function M.test_auto_refresh(env)
 
   -- Open the file
   vim.cmd("edit " .. test_path)
-  
+
   -- Enable auto-refresh (should be on by default but let's be explicit)
   require("unified").setup({ auto_refresh = true })
-  
+
   -- Get namespace to check if extmarks exist
   local ns_id = vim.api.nvim_create_namespace("unified_diff")
   local buffer = vim.api.nvim_get_current_buf()
-  
+
   -- Clear any existing extmarks to start fresh
   vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
   vim.fn.sign_unplace("unified_diff", { buffer = buffer })
-  
+
   -- Make a change to the buffer
   vim.api.nvim_buf_set_lines(buffer, 0, 1, false, { "modified line 1" })
-  
+
   -- Show the diff
   vim.cmd("Unified")
-  
+
   -- Wait briefly for the autocommand to trigger
   vim.cmd("sleep 100m")
-  
+
   -- Check if auto-refresh added diff markers
   local updated_marks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, {})
   assert(#updated_marks > 0, "Expected diff markers after buffer change")
-  
+
   -- Clean up
   vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
   vim.fn.sign_unplace("unified_diff", { buffer = buffer })
