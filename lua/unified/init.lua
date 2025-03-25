@@ -242,8 +242,11 @@ function M.is_git_repo(file_path)
   return vim.trim(result) == "true"
 end
 
--- Get file content from the last git commit
-function M.get_git_file_content(file_path)
+-- Get file content from a specific git commit (defaults to HEAD)
+function M.get_git_file_content(file_path, commit)
+  -- Default to HEAD if commit is not specified
+  commit = commit or "HEAD"
+
   local relative_path = vim.fn.system(
     string.format(
       "cd %s && git ls-files --full-name %s | tr -d '\n'",
@@ -257,10 +260,11 @@ function M.get_git_file_content(file_path)
     return nil
   end
 
-  -- Try to get file from the last commit
+  -- Try to get file from the specified commit
   local cmd = string.format(
-    "cd %s && git show HEAD:%s 2>/dev/null",
+    "cd %s && git show %s:%s 2>/dev/null",
     vim.fn.shellescape(vim.fn.fnamemodify(file_path, ":h")),
+    vim.fn.shellescape(commit),
     vim.fn.shellescape(relative_path)
   )
 
@@ -274,8 +278,8 @@ function M.get_git_file_content(file_path)
   return content
 end
 
--- Show diff of the current buffer compared to git HEAD
-function M.show_git_diff()
+-- Show diff of the current buffer compared to a specific git commit
+function M.show_git_diff_against_commit(commit)
   local buffer = vim.api.nvim_get_current_buf()
   local current_content = table.concat(vim.api.nvim_buf_get_lines(buffer, 0, -1, false), "\n")
   local file_path = vim.api.nvim_buf_get_name(buffer)
@@ -289,21 +293,21 @@ function M.show_git_diff()
   -- Check if file is in a git repo
   if not M.is_git_repo(file_path) then
     vim.api.nvim_echo({ { "File is not in a git repository, falling back to buffer diff", "WarningMsg" } }, false, {})
-    return M.show_buffer_diff()
+    return false
   end
 
-  -- Get content from git
-  local git_content = M.get_git_file_content(file_path)
+  -- Get content from git at specified commit
+  local git_content = M.get_git_file_content(file_path, commit)
 
-  -- If file isn't in git yet, fall back to buffer diff
+  -- If file isn't in git at that commit, show error
   if not git_content then
-    vim.api.nvim_echo({ { "File not found in git history, falling back to buffer diff", "WarningMsg" } }, false, {})
-    return M.show_buffer_diff()
+    vim.api.nvim_echo({ { "File not found in git at commit " .. commit, "ErrorMsg" } }, false, {})
+    return false
   end
 
   -- Check if there are any changes at all
   if current_content == git_content then
-    vim.api.nvim_echo({ { "No changes detected between buffer and git version", "WarningMsg" } }, false, {})
+    vim.api.nvim_echo({ { "No changes detected between buffer and git version at " .. commit, "WarningMsg" } }, false, {})
     return false
   end
 
@@ -334,7 +338,7 @@ function M.show_git_diff()
   vim.fn.delete(temp_git)
 
   if diff_output ~= "" then
-    vim.api.nvim_echo({ { "Parsing diff output...", "Normal" } }, false, {})
+    vim.api.nvim_echo({ { "Parsing diff output from commit " .. commit .. "...", "Normal" } }, false, {})
     local hunks = M.parse_diff(diff_output)
     vim.api.nvim_echo({ { "Found " .. #hunks .. " hunks", "Normal" } }, false, {})
 
@@ -345,6 +349,11 @@ function M.show_git_diff()
   end
 
   return false
+end
+
+-- Show diff of the current buffer compared to git HEAD
+function M.show_git_diff()
+  return M.show_git_diff_against_commit("HEAD")
 end
 
 -- Removed show_buffer_diff function - git diff only
@@ -382,8 +391,14 @@ function M.setup_auto_refresh(buffer)
 end
 
 -- Show diff (always use git diff)
-function M.show_diff()
-  local result = M.show_git_diff()
+function M.show_diff(commit)
+  local result
+  
+  if commit then
+    result = M.show_git_diff_against_commit(commit)
+  else
+    result = M.show_git_diff()
+  end
 
   -- If diff was successfully displayed, set up auto-refresh
   if result and M.config.auto_refresh then

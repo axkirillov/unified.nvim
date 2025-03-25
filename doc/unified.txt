@@ -98,11 +98,24 @@ Configuration with default values: >
 *:Unified refresh*
     Force refresh of the diff display (useful when auto-refresh is disabled).
 
+*:Unified commit {commit}*
+    Show differences between the current buffer and a specific git commit.
+    {commit} can be a commit hash, branch name, tag, or any git reference.
+
 ==============================================================================
 7. API                                                        *unified-api*
 
-*require('unified').show_diff()*
+*require('unified').show_diff([commit])*
+    Function to show differences between buffer and git HEAD, or a specific commit
+    if the optional [commit] parameter is provided.
+
+*require('unified').show_git_diff()*
     Function to show differences between buffer and git HEAD.
+
+*require('unified').show_git_diff_against_commit(commit)*
+    Function to show differences between buffer and a specific git commit.
+    The commit parameter must be provided and can be a commit hash, branch name,
+    tag, or any git reference.
 
 *require('unified').toggle_diff()*
     Function to toggle diff display on/off.

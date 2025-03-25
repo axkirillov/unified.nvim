@@ -6,6 +6,7 @@
 - Run all tests: `nvim --headless -c "lua require('test.test_unified').run_tests()" -c "qa!"`
 - Run single test: `nvim --headless -c "lua require('test.test_unified').test_NAME({})" -c "qa!"` (replace NAME with test name)
 - Manual test: `nvim -u NONE -c "set rtp+=." -c "luafile test/manual_test_git.lua"`
+- Test diff against specific commit: `nvim -u NONE -c "set rtp+=." -c "luafile test/manual_test_git.lua" -c "Unified commit HEAD~1"`
 
 ### Linting
 - No specific linter configured. Use stylua for formatting.
@@ -27,6 +28,8 @@
 - Configuration through `M.setup()` function
 - Use Neovim's namespace and extmark system for highlights
 - Use sign column for line indicators
+- Git integration for comparing against any commit
+- Auto-refresh support for real-time diff updates
 
 ### Error Handling
 - Use `vim.api.nvim_echo()` for user notifications

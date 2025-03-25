@@ -1024,6 +1024,101 @@ function M.test_auto_refresh(env)
   return true
 end
 
+-- Test diffing against a specific commit
+function M.test_diff_against_commit(env)
+  -- Skip test if git is not available
+  local git_version = vim.fn.system("git --version")
+  if vim.v.shell_error ~= 0 then
+    print("Git not available, skipping git diff test")
+    return true
+  end
+
+  -- Create temporary git repository
+  local repo_dir = vim.fn.tempname()
+  vim.fn.mkdir(repo_dir, "p")
+
+  -- Change to repo directory
+  local old_dir = vim.fn.getcwd()
+  vim.cmd("cd " .. repo_dir)
+
+  -- Initialize git repo
+  vim.fn.system("git init")
+  vim.fn.system("git config user.name 'Test User'")
+  vim.fn.system("git config user.email 'test@example.com'")
+
+  -- Create initial file and commit it
+  local test_file = "test.txt"
+  local test_path = repo_dir .. "/" .. test_file
+  vim.fn.writefile({ "line 1", "line 2", "line 3", "line 4", "line 5" }, test_path)
+  vim.fn.system("git add " .. test_file)
+  vim.fn.system("git commit -m 'Initial commit'")
+  
+  -- Get the first commit hash
+  local first_commit = vim.fn.system("git rev-parse HEAD"):gsub("\n", "")
+  print("First commit: " .. first_commit)
+  
+  -- Make changes and create a second commit
+  vim.fn.writefile({ "line 1", "modified line 2", "line 3", "line 4", "line 5", "line 6" }, test_path)
+  vim.fn.system("git add " .. test_file)
+  vim.fn.system("git commit -m 'Second commit'")
+  
+  -- Get the second commit hash
+  local second_commit = vim.fn.system("git rev-parse HEAD"):gsub("\n", "")
+  print("Second commit: " .. second_commit)
+  
+  -- Open the file and make more changes
+  vim.cmd("edit " .. test_path)
+  vim.api.nvim_buf_set_lines(0, 0, 1, false, { "modified line 1" }) -- Change line 1
+  vim.api.nvim_buf_set_lines(0, 3, 4, false, {}) -- Delete line 4
+  vim.api.nvim_buf_set_lines(0, 4, 5, false, { "new line" }) -- Add new line
+  
+  -- Test diffing against the first commit
+  local result = require("unified").show_git_diff_against_commit(first_commit)
+  
+  -- Get namespace to check if extmarks exist
+  local ns_id = vim.api.nvim_create_namespace("unified_diff")
+  local buffer = vim.api.nvim_get_current_buf()
+  local marks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, {})
+  
+  -- Check that extmarks were created
+  assert(result, "show_git_diff_against_commit() should return true")
+  assert(#marks > 0, "No diff extmarks were created")
+  
+  -- Clear diff marks
+  vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
+  vim.fn.sign_unplace("unified_diff", { buffer = buffer })
+  
+  -- Test diffing against the second commit
+  result = require("unified").show_git_diff_against_commit(second_commit)
+  marks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, {})
+  
+  -- Check that extmarks were created
+  assert(result, "show_git_diff_against_commit() should return true for second commit")
+  assert(#marks > 0, "No diff extmarks were created for second commit")
+  
+  -- Test the command interface
+  vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
+  vim.fn.sign_unplace("unified_diff", { buffer = buffer })
+  
+  -- Use command to diff against first commit
+  vim.cmd("Unified commit " .. first_commit)
+  marks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, {})
+  assert(#marks > 0, "No diff extmarks were created after running Unified commit command")
+  
+  -- Clean up
+  vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
+  vim.fn.sign_unplace("unified_diff", { buffer = buffer })
+  vim.cmd("bdelete!")
+  
+  -- Return to original directory
+  vim.cmd("cd " .. old_dir)
+  
+  -- Clean up git repo
+  vim.fn.delete(repo_dir, "rf")
+  
+  return true
+end
+
 -- Run all tests
 function M.run_tests()
   local env = M.setup()
@@ -1037,7 +1132,8 @@ function M.run_tests()
     "test_show_diff_api",
     "test_diff_command",
     "test_diff_parsing",
-    "test_git_diff",
+    "test_git_diff", 
+    "test_diff_against_commit",
     "test_no_plus_signs_in_buffer",
     "test_deleted_lines_not_duplicated",
     "test_deleted_lines_on_own_line",
