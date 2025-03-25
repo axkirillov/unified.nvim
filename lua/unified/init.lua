@@ -193,12 +193,25 @@ function M.display_inline_diff(buffer, hunks)
         local line_text = line:sub(2)
         local hl_group = "UnifiedDiffDelete"
 
-        -- Add sign in gutter AND virtual line in one extmark
-        local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, line_idx, 0, {
+        -- This is critically important: We need to determine where the deletion happened
+        -- and place the virtual text at the PREVIOUS line, not the current line
+        -- This is because when a line is deleted, the cursor position is still at
+        -- the line after the deletion
+        
+        -- For indented bullet points, we need to attach the virtual line to the line above
+        local attach_line = line_idx
+        
+        -- If we're at the end of the buffer, attach to the previous line
+        if line_idx >= vim.api.nvim_buf_line_count(buffer) then
+          attach_line = line_idx - 1
+        end
+        
+        -- Add sign in gutter AND virtual line in one extmark at the end of the previous line
+        local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, attach_line, 0, {
           sign_text = M.config.line_symbols.delete,
           sign_hl_group = "UnifiedDiffDelete",
           virt_lines = { { { line_text, hl_group } } },
-          virt_lines_above = false,
+          virt_lines_above = true, -- Place virtual line ABOVE the current position
         })
         if mark_id > 0 then
           mark_count = mark_count + 1

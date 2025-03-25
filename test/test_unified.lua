@@ -649,6 +649,111 @@ function M.test_deletion_symbols_in_gutter(env)
   return true
 end
 
+-- Test that deleted lines appear correctly with bullet points (no empty line then content)
+function M.test_markdown_bullet_deletion(env)
+  -- Skip test if git is not available
+  local git_version = vim.fn.system("git --version")
+  if vim.v.shell_error ~= 0 then
+    print("Git not available, skipping git diff test")
+    return true
+  end
+
+  -- Create temporary git repository
+  local repo_dir = vim.fn.tempname()
+  vim.fn.mkdir(repo_dir, "p")
+
+  -- Change to repo directory
+  local old_dir = vim.fn.getcwd()
+  vim.cmd("cd " .. repo_dir)
+
+  -- Initialize git repo
+  vim.fn.system("git init")
+  vim.fn.system("git config user.name 'Test User'")
+  vim.fn.system("git config user.email 'test@example.com'")
+
+  -- Create a markdown file with indented bullet points
+  local test_file = "README.md"
+  local test_path = repo_dir .. "/" .. test_file
+  vim.fn.writefile({
+    "# Test File",
+    "",
+    "Features:",
+    "  - First feature",
+    "  - Simple toggle functionality",
+    "  - Third feature"
+  }, test_path)
+  vim.fn.system("git add " .. test_file)
+  vim.fn.system("git commit -m 'Initial commit'")
+
+  -- Open the file and delete the toggle functionality line
+  vim.cmd("edit " .. test_path)
+  vim.api.nvim_buf_set_lines(0, 4, 5, false, {}) -- Delete the toggle functionality line
+
+  -- Call the plugin function to show diff
+  local result = require("unified").show_git_diff()
+  assert(result, "Failed to display diff")
+
+  -- Get buffer and namespace
+  local buffer = vim.api.nvim_get_current_buf()
+  local ns_id = vim.api.nvim_create_namespace("unified_diff")
+
+  -- Get all buffer lines
+  local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
+  local buffer_line_count = #buffer_lines
+  print("Buffer lines after deletion:")
+  for i, line in ipairs(buffer_lines) do
+    print(string.format("%d: '%s'", i, line))
+  end
+
+  -- Get all extmarks with details
+  local extmarks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, { details = true })
+  print("Extmarks:")
+  for _, mark in ipairs(extmarks) do
+    local id, row, col, details = unpack(mark)
+    print(string.format("Extmark id=%d, row=%d, col=%d", id, row, col))
+    if details.virt_lines then
+      print("  has virt_lines:")
+      for i, vline in ipairs(details.virt_lines) do
+        for j, vtext in ipairs(vline) do
+          local text, hl = unpack(vtext)
+          print(string.format("    line %d, chunk %d: '%s'", i, j, text))
+        end
+      end
+    end
+  end
+
+  -- Check for empty lines with extmarks
+  local empty_lines_with_extmarks = 0
+  for _, mark in ipairs(extmarks) do
+    local id, row, col, details = unpack(mark)
+    if details.virt_lines and row < buffer_line_count then
+      local line_text = buffer_lines[row + 1] -- convert to 1-based
+      if line_text == "" then
+        empty_lines_with_extmarks = empty_lines_with_extmarks + 1
+      end
+    end
+  end
+
+  -- This assertion will fail in the current implementation because
+  -- we're showing deleted lines in a way that creates empty lines
+  -- followed by content
+  assert(empty_lines_with_extmarks == 0, 
+    string.format("Found %d empty lines with virtual content attached", empty_lines_with_extmarks))
+
+  -- Clean up
+  vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
+  vim.fn.sign_unplace("unified_diff", { buffer = buffer })
+  vim.cmd("bdelete!")
+
+  -- Return to original directory
+  vim.cmd("cd " .. old_dir)
+
+  -- Clean up git repo
+  vim.fn.delete(repo_dir, "rf")
+
+  return true
+end
+
 -- Test that each deleted line only has one UI element (not both sign and virtual line)
 function M.test_single_deleted_line_element(env)
   -- Skip test if git is not available
@@ -818,6 +923,7 @@ function M.run_tests()
     "test_deleted_lines_not_duplicated",
     "test_deleted_lines_on_own_line",
     "test_deletion_symbols_in_gutter",
+    "test_markdown_bullet_deletion",
     "test_single_deleted_line_element",
   }
 
