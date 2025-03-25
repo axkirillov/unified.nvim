@@ -74,8 +74,9 @@ Configuration with default values: >
         delete = "-",
         change = "~",
       },
+      auto_refresh = true, -- Whether to automatically refresh diff when buffer changes
     })
-<
+<<
 
 ==============================================================================
 5. USAGE                                                    *unified-usage*
@@ -94,6 +95,9 @@ Configuration with default values: >
 *:Unified toggle*
     Toggle diff display on/off.
 
+*:Unified refresh*
+    Force refresh of the diff display (useful when auto-refresh is disabled).
+
 ==============================================================================
 7. API                                                        *unified-api*
 
@@ -102,6 +106,12 @@ Configuration with default values: >
 
 *require('unified').toggle_diff()*
     Function to toggle diff display on/off.
+
+*require('unified').is_diff_displayed()*
+    Function to check if diff is currently displayed in a buffer.
+
+*require('unified').setup_auto_refresh()*
+    Function to set up automatic refresh of diff display on buffer changes.
 
 *require('unified').setup(opts)*
     Function to configure the plugin with optional settings.

@@ -952,6 +952,76 @@ function M.test_single_deleted_line_element(env)
   return true
 end
 
+-- Test auto-refresh functionality
+function M.test_auto_refresh(env)
+  -- Skip test if git is not available
+  local git_version = vim.fn.system("git --version")
+  if vim.v.shell_error ~= 0 then
+    print("Git not available, skipping git diff test")
+    return true
+  end
+
+  -- Create temporary git repository
+  local repo_dir = vim.fn.tempname()
+  vim.fn.mkdir(repo_dir, "p")
+
+  -- Change to repo directory
+  local old_dir = vim.fn.getcwd()
+  vim.cmd("cd " .. repo_dir)
+
+  -- Initialize git repo
+  vim.fn.system("git init")
+  vim.fn.system("git config user.name 'Test User'")
+  vim.fn.system("git config user.email 'test@example.com'")
+
+  -- Create initial file and commit it
+  local test_file = "test.txt"
+  local test_path = repo_dir .. "/" .. test_file
+  vim.fn.writefile({ "line 1", "line 2", "line 3", "line 4", "line 5" }, test_path)
+  vim.fn.system("git add " .. test_file)
+  vim.fn.system("git commit -m 'Initial commit'")
+
+  -- Open the file
+  vim.cmd("edit " .. test_path)
+  
+  -- Enable auto-refresh (should be on by default but let's be explicit)
+  require("unified").setup({ auto_refresh = true })
+  
+  -- Get namespace to check if extmarks exist
+  local ns_id = vim.api.nvim_create_namespace("unified_diff")
+  local buffer = vim.api.nvim_get_current_buf()
+  
+  -- Clear any existing extmarks to start fresh
+  vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
+  vim.fn.sign_unplace("unified_diff", { buffer = buffer })
+  
+  -- Make a change to the buffer
+  vim.api.nvim_buf_set_lines(buffer, 0, 1, false, { "modified line 1" })
+  
+  -- Show the diff
+  vim.cmd("Unified")
+  
+  -- Wait briefly for the autocommand to trigger
+  vim.cmd("sleep 100m")
+  
+  -- Check if auto-refresh added diff markers
+  local updated_marks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, {})
+  assert(#updated_marks > 0, "Expected diff markers after buffer change")
+  
+  -- Clean up
+  vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
+  vim.fn.sign_unplace("unified_diff", { buffer = buffer })
+  vim.cmd("bdelete!")
+
+  -- Return to original directory
+  vim.cmd("cd " .. old_dir)
+
+  -- Clean up git repo
+  vim.fn.delete(repo_dir, "rf")
+
+  return true
+end
+
 -- Run all tests
 function M.run_tests()
   local env = M.setup()
@@ -972,6 +1042,7 @@ function M.run_tests()
     "test_deletion_symbols_in_gutter",
     "test_no_line_numbers_in_deleted_lines",
     "test_single_deleted_line_element",
+    "test_auto_refresh",
   }
 
   for _, test_name in ipairs(tests) do

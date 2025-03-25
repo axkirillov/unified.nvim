@@ -17,6 +17,7 @@ M.config = {
     delete = "-",
     change = "~",
   },
+  auto_refresh = true, -- Whether to auto-refresh diff when buffer changes
 }
 
 -- Setup function to be called by the user
@@ -348,9 +349,56 @@ end
 
 -- Removed show_buffer_diff function - git diff only
 
+-- Set up auto-refresh for current buffer
+function M.setup_auto_refresh(buffer)
+  buffer = buffer or vim.api.nvim_get_current_buf()
+  
+  -- Only set up if auto-refresh is enabled
+  if not M.config.auto_refresh then
+    return
+  end
+  
+  -- Remove existing autocommand group if it exists
+  if M.auto_refresh_augroup then
+    vim.api.nvim_del_augroup_by_id(M.auto_refresh_augroup)
+  end
+  
+  -- Create a unique autocommand group for this buffer
+  M.auto_refresh_augroup = vim.api.nvim_create_augroup("UnifiedDiffAutoRefresh", { clear = true })
+  
+  -- Set up autocommand to refresh diff on text change
+  vim.api.nvim_create_autocmd({"TextChanged", "TextChangedI"}, {
+    group = M.auto_refresh_augroup,
+    buffer = buffer,
+    callback = function()
+      -- Only refresh if diff is currently displayed
+      if M.is_diff_displayed(buffer) then
+        M.show_git_diff()
+      end
+    end
+  })
+  
+  vim.api.nvim_echo({ { "Auto-refresh enabled for diff display", "Normal" } }, false, {})
+end
+
 -- Show diff (always use git diff)
 function M.show_diff()
-  return M.show_git_diff()
+  local result = M.show_git_diff()
+  
+  -- If diff was successfully displayed, set up auto-refresh
+  if result and M.config.auto_refresh then
+    M.setup_auto_refresh()
+  end
+  
+  return result
+end
+
+-- Function to check if diff is currently displayed in a buffer
+function M.is_diff_displayed(buffer)
+  local buffer = buffer or vim.api.nvim_get_current_buf()
+  local ns_id = M.ns_id or vim.api.nvim_create_namespace("unified_diff")
+  local marks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, {})
+  return #marks > 0
 end
 
 -- Toggle diff display
@@ -360,12 +408,17 @@ function M.toggle_diff()
   M.ns_id = ns_id
 
   -- Check if diff is already displayed
-  local marks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, {})
-
-  if #marks > 0 then
+  if M.is_diff_displayed(buffer) then
     -- Clear diff display
     vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
     vim.fn.sign_unplace("unified_diff", { buffer = buffer })
+    
+    -- Remove auto-refresh autocmd if it exists
+    if M.auto_refresh_augroup then
+      vim.api.nvim_del_augroup_by_id(M.auto_refresh_augroup)
+      M.auto_refresh_augroup = nil
+    end
+    
     vim.api.nvim_echo({ { "Diff display cleared", "Normal" } }, false, {})
   else
     -- Show diff based on config

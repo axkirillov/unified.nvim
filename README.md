@@ -9,8 +9,8 @@ A Neovim plugin for displaying inline unified diffs directly in your buffer.
 - Display added, deleted, and modified lines with distinct highlighting
 - Customizable symbols and highlighting
 - Simple toggle functionality
-- changed this line
-- deleted this line
+- Automatic refresh of diff as you type
+- Display added, modified and deleted lines with proper visualization
 
 ## Installation
 
@@ -60,7 +60,8 @@ require('unified').setup({
     add = "+",
     delete = "-",
     change = "~",
-  }
+  },
+  auto_refresh = true, -- Whether to automatically refresh diff when buffer changes
 })
 ```
 
@@ -70,6 +71,7 @@ require('unified').setup({
 
 - `:Unified` - Show git differences between buffer and git HEAD
 - `:Unified toggle` - Toggle the diff display on/off
+- `:Unified refresh` - Force refresh of the diff display (useful when auto-refresh is disabled)
 
 ### Lua API
 
@@ -82,6 +84,12 @@ require('unified').show_git_diff()
 
 -- Toggle diff display
 require('unified').toggle_diff()
+
+-- Check if diff is currently displayed
+require('unified').is_diff_displayed()
+
+-- Set up automatic refresh (happens automatically when show_diff is called)
+require('unified').setup_auto_refresh()
 ```
 
 ### Example Key Mappings
@@ -89,6 +97,7 @@ require('unified').toggle_diff()
 ```lua
 vim.keymap.set('n', '<leader>ud', ':Unified toggle<CR>', { silent = true })
 vim.keymap.set('n', '<leader>us', ':Unified<CR>', { silent = true })
+vim.keymap.set('n', '<leader>ur', ':Unified refresh<CR>', { silent = true })
 ```
 
 ## Screenshots
