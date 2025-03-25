@@ -207,16 +207,14 @@ function M.display_inline_diff(buffer, hunks)
           attach_line = line_idx - 1
         end
         
-        -- Add sign in gutter AND virtual line in one extmark
+        -- Add ONLY virtual line, no sign (as signs on real lines cause confusion)
+        -- When a line is deleted, we show its content as a virtual line but don't
+        -- add signs to real lines that might make it look like they're deleted
         local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, attach_line, 0, {
-          -- Sign text in gutter
-          sign_text = M.config.line_symbols.delete,
-          sign_hl_group = "UnifiedDiffDelete",
-          
-          -- Content as virtual line - ONLY show the actual line text, no line numbers
+          -- Content as virtual line - ONLY show the actual line text
           virt_lines = { { { line_text, hl_group } } },
           
-          -- Position virtual line ABOVE current line - prevents the empty line + content issue
+          -- Position virtual line ABOVE current line
           virt_lines_above = true,
         })
         if mark_id > 0 then

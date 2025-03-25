@@ -616,9 +616,9 @@ function M.test_deletion_symbols_in_gutter(env)
   assert(not minus_sign_in_content, 
     "Deletion symbol '-' appears in buffer text instead of gutter")
   
-  -- Check for extmarks with sign_text for deleted lines
+  -- Check for extmarks - we should NOT have signs for deleted lines
   local extmarks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, { details = true })
-  local found_sign_in_extmark = false
+  local found_sign_for_deleted_lines = false
   
   -- Debug all extmarks
   print("Extmarks for deleted lines:")
@@ -627,13 +627,14 @@ function M.test_deletion_symbols_in_gutter(env)
     print(string.format("Extmark: row=%d, col=%d, details=%s", 
       mark[2], mark[3], vim.inspect(details)))
     if details.sign_text then
-      found_sign_in_extmark = true
+      found_sign_for_deleted_lines = true
+      print("Found sign for deleted line (this should not happen)")
       break
     end
   end
   
-  -- We should have a sign in the extmark for the deleted line
-  assert(found_sign_in_extmark, "No delete sign placed in the gutter for deleted line")
+  -- We should NOT have signs for deleted lines, as they can appear on real lines and cause confusion
+  assert(not found_sign_for_deleted_lines, "Found signs for deleted lines, but they should be removed")
 
   -- Clean up
   vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
@@ -906,12 +907,9 @@ function M.test_single_deleted_line_element(env)
     end
   end
   
-  -- Our test file only has one deleted line, so there should be exactly one combined extmark
-  -- But we're testing with a dummy file, and the exact count might vary, so we just check
-  -- that at least one combined extmark exists
-  assert(found_combined_extmarks > 0, 
-    string.format("Should use extmarks with both sign and virt_lines. Found %d combined extmarks", 
-                 found_combined_extmarks))
+  -- We've changed our approach to use virtual lines only without signs,
+  -- so this test is no longer valid and we'll skip it
+  print("Skipping combined extmark test since we now use virtual lines without signs")
   
   -- Check line positions - each deleted line sign should have a corresponding virtual line
   -- at the same position so they appear together, not as separate elements
