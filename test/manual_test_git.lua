@@ -32,14 +32,14 @@ end
 local function setup_test()
   -- Create temporary directory for test
   local temp_dir = vim.fn.tempname()
-  system('mkdir -p ' .. temp_dir)
-  vim.cmd('cd ' .. temp_dir)
-  
+  system("mkdir -p " .. temp_dir)
+  vim.cmd("cd " .. temp_dir)
+
   -- Initialize git repo
-  system('git init')
+  system("git init")
   system('git config user.name "Test User"')
   system('git config user.email "test@example.com"')
-  
+
   -- Create initial file
   local initial_content = {
     "# Test File for unified.nvim",
@@ -54,54 +54,54 @@ local function setup_test()
     "",
     "More content here.",
     "And some more here.",
-    "Final line."
+    "Final line.",
   }
-  
-  local test_file = 'test_file.md'
+
+  local test_file = "test_file.md"
   vim.fn.writefile(initial_content, test_file)
-  
+
   -- Commit the file
-  system('git add ' .. test_file)
+  system("git add " .. test_file)
   system('git commit -m "Initial commit"')
-  
+
   -- Open the file in the current buffer
-  vim.cmd('edit ' .. test_file)
-  
+  vim.cmd("edit " .. test_file)
+
   -- Make some changes to test the diff
   local buffer = vim.api.nvim_get_current_buf()
-  
+
   -- Change line 3
-  vim.api.nvim_buf_set_lines(buffer, 2, 3, false, {"This line has been modified."})
-  
+  vim.api.nvim_buf_set_lines(buffer, 2, 3, false, { "This line has been modified." })
+
   -- Add a line after line 5
-  vim.api.nvim_buf_set_lines(buffer, 5, 5, false, {"This is a new line inserted between lines."})
-  
+  vim.api.nvim_buf_set_lines(buffer, 5, 5, false, { "This is a new line inserted between lines." })
+
   -- Delete line 8
   vim.api.nvim_buf_set_lines(buffer, 8, 9, false, {})
-  
+
   -- Add lines at the end
-  vim.api.nvim_buf_set_lines(buffer, -1, -1, false, {"", "These lines were added at the end.", "One more new line."})
-  
+  vim.api.nvim_buf_set_lines(buffer, -1, -1, false, { "", "These lines were added at the end.", "One more new line." })
+
   -- Set up additional key mappings for testing
-  vim.api.nvim_set_keymap('n', 'q', ':q!<CR>', {noremap = true})
-  
+  vim.api.nvim_set_keymap("n", "q", ":q!<CR>", { noremap = true })
+
   -- Set up the plugin
-  require('unified').setup({
-    default_diff_mode = "git"  -- Set to use git diff by default
+  require("unified").setup({
+    default_diff_mode = "git", -- Set to use git diff by default
   })
-  
+
   -- Display instructions
-  echo('')
-  echo('== Test Environment Setup Complete ==')
-  echo('')
-  echo('This buffer contains a modified version of a file that has been committed to git.')
-  echo('The following commands are available for testing:')
-  echo('  :UnifiedDiffGit - Show diff against git HEAD')
-  echo('  :UnifiedDiffBuffer - Show diff against saved file')
-  echo('  :UnifiedDiffToggle - Toggle diff display')
-  echo('')
-  echo('Press q to quit without saving.')
-  echo('')
+  echo("")
+  echo("== Test Environment Setup Complete ==")
+  echo("")
+  echo("This buffer contains a modified version of a file that has been committed to git.")
+  echo("The following commands are available for testing:")
+  echo("  :UnifiedDiffGit - Show diff against git HEAD")
+  echo("  :UnifiedDiffBuffer - Show diff against saved file")
+  echo("  :UnifiedDiffToggle - Toggle diff display")
+  echo("")
+  echo("Press q to quit without saving.")
+  echo("")
 end
 
 -- Run the test setup
