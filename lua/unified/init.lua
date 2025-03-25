@@ -196,7 +196,7 @@ function M.display_inline_diff(buffer, hunks)
         -- Add virtual text for the deleted line
         local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, line_idx, 0, {
           virt_text = { { M.config.line_symbols.delete .. " " .. line_text, hl_group } },
-          virt_text_pos = "inline",
+          virt_text_pos = "eol",
         })
         if mark_id > 0 then
           mark_count = mark_count + 1

@@ -360,6 +360,102 @@ function M.test_no_plus_signs_in_buffer(env)
   return true
 end
 
+-- Test that deleted lines don't show up both as virtual text and as original text
+function M.test_deleted_lines_not_duplicated(env)
+  -- Skip test if git is not available
+  local git_version = vim.fn.system("git --version")
+  if vim.v.shell_error ~= 0 then
+    print("Git not available, skipping git diff test")
+    return true
+  end
+
+  -- Create temporary git repository
+  local repo_dir = vim.fn.tempname()
+  vim.fn.mkdir(repo_dir, "p")
+
+  -- Change to repo directory
+  local old_dir = vim.fn.getcwd()
+  vim.cmd("cd " .. repo_dir)
+
+  -- Initialize git repo
+  vim.fn.system("git init")
+  vim.fn.system("git config user.name 'Test User'")
+  vim.fn.system("git config user.email 'test@example.com'")
+
+  -- Create a markdown file with bullet points and commit it
+  local test_file = "README.md"
+  local test_path = repo_dir .. "/" .. test_file
+  vim.fn.writefile({
+    "# Test File",
+    "",
+    "Features:",
+    "- Display added, deleted, and modified lines with distinct highlighting",
+    "- Something else here",
+  }, test_path)
+  vim.fn.system("git add " .. test_file)
+  vim.fn.system("git commit -m 'Initial commit'")
+
+  -- Open the file and delete a bullet point line
+  vim.cmd("edit " .. test_path)
+  vim.api.nvim_buf_set_lines(0, 3, 4, false, {}) -- Delete the bullet point line
+
+  -- Call the plugin function to show diff
+  local result = require("unified").show_git_diff()
+  assert(result, "Failed to display diff")
+
+  -- Get buffer and namespace
+  local buffer = vim.api.nvim_get_current_buf()
+  local ns_id = vim.api.nvim_create_namespace("unified_diff")
+
+  -- Get all buffer lines
+  local lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
+  -- The deleted line should not appear in the actual buffer content
+  local deleted_line = "- Display added, deleted, and modified lines with distinct highlighting"
+  local line_appears_in_buffer = false
+  
+  for _, line in ipairs(lines) do
+    if line == deleted_line then
+      line_appears_in_buffer = true
+      break
+    end
+  end
+  
+  -- If we find the deleted line in the buffer content AND as virtual text, that's the bug
+  local extmarks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, { details = true })
+  local line_appears_as_virt_text = false
+  
+  for _, mark in ipairs(extmarks) do
+    local details = mark[4]
+    if details.virt_text then
+      for _, vtext in ipairs(details.virt_text) do
+        local text = vtext[1]
+        if text:match(deleted_line:gsub("%-", "%%-"):gsub("%+", "%%+")) then
+          line_appears_as_virt_text = true
+          break
+        end
+      end
+    end
+  end
+  
+  -- This is the key assertion that reproduces the bug: we shouldn't see the deleted line
+  -- both in buffer content and as virtual text (which would make it appear twice)
+  assert(not (line_appears_in_buffer and line_appears_as_virt_text), 
+    "Found deleted line both in buffer content and as virtual text")
+
+  -- Clean up
+  vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
+  vim.fn.sign_unplace("unified_diff", { buffer = buffer })
+  vim.cmd("bdelete!")
+
+  -- Return to original directory
+  vim.cmd("cd " .. old_dir)
+
+  -- Clean up git repo
+  vim.fn.delete(repo_dir, "rf")
+
+  return true
+end
+
 -- Run all tests
 function M.run_tests()
   local env = M.setup()
@@ -375,6 +471,7 @@ function M.run_tests()
     "test_diff_parsing",
     "test_git_diff",
     "test_no_plus_signs_in_buffer",
+    "test_deleted_lines_not_duplicated",
   }
 
   for _, test_name in ipairs(tests) do
