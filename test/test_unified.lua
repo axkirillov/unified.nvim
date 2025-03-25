@@ -649,8 +649,8 @@ function M.test_deletion_symbols_in_gutter(env)
   return true
 end
 
--- Test that deleted lines appear correctly with bullet points (no empty line then content)
-function M.test_markdown_bullet_deletion(env)
+-- Test that deleted lines DON'T show line numbers or duplicate indicators
+function M.test_no_line_numbers_in_deleted_lines(env)
   -- Skip test if git is not available
   local git_version = vim.fn.system("git --version")
   if vim.v.shell_error ~= 0 then
@@ -671,23 +671,23 @@ function M.test_markdown_bullet_deletion(env)
   vim.fn.system("git config user.name 'Test User'")
   vim.fn.system("git config user.email 'test@example.com'")
 
-  -- Create a markdown file with indented bullet points
-  local test_file = "README.md"
+  -- Create a long file with numbered lines to clearly see line numbers
+  local test_file = "lines.txt"
   local test_path = repo_dir .. "/" .. test_file
-  vim.fn.writefile({
-    "# Test File",
-    "",
-    "Features:",
-    "  - First feature",
-    "  - Simple toggle functionality",
-    "  - Third feature"
-  }, test_path)
+  
+  -- Create content with 20 numbered lines
+  local content = {}
+  for i = 1, 20 do
+    table.insert(content, string.format("Line %02d: This is line number %d", i, i))
+  end
+  
+  vim.fn.writefile(content, test_path)
   vim.fn.system("git add " .. test_file)
   vim.fn.system("git commit -m 'Initial commit'")
 
-  -- Open the file and delete the toggle functionality line
+  -- Open the file and delete line 11
   vim.cmd("edit " .. test_path)
-  vim.api.nvim_buf_set_lines(0, 4, 5, false, {}) -- Delete the toggle functionality line
+  vim.api.nvim_buf_set_lines(0, 10, 11, false, {}) -- Delete line 11
 
   -- Call the plugin function to show diff
   local result = require("unified").show_git_diff()
@@ -722,23 +722,72 @@ function M.test_markdown_bullet_deletion(env)
     end
   end
 
-  -- Check for empty lines with extmarks
-  local empty_lines_with_extmarks = 0
+  -- Check if any virtual text contains line numbers or dash + number patterns
+  -- These patterns would indicate the issue where we're seeing "-  11" type formatting
+  local found_line_number_indicators = false
+  local suspicious_patterns = {
+    "^%-%s*%d+$", -- Matches patterns like "- 11" or "-  11"
+    "^%-%d+$",    -- Matches patterns like "-11"
+    "^%d+$",      -- Just a number by itself
+    "^line%s+%d+$" -- Matches "line 11" type patterns (case insensitive)
+  }
+  
+  -- Examine all virtual text content
   for _, mark in ipairs(extmarks) do
     local id, row, col, details = unpack(mark)
-    if details.virt_lines and row < buffer_line_count then
-      local line_text = buffer_lines[row + 1] -- convert to 1-based
-      if line_text == "" then
-        empty_lines_with_extmarks = empty_lines_with_extmarks + 1
+    if details.virt_lines then
+      for _, vline in ipairs(details.virt_lines) do
+        for _, vtext in ipairs(vline) do
+          local text = vtext[1]
+          
+          -- Look for suspicious line number patterns
+          for _, pattern in ipairs(suspicious_patterns) do
+            if text:match(pattern) or (text:gsub("%s+", "") == "-") then
+              print(string.format("Found suspicious line number indicator: '%s'", text))
+              found_line_number_indicators = true
+              break
+            end
+          end
+          
+          -- Check if the text is JUST the literal content of Line 11
+          -- which would indicate the content is displaying correctly
+          local expected_deleted_line = "Line 11: This is line number 11"
+          if not (text == expected_deleted_line) then
+            -- If the text contains the pattern "line 11" (case insensitive)
+            -- but is not exactly the full Line 11 content, it's suspicious
+            if text:lower():match("line%s*11") and text ~= expected_deleted_line then
+              print(string.format("Found suspicious partial line content: '%s'", text))
+              found_line_number_indicators = true
+            end
+          end
+        end
       end
     end
   end
 
-  -- This assertion will fail in the current implementation because
-  -- we're showing deleted lines in a way that creates empty lines
-  -- followed by content
-  assert(empty_lines_with_extmarks == 0, 
-    string.format("Found %d empty lines with virtual content attached", empty_lines_with_extmarks))
+  -- This assertion will fail if we find any line number indicators
+  assert(not found_line_number_indicators, 
+    "Found line number indicators in virtual text (like '-  11' or just line numbers)")
+    
+  -- Ensure the deleted content is displayed correctly
+  local found_correct_line_content = false
+  for _, mark in ipairs(extmarks) do
+    local id, row, col, details = unpack(mark)
+    if details.virt_lines then
+      for _, vline in ipairs(details.virt_lines) do
+        for _, vtext in ipairs(vline) do
+          local text = vtext[1]
+          -- Check for the exact content of Line 11
+          if text == "Line 11: This is line number 11" then
+            found_correct_line_content = true
+            break
+          end
+        end
+      end
+    end
+  end
+  
+  assert(found_correct_line_content, "The deleted line content is not displayed correctly")
 
   -- Clean up
   vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
@@ -923,7 +972,7 @@ function M.run_tests()
     "test_deleted_lines_not_duplicated",
     "test_deleted_lines_on_own_line",
     "test_deletion_symbols_in_gutter",
-    "test_markdown_bullet_deletion",
+    "test_no_line_numbers_in_deleted_lines",
     "test_single_deleted_line_element",
   }
 

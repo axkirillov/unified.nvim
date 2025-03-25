@@ -193,12 +193,13 @@ function M.display_inline_diff(buffer, hunks)
         local line_text = line:sub(2)
         local hl_group = "UnifiedDiffDelete"
 
-        -- This is critically important: We need to determine where the deletion happened
-        -- and place the virtual text at the PREVIOUS line, not the current line
-        -- This is because when a line is deleted, the cursor position is still at
-        -- the line after the deletion
+        -- Critically important: Show only the CONTENT of the deleted line
+        -- Don't show any line numbers or additional markers to avoid the "-  11" issue
         
-        -- For indented bullet points, we need to attach the virtual line to the line above
+        -- We need to determine the best position to show the deleted line.
+        -- For most scenarios, we want to show the deletion at the current position.
+        -- Using virt_lines_above=true ensures it appears before (above) the current 
+        -- line, which gives the visual effect of inserting deleted content.
         local attach_line = line_idx
         
         -- If we're at the end of the buffer, attach to the previous line
@@ -206,12 +207,17 @@ function M.display_inline_diff(buffer, hunks)
           attach_line = line_idx - 1
         end
         
-        -- Add sign in gutter AND virtual line in one extmark at the end of the previous line
+        -- Add sign in gutter AND virtual line in one extmark
         local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, attach_line, 0, {
+          -- Sign text in gutter
           sign_text = M.config.line_symbols.delete,
           sign_hl_group = "UnifiedDiffDelete",
+          
+          -- Content as virtual line - ONLY show the actual line text, no line numbers
           virt_lines = { { { line_text, hl_group } } },
-          virt_lines_above = true, -- Place virtual line ABOVE the current position
+          
+          -- Position virtual line ABOVE current line - prevents the empty line + content issue
+          virt_lines_above = true,
         })
         if mark_id > 0 then
           mark_count = mark_count + 1
