@@ -8,7 +8,7 @@ vim.g.loaded_unified_nvim = true
 -- Create a single unified command with optional arguments
 vim.api.nvim_create_user_command("Unified", function(opts)
   local args = opts.args
-  
+
   if args == "toggle" then
     require("unified").toggle_diff()
   elseif args == "refresh" then
@@ -26,12 +26,12 @@ vim.api.nvim_create_user_command("Unified", function(opts)
       -- Validate commit reference
       local buffer = vim.api.nvim_get_current_buf()
       local file_path = vim.api.nvim_buf_get_name(buffer)
-      
+
       if file_path == "" then
         vim.api.nvim_echo({ { "Buffer has no file name", "ErrorMsg" } }, false, {})
         return
       end
-      
+
       -- Check if we're in a git repo
       local repo_check = vim.fn.system(
         string.format(

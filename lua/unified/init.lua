@@ -307,7 +307,11 @@ function M.show_git_diff_against_commit(commit)
 
   -- Check if there are any changes at all
   if current_content == git_content then
-    vim.api.nvim_echo({ { "No changes detected between buffer and git version at " .. commit, "WarningMsg" } }, false, {})
+    vim.api.nvim_echo(
+      { { "No changes detected between buffer and git version at " .. commit, "WarningMsg" } },
+      false,
+      {}
+    )
     return false
   end
 
@@ -393,7 +397,7 @@ end
 -- Show diff (always use git diff)
 function M.show_diff(commit)
   local result
-  
+
   if commit then
     result = M.show_git_diff_against_commit(commit)
   else

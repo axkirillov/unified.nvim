@@ -1132,7 +1132,7 @@ function M.run_tests()
     "test_show_diff_api",
     "test_diff_command",
     "test_diff_parsing",
-    "test_git_diff", 
+    "test_git_diff",
     "test_diff_against_commit",
     "test_no_plus_signs_in_buffer",
     "test_deleted_lines_not_duplicated",
