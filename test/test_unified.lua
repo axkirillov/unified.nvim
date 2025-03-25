@@ -538,6 +538,114 @@ function M.test_deleted_lines_on_own_line(env)
   return true
 end
 
+-- Test that deletion symbols appear in the gutter, not in the buffer text
+function M.test_deletion_symbols_in_gutter(env)
+  -- Skip test if git is not available
+  local git_version = vim.fn.system("git --version")
+  if vim.v.shell_error ~= 0 then
+    print("Git not available, skipping git diff test")
+    return true
+  end
+
+  -- Create temporary git repository
+  local repo_dir = vim.fn.tempname()
+  vim.fn.mkdir(repo_dir, "p")
+
+  -- Change to repo directory
+  local old_dir = vim.fn.getcwd()
+  vim.cmd("cd " .. repo_dir)
+
+  -- Initialize git repo
+  vim.fn.system("git init")
+  vim.fn.system("git config user.name 'Test User'")
+  vim.fn.system("git config user.email 'test@example.com'")
+
+  -- Create a lua config-like file and commit it
+  local test_file = "config.lua"
+  local test_path = repo_dir .. "/" .. test_file
+  vim.fn.writefile({
+    "return {",
+    "  plugins = {",
+    "    'axkirillov/unified.nvim',",
+    "    'some/other-plugin',",
+    "  },",
+    "  config = function()",
+    "    require('unified').setup({})",
+    "  end",
+    "}"
+  }, test_path)
+  vim.fn.system("git add " .. test_file)
+  vim.fn.system("git commit -m 'Initial commit'")
+
+  -- Open the file and delete a line
+  vim.cmd("edit " .. test_path)
+  vim.api.nvim_buf_set_lines(0, 2, 3, false, {}) -- Delete the 'axkirillov/unified.nvim' line
+
+  -- Call the plugin function to show diff
+  local result = require("unified").show_git_diff()
+  assert(result, "Failed to display diff")
+
+  -- Get buffer and namespace
+  local buffer = vim.api.nvim_get_current_buf()
+  local ns_id = vim.api.nvim_create_namespace("unified_diff")
+
+  -- Get all extmarks with details
+  local extmarks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, { details = true })
+  
+  -- Check for deleted lines with minus sign in virt_lines content
+  local minus_sign_in_content = false
+  
+  for _, mark in ipairs(extmarks) do
+    local details = mark[4]
+    if details.virt_lines then
+      for _, vline in ipairs(details.virt_lines) do
+        for _, vtext in ipairs(vline) do
+          local text = vtext[1]
+          -- Check if text starts with minus symbol
+          if text:match("^%-") then
+            minus_sign_in_content = true
+            break
+          end
+        end
+      end
+    end
+  end
+  
+  -- This should fail with the current implementation because we're including the
+  -- minus symbol in the virtual line content rather than placing it in a sign column
+  assert(not minus_sign_in_content, 
+    "Deletion symbol '-' appears in buffer text instead of gutter")
+  
+  -- Verify signs were placed for deletions
+  local signs = vim.fn.sign_getplaced(buffer, { group = "unified_diff" })
+  local found_delete_sign = false
+  
+  if #signs > 0 and #signs[1].signs > 0 then
+    for _, sign in ipairs(signs[1].signs) do
+      if sign.name == "unified_diff_delete" then
+        found_delete_sign = true
+        break
+      end
+    end
+  end
+  
+  -- We should have a delete sign placed for the deleted line
+  assert(found_delete_sign, "No delete sign placed in the gutter for deleted line")
+
+  -- Clean up
+  vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
+  vim.fn.sign_unplace("unified_diff", { buffer = buffer })
+  vim.cmd("bdelete!")
+
+  -- Return to original directory
+  vim.cmd("cd " .. old_dir)
+
+  -- Clean up git repo
+  vim.fn.delete(repo_dir, "rf")
+
+  return true
+end
+
 -- Run all tests
 function M.run_tests()
   local env = M.setup()
@@ -555,6 +663,7 @@ function M.run_tests()
     "test_no_plus_signs_in_buffer",
     "test_deleted_lines_not_duplicated",
     "test_deleted_lines_on_own_line",
+    "test_deletion_symbols_in_gutter",
   }
 
   for _, test_name in ipairs(tests) do

@@ -193,9 +193,19 @@ function M.display_inline_diff(buffer, hunks)
         local line_text = line:sub(2)
         local hl_group = "UnifiedDiffDelete"
 
+        -- Add sign in gutter
+        local id = line_idx + 1 -- Use line number as ID to avoid duplicates
+        local sign_result = vim.fn.sign_place(id, "unified_diff", "unified_diff_delete", buffer, {
+          lnum = line_idx + 1,
+          priority = 10,
+        })
+        if sign_result > 0 then
+          sign_count = sign_count + 1
+        end
+
         -- Add virtual text for the deleted line as a separate line below
         local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, line_idx, 0, {
-          virt_lines = { { { M.config.line_symbols.delete .. " " .. line_text, hl_group } } },
+          virt_lines = { { { line_text, hl_group } } },
           virt_lines_above = false,
         })
         if mark_id > 0 then
