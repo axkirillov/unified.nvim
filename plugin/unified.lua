@@ -39,12 +39,12 @@ vim.api.nvim_create_user_command("Unified", function(opts)
           vim.fn.shellescape(vim.fn.fnamemodify(file_path, ":h"))
         )
       )
-      
+
       if vim.trim(repo_check) ~= "true" then
         vim.api.nvim_echo({ { "File is not in a git repository", "ErrorMsg" } }, false, {})
         return
       end
-      
+
       -- Try to resolve the commit
       local commit_check = vim.fn.system(
         string.format(
@@ -53,12 +53,12 @@ vim.api.nvim_create_user_command("Unified", function(opts)
           vim.fn.shellescape(commit)
         )
       )
-      
+
       if vim.v.shell_error ~= 0 then
         vim.api.nvim_echo({ { "Invalid git reference: " .. commit, "ErrorMsg" } }, false, {})
         return
       end
-      
+
       require("unified").show_diff(commit)
     else
       vim.api.nvim_echo({ { "Invalid commit format. Use: Unified commit <hash/ref>", "ErrorMsg" } }, false, {})
@@ -76,11 +76,11 @@ end, {
       -- Try to get recent commits for completion
       local buffer = vim.api.nvim_get_current_buf()
       local file_path = vim.api.nvim_buf_get_name(buffer)
-      
+
       if file_path == "" then
         return {}
       end
-      
+
       -- Check if we're in a git repo
       local repo_check = vim.fn.system(
         string.format(
@@ -88,11 +88,11 @@ end, {
           vim.fn.shellescape(vim.fn.fnamemodify(file_path, ":h"))
         )
       )
-      
+
       if vim.trim(repo_check) ~= "true" then
         return {}
       end
-      
+
       -- Provide some common references
       return { "HEAD", "HEAD~1", "HEAD~2", "main", "master" }
     end
