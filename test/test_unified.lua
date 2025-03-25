@@ -456,6 +456,88 @@ function M.test_deleted_lines_not_duplicated(env)
   return true
 end
 
+-- Test that deleted lines appear on their own line, not appended to the previous line
+function M.test_deleted_lines_on_own_line(env)
+  -- Skip test if git is not available
+  local git_version = vim.fn.system("git --version")
+  if vim.v.shell_error ~= 0 then
+    print("Git not available, skipping git diff test")
+    return true
+  end
+
+  -- Create temporary git repository
+  local repo_dir = vim.fn.tempname()
+  vim.fn.mkdir(repo_dir, "p")
+
+  -- Change to repo directory
+  local old_dir = vim.fn.getcwd()
+  vim.cmd("cd " .. repo_dir)
+
+  -- Initialize git repo
+  vim.fn.system("git init")
+  vim.fn.system("git config user.name 'Test User'")
+  vim.fn.system("git config user.email 'test@example.com'")
+
+  -- Create a markdown file with sequential bullet points and commit it
+  local test_file = "README.md"
+  local test_path = repo_dir .. "/" .. test_file
+  vim.fn.writefile({
+    "# Test File",
+    "",
+    "Features:",
+    "- First feature bullet point",
+    "- Second feature that will be deleted",
+    "- Third feature bullet point",
+  }, test_path)
+  vim.fn.system("git add " .. test_file)
+  vim.fn.system("git commit -m 'Initial commit'")
+
+  -- Open the file and delete the middle bullet point
+  vim.cmd("edit " .. test_path)
+  vim.api.nvim_buf_set_lines(0, 4, 5, false, {}) -- Delete the second bullet point
+
+  -- Call the plugin function to show diff
+  local result = require("unified").show_git_diff()
+  assert(result, "Failed to display diff")
+
+  -- Get buffer and namespace
+  local buffer = vim.api.nvim_get_current_buf()
+  local ns_id = vim.api.nvim_create_namespace("unified_diff")
+
+  -- Get all extmarks with details
+  local extmarks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, { details = true })
+  
+  -- Look for virtual text at the end of lines
+  local found_eol_deleted_text = false
+  for _, mark in ipairs(extmarks) do
+    local row = mark[2]
+    local details = mark[4]
+    
+    if details.virt_text and details.virt_text_pos == "eol" then
+      -- Found virtual text at end of line, this would be the bug
+      found_eol_deleted_text = true
+      break
+    end
+  end
+  
+  -- The deleted line should NOT be shown at the end of another line
+  assert(not found_eol_deleted_text, 
+    "Deleted line appears as virtual text at the end of a line rather than on its own line")
+
+  -- Clean up
+  vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
+  vim.fn.sign_unplace("unified_diff", { buffer = buffer })
+  vim.cmd("bdelete!")
+
+  -- Return to original directory
+  vim.cmd("cd " .. old_dir)
+
+  -- Clean up git repo
+  vim.fn.delete(repo_dir, "rf")
+
+  return true
+end
+
 -- Run all tests
 function M.run_tests()
   local env = M.setup()
@@ -472,6 +554,7 @@ function M.run_tests()
     "test_git_diff",
     "test_no_plus_signs_in_buffer",
     "test_deleted_lines_not_duplicated",
+    "test_deleted_lines_on_own_line",
   }
 
   for _, test_name in ipairs(tests) do

@@ -193,10 +193,10 @@ function M.display_inline_diff(buffer, hunks)
         local line_text = line:sub(2)
         local hl_group = "UnifiedDiffDelete"
 
-        -- Add virtual text for the deleted line
+        -- Add virtual text for the deleted line as a separate line below
         local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, line_idx, 0, {
-          virt_text = { { M.config.line_symbols.delete .. " " .. line_text, hl_group } },
-          virt_text_pos = "eol",
+          virt_lines = { { { M.config.line_symbols.delete .. " " .. line_text, hl_group } } },
+          virt_lines_above = false,
         })
         if mark_id > 0 then
           mark_count = mark_count + 1
