@@ -1,0 +1,130 @@
+*unified.txt*  Inline unified diffs for Neovim
+
+Author:  Your Name <your-email@example.com>
+License: MIT
+
+==============================================================================
+CONTENTS                                                 *unified-contents*
+
+    1. Introduction ............................. |unified-introduction|
+    2. Requirements ............................ |unified-requirements|
+    3. Installation ............................ |unified-installation|
+    4. Configuration ........................... |unified-configuration|
+    5. Usage ................................... |unified-usage|
+    6. Commands ................................ |unified-commands|
+    7. API ..................................... |unified-api|
+    8. Mappings ................................ |unified-mappings|
+    9. Troubleshooting ......................... |unified-troubleshooting|
+
+==============================================================================
+1. INTRODUCTION                                         *unified-introduction*
+
+unified.nvim is a plugin for Neovim that displays unified diffs inline in your
+buffers. It shows the differences between the current buffer content and the
+saved file, highlighting added, deleted, and changed lines.
+
+==============================================================================
+2. REQUIREMENTS                                        *unified-requirements*
+
+- Neovim >= 0.5.0
+- `diff` command available in your PATH
+
+==============================================================================
+3. INSTALLATION                                        *unified-installation*
+
+Using packer.nvim: >
+    use {
+      'kirillov/unified.nvim',
+      config = function()
+        require('unified').setup({
+          -- Optional configuration
+        })
+      end
+    }
+<
+
+Using lazy.nvim: >
+    {
+      'kirillov/unified.nvim',
+      config = function()
+        require('unified').setup({
+          -- Optional configuration
+        })
+      end
+    }
+<
+
+==============================================================================
+4. CONFIGURATION                                      *unified-configuration*
+
+Configuration with default values: >
+    require('unified').setup({
+      signs = {
+        add = "│",
+        delete = "│",
+        change = "│",
+      },
+      highlights = {
+        add = "DiffAdd",
+        delete = "DiffDelete",
+        change = "DiffChange",
+      },
+      line_symbols = {
+        add = "+",
+        delete = "-",
+        change = "~",
+      },
+    })
+<
+
+==============================================================================
+5. USAGE                                                    *unified-usage*
+
+1. Open a file in Neovim
+2. Make some changes to the file
+3. Run the command `:UnifiedDiffShow` to display the diff
+4. Use `:UnifiedDiffToggle` to toggle the diff display on/off
+
+==============================================================================
+6. COMMANDS                                                *unified-commands*
+
+*:UnifiedDiffShow*
+    Show differences between the current buffer and saved file.
+
+*:UnifiedDiffToggle*
+    Toggle diff display on/off.
+
+==============================================================================
+7. API                                                        *unified-api*
+
+*require('unified').show_buffer_diff()*
+    Function to show differences between buffer and saved file.
+
+*require('unified').toggle_diff()*
+    Function to toggle diff display on/off.
+
+*require('unified').setup(opts)*
+    Function to configure the plugin with optional settings.
+
+==============================================================================
+8. MAPPINGS                                                *unified-mappings*
+
+The plugin does not define any mappings by default. You can create your own: >
+    vim.keymap.set('n', '<leader>ud', ':UnifiedDiffToggle<CR>', 
+                  { silent = true, desc = "Toggle unified diff" })
+    vim.keymap.set('n', '<leader>us', ':UnifiedDiffShow<CR>', 
+                  { silent = true, desc = "Show unified diff" })
+<
+
+==============================================================================
+9. TROUBLESHOOTING                                  *unified-troubleshooting*
+
+- If no diff is shown, check that:
+  - Your buffer has a file name (saved at least once)
+  - You have made changes to the buffer compared to the saved file
+  - The `diff` command is available in your PATH
+
+- If sign column markers are not showing:
+  - Make sure your 'signcolumn' option is set to 'yes' or 'auto'
+
+ vim:tw=78:ts=8:ft=help:norl:
