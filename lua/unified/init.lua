@@ -134,9 +134,6 @@ function M.display_inline_diff(buffer, hunks)
     })
   end
 
-  -- Debug info
-  vim.api.nvim_echo({ { "Displaying diff with " .. #hunks .. " hunks", "Normal" } }, false, {})
-
   -- Track if we placed any marks
   local mark_count = 0
   local sign_count = 0
@@ -145,16 +142,6 @@ function M.display_inline_diff(buffer, hunks)
     local line_idx = hunk.new_start - 1 -- Adjust for 0-indexed lines
     local old_idx = 0
     local new_idx = 0
-
-    -- Debug hunk info
-    local hunk_debug = string.format(
-      "Hunk: old_start=%d, old_count=%d, new_start=%d, new_count=%d",
-      hunk.old_start,
-      hunk.old_count,
-      hunk.new_start,
-      hunk.new_count
-    )
-    vim.api.nvim_echo({ { hunk_debug, "Normal" } }, false, {})
 
     for _, line in ipairs(hunk.lines) do
       local first_char = line:sub(1, 1)
@@ -226,9 +213,6 @@ function M.display_inline_diff(buffer, hunks)
       end
     end
   end
-
-  -- Debug summary
-  vim.api.nvim_echo({ { "Placed " .. mark_count .. " extmarks and " .. sign_count .. " signs", "Normal" } }, false, {})
 
   -- Return success based on whether we placed any marks
   return mark_count > 0
@@ -322,30 +306,16 @@ function M.show_git_diff_against_commit(commit)
   vim.fn.writefile(vim.split(current_content, "\n"), temp_current)
   vim.fn.writefile(vim.split(git_content, "\n"), temp_git)
 
-  -- Debug
-  vim.api.nvim_echo(
-    { { "Current content length: " .. #current_content .. ", Git content length: " .. #git_content, "Normal" } },
-    false,
-    {}
-  )
-
   -- Get diff output
   local diff_cmd = string.format("diff -u %s %s", temp_git, temp_current)
   local diff_output = vim.fn.system(diff_cmd)
-
-  -- Debug diff command and output
-  vim.api.nvim_echo({ { "Diff command: " .. diff_cmd, "Normal" } }, false, {})
-  vim.api.nvim_echo({ { "Diff output length: " .. #diff_output, "Normal" } }, false, {})
 
   -- Clean up temp files
   vim.fn.delete(temp_current)
   vim.fn.delete(temp_git)
 
   if diff_output ~= "" then
-    vim.api.nvim_echo({ { "Parsing diff output from commit " .. commit .. "...", "Normal" } }, false, {})
     local hunks = M.parse_diff(diff_output)
-    vim.api.nvim_echo({ { "Found " .. #hunks .. " hunks", "Normal" } }, false, {})
-
     local result = M.display_inline_diff(buffer, hunks)
     return result
   else
@@ -390,8 +360,6 @@ function M.setup_auto_refresh(buffer)
       end
     end,
   })
-
-  vim.api.nvim_echo({ { "Auto-refresh enabled for diff display", "Normal" } }, false, {})
 end
 
 -- Show diff (always use git diff)
@@ -414,7 +382,7 @@ end
 
 -- Function to check if diff is currently displayed in a buffer
 function M.is_diff_displayed(buffer)
-  local buffer = buffer or vim.api.nvim_get_current_buf()
+  buffer = buffer or vim.api.nvim_get_current_buf()
   local ns_id = M.ns_id or vim.api.nvim_create_namespace("unified_diff")
   local marks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, {})
   return #marks > 0
