@@ -82,23 +82,23 @@ Configuration with default values: >
 
 1. Open a file in Neovim
 2. Make some changes to the file
-3. Run the command `:UnifiedDiffShow` to display the diff
-4. Use `:UnifiedDiffToggle` to toggle the diff display on/off
+3. Run the command `:Unified` to display the diff
+4. Use `:Unified toggle` to toggle the diff display on/off
 
 ==============================================================================
 6. COMMANDS                                                *unified-commands*
 
-*:UnifiedDiffShow*
-    Show differences between the current buffer and saved file.
+*:Unified*
+    Show differences between the current buffer and git HEAD.
 
-*:UnifiedDiffToggle*
+*:Unified toggle*
     Toggle diff display on/off.
 
 ==============================================================================
 7. API                                                        *unified-api*
 
-*require('unified').show_buffer_diff()*
-    Function to show differences between buffer and saved file.
+*require('unified').show_diff()*
+    Function to show differences between buffer and git HEAD.
 
 *require('unified').toggle_diff()*
     Function to toggle diff display on/off.
@@ -110,11 +110,11 @@ Configuration with default values: >
 8. MAPPINGS                                                *unified-mappings*
 
 The plugin does not define any mappings by default. You can create your own: >
-    vim.keymap.set('n', '<leader>ud', ':UnifiedDiffToggle<CR>', 
+    vim.keymap.set('n', '<leader>ud', ':Unified toggle<CR>', 
                   { silent = true, desc = "Toggle unified diff" })
-    vim.keymap.set('n', '<leader>us', ':UnifiedDiffShow<CR>', 
+    vim.keymap.set('n', '<leader>us', ':Unified<CR>', 
                   { silent = true, desc = "Show unified diff" })
-<
+<<
 
 ==============================================================================
 9. TROUBLESHOOTING                                  *unified-troubleshooting*

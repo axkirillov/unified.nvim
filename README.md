@@ -60,8 +60,7 @@ require('unified').setup({
     add = "+",
     delete = "-",
     change = "~",
-  },
-  default_diff_mode = "git", -- Options: "git", "buffer"
+  }
 })
 ```
 
@@ -69,22 +68,17 @@ require('unified').setup({
 
 ### Commands
 
-- `:UnifiedDiffToggle` - Toggle the diff display on/off
-- `:UnifiedDiffShow` - Show differences based on default configuration
-- `:UnifiedDiffGit` - Show differences between buffer and git HEAD
-- `:UnifiedDiffBuffer` - Show differences between buffer and saved file
+- `:Unified` - Show git differences between buffer and git HEAD
+- `:Unified toggle` - Toggle the diff display on/off
 
 ### Lua API
 
 ```lua
--- Show differences based on configured default mode
+-- Show git differences between buffer and git HEAD
 require('unified').show_diff()
 
--- Show differences between buffer and git HEAD
+-- Show differences between buffer and git HEAD (same as show_diff)
 require('unified').show_git_diff()
-
--- Show differences between buffer and saved file
-require('unified').show_buffer_diff()
 
 -- Toggle diff display
 require('unified').toggle_diff()
@@ -93,8 +87,8 @@ require('unified').toggle_diff()
 ### Example Key Mappings
 
 ```lua
-vim.keymap.set('n', '<leader>ud', ':UnifiedDiffToggle<CR>', { silent = true })
-vim.keymap.set('n', '<leader>us', ':UnifiedDiffShow<CR>', { silent = true })
+vim.keymap.set('n', '<leader>ud', ':Unified toggle<CR>', { silent = true })
+vim.keymap.set('n', '<leader>us', ':Unified<CR>', { silent = true })
 ```
 
 ## Screenshots

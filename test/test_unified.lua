@@ -141,7 +141,7 @@ function M.test_diff_command(env)
   print("Git status: " .. vim.fn.system("git status"))
 
   -- Use user command to show diff
-  vim.cmd("UnifiedDiffShow")
+  vim.cmd("Unified")
 
   -- Get namespace to check if extmarks exist
   local ns_id = vim.api.nvim_create_namespace("unified_diff")
@@ -149,11 +149,11 @@ function M.test_diff_command(env)
   local marks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, {})
 
   -- Check that extmarks were created
-  assert(#marks > 0, "No diff extmarks were created after running UnifiedDiffShow command")
+  assert(#marks > 0, "No diff extmarks were created after running Unified command")
 
   -- Check for signs
   local signs = vim.fn.sign_getplaced(buffer, { group = "unified_diff" })
-  assert(#signs > 0 and #signs[1].signs > 0, "No diff signs were placed after running UnifiedDiffShow command")
+  assert(#signs > 0 and #signs[1].signs > 0, "No diff signs were placed after running Unified command")
 
   -- Validate that we have some changes (row numbers may vary with git diff)
   local found_changes = false
@@ -164,7 +164,7 @@ function M.test_diff_command(env)
   assert(found_changes, "No extmarks found for changes")
 
   -- Use command to toggle diff off
-  vim.cmd("UnifiedDiffToggle")
+  vim.cmd("Unified toggle")
   marks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, {})
   assert(#marks == 0, "Extmarks were not cleared after toggle command")
 
