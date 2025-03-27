@@ -40,6 +40,5 @@ set_keymap("n", "?", ":lua require('unified.file_tree').show_help()<CR>")
 -- Go to parent folder
 set_keymap("n", "-", ":lua require('unified.file_tree').go_to_parent()<CR>")
 
--- Additional navigation
-set_keymap("n", "<C-j>", "10j")
-set_keymap("n", "<C-k>", "10k")
+-- Additional navigation - Ctrl-J to open files/folders
+set_keymap("n", "<C-j>", ":lua require('unified.file_tree').toggle_node()<CR>")
