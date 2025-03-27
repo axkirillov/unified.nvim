@@ -619,7 +619,8 @@ function M.test_deletion_symbols_in_gutter(env)
   -- minus symbol in the virtual line content rather than placing it in a sign column
   assert(not minus_sign_in_content, "Deletion symbol '-' appears in buffer text instead of gutter")
 
-  -- Check for extmarks - we should NOT have signs for deleted lines
+  -- Note: Our approach has changed - we now use a single extmark with both sign and highlighting
+  -- So this test needs to be updated to check that no extmarks with virt_lines also have signs
   local extmarks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, { details = true })
   local found_sign_for_deleted_lines = false
 
@@ -628,15 +629,17 @@ function M.test_deletion_symbols_in_gutter(env)
   for _, mark in ipairs(extmarks) do
     local details = mark[4]
     print(string.format("Extmark: row=%d, col=%d, details=%s", mark[2], mark[3], vim.inspect(details)))
-    if details.sign_text then
+    
+    -- We should NOT have extmarks that have both virt_lines (for deleted content) AND sign_text
+    if details.virt_lines and details.sign_text then
       found_sign_for_deleted_lines = true
       print("Found sign for deleted line (this should not happen)")
       break
     end
   end
 
-  -- We should NOT have signs for deleted lines, as they can appear on real lines and cause confusion
-  assert(not found_sign_for_deleted_lines, "Found signs for deleted lines, but they should be removed")
+  -- We should NOT have combined extmarks with both virt_lines and sign_text
+  assert(not found_sign_for_deleted_lines, "Found signs for deleted lines, which can cause confusion")
 
   -- Clean up
   vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
