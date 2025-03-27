@@ -761,6 +761,13 @@ end
 
 -- Show file tree for the current buffer or a specific directory
 function M.show_file_tree(path, show_all_files)
+  -- Check if tree window already exists
+  if M.file_tree_win and vim.api.nvim_win_is_valid(M.file_tree_win) then
+    -- Tree is already showing, just set focus to it
+    vim.api.nvim_set_current_win(M.file_tree_win)
+    return true
+  end
+
   -- Load file_tree module
   local file_tree = require("unified.file_tree")
 
@@ -798,38 +805,32 @@ function M.show_file_tree(path, show_all_files)
   local current_win = vim.api.nvim_get_current_win()
   local tree_buf = file_tree.create_file_tree_buffer(file_path, diff_only)
 
-  -- Check if tree window already exists
-  if M.file_tree_win and vim.api.nvim_win_is_valid(M.file_tree_win) then
-    -- Update existing window
-    vim.api.nvim_win_set_buf(M.file_tree_win, tree_buf)
-  else
-    -- Original window position and dimensions
-    local win_pos = vim.api.nvim_win_get_position(current_win)
-    local win_width = vim.api.nvim_win_get_width(current_win)
-    local win_height = vim.api.nvim_win_get_height(current_win)
+  -- Original window position and dimensions
+  local win_pos = vim.api.nvim_win_get_position(current_win)
+  local win_width = vim.api.nvim_win_get_width(current_win)
+  local win_height = vim.api.nvim_win_get_height(current_win)
 
-    -- Create new window for tree
-    vim.cmd("topleft 30vsplit")
-    local tree_win = vim.api.nvim_get_current_win()
-    vim.api.nvim_win_set_buf(tree_win, tree_buf)
+  -- Create new window for tree
+  vim.cmd("topleft 30vsplit")
+  local tree_win = vim.api.nvim_get_current_win()
+  vim.api.nvim_win_set_buf(tree_win, tree_buf)
 
-    -- Set window options for a cleaner tree display
-    vim.api.nvim_win_set_option(tree_win, "number", false)
-    vim.api.nvim_win_set_option(tree_win, "relativenumber", false)
-    vim.api.nvim_win_set_option(tree_win, "signcolumn", "no")
-    vim.api.nvim_win_set_option(tree_win, "cursorline", true)
-    vim.api.nvim_win_set_option(tree_win, "winfixwidth", true)
-    vim.api.nvim_win_set_option(tree_win, "foldenable", false)
-    vim.api.nvim_win_set_option(tree_win, "list", false)
-    vim.api.nvim_win_set_option(tree_win, "fillchars", "vert:│")
+  -- Set window options for a cleaner tree display
+  vim.api.nvim_win_set_option(tree_win, "number", false)
+  vim.api.nvim_win_set_option(tree_win, "relativenumber", false)
+  vim.api.nvim_win_set_option(tree_win, "signcolumn", "no")
+  vim.api.nvim_win_set_option(tree_win, "cursorline", true)
+  vim.api.nvim_win_set_option(tree_win, "winfixwidth", true)
+  vim.api.nvim_win_set_option(tree_win, "foldenable", false)
+  vim.api.nvim_win_set_option(tree_win, "list", false)
+  vim.api.nvim_win_set_option(tree_win, "fillchars", "vert:│")
 
-    -- Store window and buffer references
-    M.file_tree_win = tree_win
-    M.file_tree_buf = tree_buf
+  -- Store window and buffer references
+  M.file_tree_win = tree_win
+  M.file_tree_buf = tree_buf
 
-    -- Return to original window
-    vim.api.nvim_set_current_win(current_win)
-  end
+  -- Return to original window
+  vim.api.nvim_set_current_win(current_win)
 
   return true
 end
