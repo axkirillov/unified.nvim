@@ -129,7 +129,7 @@ end
 
 -- Update status of files from git
 function FileTree:update_git_status(root_dir)
-  -- Get git status
+  -- Get git status for all changes
   local cmd = string.format("cd %s && git status --porcelain", vim.fn.shellescape(root_dir))
   local result = vim.fn.system(cmd)
   
@@ -137,17 +137,43 @@ function FileTree:update_git_status(root_dir)
     return
   end
   
+  -- Track changed files for status
+  local changed_files = {}
+  
   -- Process git status
   for line in result:gmatch("[^\r\n]+") do
     local status = line:sub(1, 2)
     local file = line:sub(4)
     local path = root_dir .. "/" .. file
     
-    self:add_file(path, status:gsub("%s", " "))
+    -- Store the status for this file
+    changed_files[path] = status:gsub("%s", " ")
   end
+  
+  -- Now scan the entire directory structure to create the tree
+  self:scan_directory(root_dir)
+  
+  -- Apply the statuses we found to the tree nodes
+  self:apply_statuses(self.root, changed_files)
   
   -- Propagate status up to parent directories
   self:update_parent_statuses(self.root)
+end
+
+-- Apply stored statuses to the tree nodes
+function FileTree:apply_statuses(node, changed_files)
+  if not node.is_dir then
+    -- For files, apply status if it exists
+    node.status = changed_files[node.path] or " "
+  else
+    -- For directories, mark status from children later
+    node.status = " "
+    
+    -- Process children
+    for _, child in ipairs(node.children) do
+      self:apply_statuses(child, changed_files)
+    end
+  end
 end
 
 -- Update the status of parent directories based on their children
@@ -635,24 +661,32 @@ function FileTree:render(buffer)
   M.tree_state.current_tree = self
 end
 
--- Build and render a file tree for the current buffer's git repository
+-- Build and render a file tree for the current buffer's git repository or directory
 function M.create_file_tree_buffer(buffer_path)
-  -- Get root directory of git repo
-  local dir = vim.fn.fnamemodify(buffer_path, ":h")
-  local cmd = string.format("cd %s && git rev-parse --show-toplevel", vim.fn.shellescape(dir))
-  local root_dir = vim.trim(vim.fn.system(cmd))
-  
-  if vim.v.shell_error ~= 0 then
-    root_dir = dir
-  end
-  
   -- Store the root path for refresh
   M.tree_state.root_path = buffer_path
   
+  -- Get directory from file path if it's a file
+  local dir = vim.fn.fnamemodify(buffer_path, ":h")
+  
+  -- Try to get git root directory
+  local cmd = string.format("cd %s && git rev-parse --show-toplevel 2>/dev/null", vim.fn.shellescape(dir))
+  local git_root = vim.trim(vim.fn.system(cmd))
+  local is_git_repo = vim.v.shell_error == 0 and git_root ~= ""
+  
+  -- Use git root or fallback to directory
+  local root_dir = is_git_repo and git_root or dir
+  
   -- Create file tree
   local tree = FileTree.new(root_dir)
+  
+  -- Always scan the directory first to get the structure
   tree:scan_directory(root_dir)
-  tree:update_git_status(root_dir)
+  
+  -- If we're in a git repo, update statuses
+  if is_git_repo then
+    tree:update_git_status(root_dir)
+  end
   
   -- Create buffer for file tree
   local buf = vim.api.nvim_create_buf(false, true)

@@ -698,36 +698,56 @@ function M.toggle_diff()
     -- Store current window as main window
     M.main_win = vim.api.nvim_get_current_win()
     
-    -- Show diff based on the stored commit base (or default to HEAD)
-    local result = M.show_diff()
-    if not result then
-      vim.api.nvim_echo({ { "Failed to display diff", "ErrorMsg" } }, false, {})
+    -- Get buffer name
+    local filename = vim.api.nvim_buf_get_name(buffer)
+    
+    -- Check if buffer has a name
+    if filename == "" then
+      -- It's an empty buffer with no name, just show file tree without diff
+      M.show_file_tree(vim.fn.getcwd())
+      vim.api.nvim_echo({ { "Showing file tree for current directory", "Normal" } }, false, {})
       return
     end
     
-    -- Show file tree
+    -- Show diff based on the stored commit base (or default to HEAD)
+    local result = M.show_diff()
+    
+    -- Always show file tree, even if diff fails
     M.show_file_tree()
+    
+    if not result then
+      vim.api.nvim_echo({ { "Failed to display diff, showing file tree only", "WarningMsg" } }, false, {})
+    end
   end
 end
 
--- Show file tree for the current buffer
-function M.show_file_tree()
+-- Show file tree for the current buffer or a specific directory
+function M.show_file_tree(path)
   -- Load file_tree module
   local file_tree = require("unified.file_tree")
   
-  local buffer = vim.api.nvim_get_current_buf()
-  local file_path = vim.api.nvim_buf_get_name(buffer)
+  local file_path = path
   
-  -- Skip if buffer has no name
-  if file_path == "" then
-    vim.api.nvim_echo({ { "Buffer has no file name, can't show file tree", "ErrorMsg" } }, false, {})
-    return false
+  if not file_path then
+    -- Default to current buffer
+    local buffer = vim.api.nvim_get_current_buf()
+    file_path = vim.api.nvim_buf_get_name(buffer)
+    
+    -- Skip if buffer has no name and no path was provided
+    if file_path == "" then
+      -- Try to get current working directory
+      file_path = vim.fn.getcwd()
+      if not file_path or file_path == "" then
+        vim.api.nvim_echo({ { "No file or directory available for tree view", "ErrorMsg" } }, false, {})
+        return false
+      end
+    end
   end
   
-  -- Check if file is in a git repo
+  -- Check if path is in a git repo
   if not M.is_git_repo(file_path) then
-    vim.api.nvim_echo({ { "File is not in a git repository, can't show file tree", "WarningMsg" } }, false, {})
-    return false
+    vim.api.nvim_echo({ { "Not in a git repository, showing only directory structure", "WarningMsg" } }, false, {})
+    -- Continue anyway to show directory structure
   end
   
   -- Create file tree buffer

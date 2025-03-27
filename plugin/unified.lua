@@ -19,6 +19,9 @@ vim.api.nvim_create_user_command("Unified", function(opts)
     else
       vim.api.nvim_echo({ { "No diff currently displayed", "WarningMsg" } }, false, {})
     end
+  elseif args == "tree" then
+    -- Just show the file tree without diff
+    require("unified").show_file_tree()
   elseif args:match("^commit%s+") then
     -- Extract commit hash from the command
     local commit = args:match("^commit%s+(.+)$")
@@ -71,7 +74,7 @@ end, {
   complete = function(_, line, _)
     -- Basic command completion
     if line:match("^Unified%s+$") then
-      return { "toggle", "refresh", "commit" }
+      return { "toggle", "refresh", "tree", "commit" }
     elseif line:match("^Unified%s+commit%s+") then
       -- Try to get recent commits for completion
       local buffer = vim.api.nvim_get_current_buf()
