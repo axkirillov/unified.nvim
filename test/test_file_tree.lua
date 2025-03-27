@@ -177,4 +177,48 @@ function M.test_file_tree_content()
   return true
 end
 
+-- Test the help dialog functionality
+function M.test_file_tree_help_dialog()
+  -- Create a test git repo
+  local repo = utils.create_git_repo()
+  if not repo then
+    print("Failed to create git repository, skipping test")
+    return true
+  end
+  
+  -- Create and open a test file
+  local file_path = utils.create_and_commit_file(repo, "test.txt", {"line 1", "line 2"}, "Initial commit")
+  vim.cmd("edit " .. file_path)
+  
+  -- Create a file tree buffer
+  local file_tree = require("unified.file_tree")
+  local tree_buf = file_tree.create_file_tree_buffer(file_path, false)
+  
+  -- Store tree buffer as the current buffer in the tree state
+  file_tree.tree_state.buffer = tree_buf
+  
+  -- Try to show help dialog
+  local success, err = pcall(function()
+    file_tree.show_help()
+  end)
+  
+  -- Check that no error occurred when showing help
+  assert(success, "show_help() should not throw an error: " .. tostring(err))
+  
+  -- Find and close all floating windows
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    local config = vim.api.nvim_win_get_config(win)
+    if config.relative and config.relative ~= "" then
+      -- This is a floating window, close it
+      vim.api.nvim_win_close(win, true)
+    end
+  end
+  
+  -- Clean up
+  vim.cmd("bdelete! " .. tree_buf)
+  utils.cleanup_git_repo(repo)
+  
+  return true
+end
+
 return M

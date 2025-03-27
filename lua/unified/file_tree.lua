@@ -469,7 +469,7 @@ function M.show_help()
   }
   
   -- Create a temporary floating window
-  local win_width = math.max(40, vim.o.columns / 3)
+  local win_width = math.max(40, math.floor(vim.o.columns / 3))
   local win_height = #help_text
   
   local win_opts = {
