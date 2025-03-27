@@ -554,15 +554,29 @@ function FileTree:render(buffer)
   vim.api.nvim_buf_set_option(buffer, "modifiable", true)
   vim.api.nvim_buf_set_lines(buffer, 0, -1, false, {})
   
-  -- Add header with directory name
+  -- Format the directory path more concisely for display
   local header_text = self.root.path
   
-  -- If path is long, truncate it to fit the window width
-  if #header_text > 50 then
-    -- Get just the last part of the path for display
-    local basename = vim.fn.fnamemodify(header_text, ":t")
-    local parent = vim.fn.fnamemodify(header_text, ":h:t")
-    header_text = "..." .. parent .. "/" .. basename
+  -- Replace home directory with ~
+  local home = vim.fn.expand("~")
+  if header_text:sub(1, #home) == home then
+    header_text = "~" .. header_text:sub(#home + 1)
+  end
+  
+  -- Remove any file:// prefix if present
+  header_text = header_text:gsub("^file://", "")
+  
+  -- Keep only the last few path components for readability
+  if #header_text > 40 then
+    local components = {}
+    for part in header_text:gmatch("([^/]+)") do
+      table.insert(components, part)
+    end
+    
+    -- If we have many components, keep just the last 3
+    if #components > 3 then
+      header_text = "~/" .. table.concat({components[#components-2], components[#components-1], components[#components]}, "/")
+    end
   end
   
   local lines = {
