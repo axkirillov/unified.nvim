@@ -745,14 +745,19 @@ function M.show_file_tree()
     local win_height = vim.api.nvim_win_get_height(current_win)
     
     -- Create new window for tree
-    vim.cmd("topleft 40vsplit")
+    vim.cmd("topleft 30vsplit")
     local tree_win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_buf(tree_win, tree_buf)
     
-    -- Set window options
+    -- Set window options for a cleaner tree display
     vim.api.nvim_win_set_option(tree_win, "number", false)
     vim.api.nvim_win_set_option(tree_win, "relativenumber", false)
     vim.api.nvim_win_set_option(tree_win, "signcolumn", "no")
+    vim.api.nvim_win_set_option(tree_win, "cursorline", true)
+    vim.api.nvim_win_set_option(tree_win, "winfixwidth", true)
+    vim.api.nvim_win_set_option(tree_win, "foldenable", false)
+    vim.api.nvim_win_set_option(tree_win, "list", false)
+    vim.api.nvim_win_set_option(tree_win, "fillchars", "vert:│")
     
     -- Store window and buffer references
     M.file_tree_win = tree_win

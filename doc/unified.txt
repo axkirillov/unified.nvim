@@ -95,11 +95,14 @@ and indicates which files have changes:
 - Files/directories with a "-" sign have deletions
 
 The file tree supports keyboard navigation:
-- Press Enter to toggle directory expansion or open a file
+- Press Enter/o to toggle directory expansion or open a file
 - Press h/l to collapse/expand directories
 - Press j/k to navigate up and down
+- Press <C-j>/<C-k> to move up/down 10 lines at a time
+- Press - to navigate to parent directory
 - Press R to refresh the tree view
 - Press q to close the tree view
+- Press ? to show help
 
 When you select a file in the tree, it will open in the main editor window,
 allowing you to easily navigate between files in your repository.

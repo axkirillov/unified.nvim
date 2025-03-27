@@ -388,6 +388,114 @@ function M.refresh()
   end
 end
 
+-- Show help dialog
+function M.show_help()
+  local buf = vim.api.nvim_get_current_buf()
+  if buf ~= M.tree_state.buffer then
+    return
+  end
+  
+  local help_text = {
+    "Unified File Explorer Help",
+    "------------------------",
+    "",
+    "Navigation:",
+    "  j/k       : Move up/down",
+    "  h/l       : Collapse/expand directory",
+    "  <CR>/o    : Toggle directory or open file",
+    "  -         : Go to parent directory",
+    "  <C-j/k>   : Navigate up/down 10 lines",
+    "",
+    "Actions:",
+    "  R         : Refresh the tree",
+    "  q         : Close the tree",
+    "  ?         : Show this help",
+    "",
+    "File Status:",
+    "  M         : Modified file",
+    "  D         : Deleted file",
+    "  ?         : Untracked file",
+    "",
+    "Press any key to close this help"
+  }
+  
+  -- Create a temporary floating window
+  local win_width = math.max(40, vim.o.columns / 3)
+  local win_height = #help_text
+  
+  local win_opts = {
+    relative = "editor",
+    width = win_width,
+    height = win_height,
+    row = math.floor((vim.o.lines - win_height) / 2),
+    col = math.floor((vim.o.columns - win_width) / 2),
+    style = "minimal",
+    border = "rounded"
+  }
+  
+  local help_buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_lines(help_buf, 0, -1, false, help_text)
+  
+  local win_id = vim.api.nvim_open_win(help_buf, true, win_opts)
+  
+  -- Set buffer options
+  vim.api.nvim_buf_set_option(help_buf, "modifiable", false)
+  vim.api.nvim_buf_set_option(help_buf, "bufhidden", "wipe")
+  
+  -- Add highlighting
+  local ns_id = vim.api.nvim_create_namespace("unified_help")
+  vim.api.nvim_buf_add_highlight(help_buf, ns_id, "Title", 0, 0, -1)
+  vim.api.nvim_buf_add_highlight(help_buf, ns_id, "NonText", 1, 0, -1)
+  
+  -- Highlight section headers
+  for i, line in ipairs(help_text) do
+    if line:match("^[A-Za-z]") and line:match(":$") then
+      vim.api.nvim_buf_add_highlight(help_buf, ns_id, "Statement", i-1, 0, -1)
+    end
+    -- Highlight keys
+    if line:match("^  [^:]+:") then
+      local key_end = line:find(":")
+      if key_end then
+        vim.api.nvim_buf_add_highlight(help_buf, ns_id, "Special", i-1, 2, key_end)
+      end
+    end
+  end
+  
+  -- Close on any key press
+  vim.api.nvim_buf_set_keymap(help_buf, "n", "<Space>", "<cmd>close<CR>", {silent = true, noremap = true})
+  vim.api.nvim_buf_set_keymap(help_buf, "n", "q", "<cmd>close<CR>", {silent = true, noremap = true})
+  vim.api.nvim_buf_set_keymap(help_buf, "n", "<CR>", "<cmd>close<CR>", {silent = true, noremap = true})
+  vim.api.nvim_buf_set_keymap(help_buf, "n", "<Esc>", "<cmd>close<CR>", {silent = true, noremap = true})
+end
+
+-- Go to parent directory node
+function M.go_to_parent()
+  local buf = vim.api.nvim_get_current_buf()
+  if buf ~= M.tree_state.buffer then
+    return
+  end
+  
+  local line = vim.api.nvim_win_get_cursor(0)[1] - 1
+  local node = M.tree_state.line_to_node[line]
+  
+  if not node or not node.parent then
+    return
+  end
+  
+  -- Find the parent node's line
+  local parent_line = nil
+  for l, n in pairs(M.tree_state.line_to_node) do
+    if n == node.parent then
+      parent_line = l
+      break
+    end
+  end
+  
+  if parent_line then
+    vim.api.nvim_win_set_cursor(0, {parent_line + 1, 0})
+  end
+end
+
 -- Render the file tree to a buffer with expanded/collapsed state
 function FileTree:render(buffer)
   buffer = buffer or vim.api.nvim_get_current_buf()
@@ -397,44 +505,95 @@ function FileTree:render(buffer)
   vim.api.nvim_buf_set_option(buffer, "modifiable", true)
   vim.api.nvim_buf_set_lines(buffer, 0, -1, false, {})
   
-  local lines = {}
+  -- Add header
+  local lines = {
+    "  " .. self.root.path,
+    "  Help: ? ",
+    ""
+  }
+  
+  -- Add changed files count if we have any
+  local changed_count = 0
+  for _, v in pairs(self.root.children) do
+    if v.status and v.status:match("[AMD?]") then
+      changed_count = changed_count + 1
+    end
+  end
+  
+  if changed_count > 0 then
+    table.insert(lines, "  Changes (" .. changed_count .. ")")
+  end
+  
   local highlights = {}
   local line_to_node = {}
   
+  -- Keep track of the line number for highlights
+  local current_line = #lines - 1
+  
   local function add_node(node, depth)
-    local prefix = string.rep("  ", depth)
-    local is_expanded = M.tree_state.expanded_dirs[node.path]
-    local icon = node.is_dir and (is_expanded and "▾ " or "▸ ") or "  "
-    local status_icon = " "
-    
-    if node.status and node.status:match("[AM]") then
-      status_icon = "+"
-    elseif node.status and node.status:match("[D]") then
-      status_icon = "-"
+    -- Skip root node display for cleaner tree
+    if node == self.root then
+      -- Add children if directory is expanded
+      if node.is_dir then
+        node:sort()
+        for _, child in ipairs(node.children) do
+          add_node(child, 0)
+        end
+      end
+      return
     end
     
-    table.insert(lines, prefix .. icon .. status_icon .. " " .. node.name)
+    local is_expanded = M.tree_state.expanded_dirs[node.path]
+    
+    -- Format status indicator
+    local status_char = " "
+    if node.status and node.status:match("[AM]") then
+      status_char = "M"
+    elseif node.status and node.status:match("[D]") then
+      status_char = "D"
+    elseif node.status and node.status:match("[?]") then
+      status_char = "?"
+    end
+    
+    -- Format directory/file indicators
+    local indent = string.rep("  ", depth)
+    local tree_char = node.is_dir and (is_expanded and "  " or "  ") or "  "
+    
+    -- Format line with proper spacing
+    table.insert(lines, indent .. tree_char .. node.name)
+    current_line = current_line + 1
     
     -- Map line to node
-    line_to_node[#lines - 1] = node
+    line_to_node[current_line] = node
     
-    -- Add highlight for node
-    local line_idx = #lines - 1
-    local hl_group = node.is_dir and "Directory" or "Normal"
-    
-    -- Add highlight for status
-    if status_icon == "+" then
-      table.insert(highlights, { line = line_idx, col = #prefix + 2, length = 1, hl_group = "DiffAdd" })
-    elseif status_icon == "-" then
-      table.insert(highlights, { line = line_idx, col = #prefix + 2, length = 1, hl_group = "DiffDelete" })
+    -- Apply status highlight at beginning of line
+    if status_char ~= " " then
+      local hl_group = "Normal"
+      if status_char == "M" then
+        hl_group = "DiffChange"
+      elseif status_char == "D" then
+        hl_group = "DiffDelete"
+      elseif status_char == "?" then
+        hl_group = "WarningMsg"
+      end
+      
+      -- Add status char at the start of the line
+      table.insert(highlights, {
+        line = current_line,
+        col = 0,
+        length = 1, 
+        hl_group = hl_group,
+        text = status_char
+      })
     end
     
-    -- Add highlight for name
-    table.insert(highlights, { 
-      line = line_idx, 
-      col = #prefix + 4, 
-      length = #node.name, 
-      hl_group = hl_group 
+    -- Apply highlight to node name
+    local name_hl = node.is_dir and "Directory" or "Normal"
+    table.insert(highlights, {
+      line = current_line,
+      col = #indent + 2,
+      length = #node.name,
+      hl_group = name_hl
     })
     
     -- Add children if directory is expanded
@@ -446,15 +605,25 @@ function FileTree:render(buffer)
     end
   end
   
-  -- Add root node
+  -- Add all nodes
   add_node(self.root, 0)
   
   -- Set buffer contents
   vim.api.nvim_buf_set_lines(buffer, 0, -1, false, lines)
   
-  -- Apply highlights
+  -- Apply text highlights
   for _, hl in ipairs(highlights) do
     vim.api.nvim_buf_add_highlight(buffer, ns_id, hl.hl_group, hl.line, hl.col, hl.col + hl.length)
+  end
+  
+  -- Apply virtual text for status indicators
+  for _, hl in ipairs(highlights) do
+    if hl.text then
+      vim.api.nvim_buf_set_extmark(buffer, ns_id, hl.line, 0, {
+        virt_text = {{hl.text, hl.hl_group}},
+        virt_text_pos = "overlay",
+      })
+    end
   end
   
   -- Set buffer as non-modifiable
