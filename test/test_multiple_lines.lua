@@ -62,16 +62,16 @@ function M.test_multiple_added_lines()
 
   -- Look for extmarks with sign_text to confirm they are marked as additions
   local extmarks_with_signs = {}
-  
+
   for _, mark in ipairs(extmarks) do
     local row = mark[2] + 1 -- Convert to 1-indexed
     local details = mark[4]
-    
+
     if details.sign_text and details.sign_text == "+" then
       extmarks_with_signs[row] = true
     end
   end
-  
+
   -- Check that appropriate sign extmarks were placed for added lines
   assert(extmarks_with_signs[3] or highlighted_lines[3], "First new line (new line 1) not marked as addition")
   assert(extmarks_with_signs[4] or highlighted_lines[4], "Second new line (new line 2) not marked as addition")

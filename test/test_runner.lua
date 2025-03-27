@@ -53,10 +53,10 @@ end
 function M.run_all_tests()
   -- Common setup
   local env = test_utils.setup()
-  
+
   -- Initialize unified plugin
   require("unified").setup()
-  
+
   -- Run all test groups
   local groups = {
     { name = "test_basic", module = test_basic },
@@ -65,9 +65,9 @@ function M.run_all_tests()
     { name = "test_multiple_lines", module = test_multiple_lines },
     { name = "test_file_tree", module = test_file_tree },
   }
-  
+
   local all_results = {}
-  
+
   for _, group in ipairs(groups) do
     local group_results = run_test_group(group.module, group.name)
     for _, result in ipairs(group_results) do
@@ -78,10 +78,10 @@ function M.run_all_tests()
       })
     end
   end
-  
+
   -- Cleanup
   test_utils.teardown(env)
-  
+
   -- Print results
   print("\nTest Results:")
   local pass_count, fail_count = 0, 0
@@ -97,10 +97,9 @@ function M.run_all_tests()
       print("  Error: " .. tostring(result.error))
     end
   end
-  
-  print(string.format("\nSummary: %d passed, %d failed, %d total", 
-                      pass_count, fail_count, pass_count + fail_count))
-  
+
+  print(string.format("\nSummary: %d passed, %d failed, %d total", pass_count, fail_count, pass_count + fail_count))
+
   -- Return success if all tests passed
   return fail_count == 0
 end
@@ -111,9 +110,9 @@ function M.run()
 
   -- Run all tests
   local result = M.run_all_tests()
-  
+
   print(string.format("\nTest result: %s", result and "PASS" or "FAIL"))
-  
+
   return result
 end
 
@@ -121,11 +120,11 @@ end
 function M.run_test(test_name)
   -- Parse test name in format "group.test_function"
   local group_name, func_name = test_name:match("([^%.]+)%.(.+)")
-  
+
   if not group_name then
     error("Invalid test name format. Use 'module_name.test_name'")
   end
-  
+
   -- Map group names to modules
   local groups = {
     test_basic = test_basic,
@@ -134,28 +133,28 @@ function M.run_test(test_name)
     test_multiple_lines = test_multiple_lines,
     test_file_tree = test_file_tree,
   }
-  
+
   local group = groups[group_name]
   if not group then
     error("Unknown test group: " .. group_name)
   end
-  
+
   if not group[func_name] then
     error("Unknown test function: " .. func_name .. " in group " .. group_name)
   end
-  
+
   print("Running test: " .. group_name .. "." .. func_name)
   require("unified").setup()
-  
+
   local status, result = pcall(function()
     return group[func_name]()
   end)
-  
+
   if not status then
     print("Test failed: " .. tostring(result))
     error(result)
   end
-  
+
   print("Test passed!")
   return result
 end
