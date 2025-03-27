@@ -790,9 +790,9 @@ function M.show_file_tree(path, show_all_files)
     show_all_files = true -- Force showing all files if not in a git repo
   end
   
-  -- If we're showing the diff and we're in a git repo, default to diff_only mode
+  -- Always use diff_only mode when in a git repo, 
   -- unless show_all_files is explicitly true
-  local diff_only = is_git_repo and not show_all_files and M.is_diff_displayed()
+  local diff_only = is_git_repo and not show_all_files
   
   -- Create file tree buffer
   local current_win = vim.api.nvim_get_current_win()

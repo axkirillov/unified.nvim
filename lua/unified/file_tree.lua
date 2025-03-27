@@ -150,14 +150,23 @@ function FileTree:update_git_status(root_dir, diff_only)
     changed_files[path] = status:gsub("%s", " ")
   end
   
+  -- Check if we have any changes
+  local has_changes = false
+  for _, _ in pairs(changed_files) do
+    has_changes = true
+    break
+  end
+  
   if diff_only then
+    -- In diff-only mode, if there are no changes, just leave the tree empty
+    if not has_changes then
+      -- Clear all children to show empty tree
+      self.root.children = {}
+      return
+    end
+    
     -- Only add files that have changes
     for path, status in pairs(changed_files) do
-      local rel_path = path
-      if path:sub(1, #root_dir) == root_dir then
-        rel_path = path:sub(#root_dir + 2)
-      end
-      
       self:add_file(path, status)
     end
   else
@@ -567,7 +576,7 @@ function FileTree:render(buffer)
   
   -- Add repository/directory type 
   if has_git_dir or is_git_repo then
-    -- Add changed files count if we have any
+    -- Count files with changes
     local changed_count = 0
     for _, v in pairs(self.root.children) do
       if v.status and v.status:match("[AMD?]") then
@@ -579,16 +588,12 @@ function FileTree:render(buffer)
       table.insert(lines, "  Git Repository - Changes (" .. changed_count .. ")")
     else
       if M.tree_state.diff_only then
-        table.insert(lines, "  Git Repository - No changes to display")
+        table.insert(lines, "  No changes to display")
+        table.insert(lines, "")
+        table.insert(lines, "  Use :Unified tree-all to show all files")
       else
         table.insert(lines, "  Git Repository - No Changes")
       end
-    end
-    
-    -- If we're in diff_only mode and there are no changes, show a message
-    if M.tree_state.diff_only and changed_count == 0 then
-      table.insert(lines, "")
-      table.insert(lines, "  No modified files found")
     end
   else
     if #self.root.children > 0 then
@@ -838,6 +843,7 @@ function M.create_file_tree_buffer(buffer_path, diff_only)
   
   -- If we're in a git repo, update statuses
   if is_git_repo then
+    -- Let the git status function handle creating the tree with only diff files or all files
     tree:update_git_status(root_dir, diff_only)
   elseif not diff_only then
     -- If not in a git repo and not in diff_only mode, scan the directory
