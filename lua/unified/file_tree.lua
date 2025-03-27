@@ -562,11 +562,11 @@ function FileTree:render(buffer)
     ""
   }
   
-  -- Determine if we're in a git repo by checking for .git directory
-  local is_git_repo = vim.fn.isdirectory(self.root.path .. "/.git") == 1
+  -- Determine if we're in a git repo by explicitly checking for .git directory
+  local has_git_dir = vim.fn.isdirectory(self.root.path .. "/.git") == 1
   
-  -- Add repository/directory type
-  if is_git_repo then
+  -- Add repository/directory type 
+  if has_git_dir or is_git_repo then
     -- Add changed files count if we have any
     local changed_count = 0
     for _, v in pairs(self.root.children) do
@@ -579,7 +579,7 @@ function FileTree:render(buffer)
       table.insert(lines, "  Git Repository - Changes (" .. changed_count .. ")")
     else
       if M.tree_state.diff_only then
-        table.insert(lines, "  No changes to display")
+        table.insert(lines, "  Git Repository - No changes to display")
       else
         table.insert(lines, "  Git Repository - No Changes")
       end
@@ -753,10 +753,35 @@ function M.create_file_tree_buffer(buffer_path, diff_only)
     end
   end
   
-  -- Try to get git root directory
-  local cmd = string.format("cd %s && git rev-parse --show-toplevel 2>/dev/null", vim.fn.shellescape(dir))
-  local git_root = vim.trim(vim.fn.system(cmd))
-  local is_git_repo = vim.v.shell_error == 0 and git_root ~= ""
+  -- Check if path is in a git repo using the unified module
+  local is_git_repo = require("unified").is_git_repo(dir)
+  
+  -- If it's a git repo, get the root directory
+  local git_root = ""
+  if is_git_repo then
+    local cmd = string.format("cd %s && git rev-parse --show-toplevel 2>/dev/null", vim.fn.shellescape(dir))
+    git_root = vim.trim(vim.fn.system(cmd))
+    
+    -- If command failed, traverse up to find .git directory
+    if vim.v.shell_error ~= 0 or git_root == "" then
+      local check_dir = dir
+      local max_depth = 10 -- Avoid infinite loops
+      for i = 1, max_depth do
+        if vim.fn.isdirectory(check_dir .. "/.git") == 1 then
+          git_root = check_dir
+          break
+        end
+        
+        -- Go up one directory
+        local parent = vim.fn.fnamemodify(check_dir, ":h")
+        if parent == check_dir then
+          -- We've reached the root, stop
+          break
+        end
+        check_dir = parent
+      end
+    end
+  end
   
   -- Use git root or fallback to directory
   local root_dir = is_git_repo and git_root or dir

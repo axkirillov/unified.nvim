@@ -444,10 +444,48 @@ end
 
 -- Check if file is in a git repository
 function M.is_git_repo(file_path)
-  local dir = vim.fn.fnamemodify(file_path, ":h")
+  -- Get directory from file path
+  local dir = file_path
+  if vim.fn.isdirectory(file_path) ~= 1 then
+    dir = vim.fn.fnamemodify(file_path, ":h")
+  end
+  
+  -- Use git rev-parse to check if we're in a git repo
   local cmd = string.format("cd %s && git rev-parse --is-inside-work-tree 2>/dev/null", vim.fn.shellescape(dir))
   local result = vim.fn.system(cmd)
-  return vim.trim(result) == "true"
+  local is_git_repo = vim.trim(result) == "true"
+  
+  if vim.g.unified_debug then
+    print("Git repo check for: " .. dir)
+    print("Git result: '" .. vim.trim(result) .. "'")
+    print("Is git repo: " .. tostring(is_git_repo))
+  end
+  
+  -- Double check by looking for .git directory
+  if not is_git_repo then
+    -- Try to find .git directory by traversing up
+    local check_dir = dir
+    local max_depth = 10 -- Avoid infinite loops
+    for i = 1, max_depth do
+      if vim.fn.isdirectory(check_dir .. "/.git") == 1 then
+        is_git_repo = true
+        if vim.g.unified_debug then
+          print("Found .git directory in: " .. check_dir)
+        end
+        break
+      end
+      
+      -- Go up one directory
+      local parent = vim.fn.fnamemodify(check_dir, ":h")
+      if parent == check_dir then
+        -- We've reached the root, stop
+        break
+      end
+      check_dir = parent
+    end
+  end
+  
+  return is_git_repo
 end
 
 -- Get file content from a specific git commit (defaults to HEAD)
