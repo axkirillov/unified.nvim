@@ -101,16 +101,20 @@ Configuration with default values: >
 *:Unified commit {commit}*
     Show differences between the current buffer and a specific git commit.
     {commit} can be a commit hash, branch name, tag, or any git reference.
+    The selected commit is stored per-window, ensuring that buffer modifications
+    will maintain diffing against the specified commit rather than defaulting to HEAD.
 
 ==============================================================================
 7. API                                                        *unified-api*
 
 *require('unified').show_diff([commit])*
     Function to show differences between buffer and git HEAD, or a specific commit
-    if the optional [commit] parameter is provided.
+    if the optional [commit] parameter is provided. If a commit is specified, it is
+    stored as the window-local base reference for subsequent refreshes.
 
 *require('unified').show_git_diff()*
-    Function to show differences between buffer and git HEAD.
+    Function to show differences between buffer and git HEAD. 
+    Note: This always uses HEAD and doesn't use the window-local base reference.
 
 *require('unified').show_git_diff_against_commit(commit)*
     Function to show differences between buffer and a specific git commit.
@@ -125,6 +129,15 @@ Configuration with default values: >
 
 *require('unified').setup_auto_refresh()*
     Function to set up automatic refresh of diff display on buffer changes.
+
+*require('unified').get_window_commit_base()*
+    Function to get the current window's stored commit base for diffing.
+    Returns the commit reference string or defaults to "HEAD" if not set.
+
+*require('unified').set_window_commit_base(commit)*
+    Function to set the commit base for the current window.
+    This is useful when you want to programmatically set the commit base
+    without immediately showing the diff.
 
 *require('unified').setup(opts)*
     Function to configure the plugin with optional settings.
