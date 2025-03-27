@@ -610,6 +610,26 @@ function M.get_window_commit_base()
   return vim.w.unified_commit_base or "HEAD"
 end
 
+-- Get the main content window (to navigate from tree back to content)
+function M.get_main_window()
+  -- If we have stored a main window and it's valid, use it
+  if M.main_win and vim.api.nvim_win_is_valid(M.main_win) then
+    return M.main_win
+  end
+  
+  -- Otherwise find the first window that's not our tree window
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if not M.file_tree_win or win ~= M.file_tree_win then
+      -- Store this as our main window
+      M.main_win = win
+      return win
+    end
+  end
+  
+  -- Fallback to current window
+  return vim.api.nvim_get_current_win()
+end
+
 -- Set the commit base for the current window
 function M.set_window_commit_base(commit)
   vim.w.unified_commit_base = commit
@@ -663,14 +683,86 @@ function M.toggle_diff()
       M.auto_refresh_augroup = nil
     end
 
+    -- Close file tree window if it exists
+    if M.file_tree_win and vim.api.nvim_win_is_valid(M.file_tree_win) then
+      vim.api.nvim_win_close(M.file_tree_win, true)
+      M.file_tree_win = nil
+      M.file_tree_buf = nil
+    end
+
+    -- Clear main window reference
+    M.main_win = nil
+
     vim.api.nvim_echo({ { "Diff display cleared", "Normal" } }, false, {})
   else
+    -- Store current window as main window
+    M.main_win = vim.api.nvim_get_current_win()
+    
     -- Show diff based on the stored commit base (or default to HEAD)
     local result = M.show_diff()
     if not result then
       vim.api.nvim_echo({ { "Failed to display diff", "ErrorMsg" } }, false, {})
+      return
     end
+    
+    -- Show file tree
+    M.show_file_tree()
   end
+end
+
+-- Show file tree for the current buffer
+function M.show_file_tree()
+  -- Load file_tree module
+  local file_tree = require("unified.file_tree")
+  
+  local buffer = vim.api.nvim_get_current_buf()
+  local file_path = vim.api.nvim_buf_get_name(buffer)
+  
+  -- Skip if buffer has no name
+  if file_path == "" then
+    vim.api.nvim_echo({ { "Buffer has no file name, can't show file tree", "ErrorMsg" } }, false, {})
+    return false
+  end
+  
+  -- Check if file is in a git repo
+  if not M.is_git_repo(file_path) then
+    vim.api.nvim_echo({ { "File is not in a git repository, can't show file tree", "WarningMsg" } }, false, {})
+    return false
+  end
+  
+  -- Create file tree buffer
+  local current_win = vim.api.nvim_get_current_win()
+  local tree_buf = file_tree.create_file_tree_buffer(file_path)
+  
+  -- Check if tree window already exists
+  if M.file_tree_win and vim.api.nvim_win_is_valid(M.file_tree_win) then
+    -- Update existing window
+    vim.api.nvim_win_set_buf(M.file_tree_win, tree_buf)
+  else
+    -- Original window position and dimensions
+    local win_pos = vim.api.nvim_win_get_position(current_win)
+    local win_width = vim.api.nvim_win_get_width(current_win)
+    local win_height = vim.api.nvim_win_get_height(current_win)
+    
+    -- Create new window for tree
+    vim.cmd("topleft 40vsplit")
+    local tree_win = vim.api.nvim_get_current_win()
+    vim.api.nvim_win_set_buf(tree_win, tree_buf)
+    
+    -- Set window options
+    vim.api.nvim_win_set_option(tree_win, "number", false)
+    vim.api.nvim_win_set_option(tree_win, "relativenumber", false)
+    vim.api.nvim_win_set_option(tree_win, "signcolumn", "no")
+    
+    -- Store window and buffer references
+    M.file_tree_win = tree_win
+    M.file_tree_buf = tree_buf
+    
+    -- Return to original window
+    vim.api.nvim_set_current_win(current_win)
+  end
+  
+  return true
 end
 
 return M

@@ -83,26 +83,46 @@ Configuration with default values: >
 
 1. Open a file in Neovim
 2. Make some changes to the file
-3. Run the command `:Unified` to display the diff
-4. Use `:Unified toggle` to toggle the diff display on/off
+3. Run the command `:Unified` to display the diff and file tree explorer
+4. Use `:Unified toggle` to toggle the diff display and file tree on/off
+
+File Tree:
+When you run `:Unified` to show a diff, a file tree explorer will also open
+in a split window. The file tree shows the structure of the git repository
+and indicates which files have changes:
+
+- Files/directories with a "+" sign have additions or modifications
+- Files/directories with a "-" sign have deletions
+
+The file tree supports keyboard navigation:
+- Press Enter to toggle directory expansion or open a file
+- Press h/l to collapse/expand directories
+- Press j/k to navigate up and down
+- Press R to refresh the tree view
+- Press q to close the tree view
+
+When you select a file in the tree, it will open in the main editor window,
+allowing you to easily navigate between files in your repository.
 
 ==============================================================================
 6. COMMANDS                                                *unified-commands*
 
 *:Unified*
-    Show differences between the current buffer and git HEAD.
+    Show differences between the current buffer and git HEAD, and opens a file tree
+    explorer in a split window.
 
 *:Unified toggle*
-    Toggle diff display on/off.
+    Toggle diff display and file tree explorer on/off.
 
 *:Unified refresh*
     Force refresh of the diff display (useful when auto-refresh is disabled).
 
 *:Unified commit {commit}*
-    Show differences between the current buffer and a specific git commit.
-    {commit} can be a commit hash, branch name, tag, or any git reference.
-    The selected commit is stored per-window, ensuring that buffer modifications
-    will maintain diffing against the specified commit rather than defaulting to HEAD.
+    Show differences between the current buffer and a specific git commit, and opens
+    a file tree explorer in a split window. {commit} can be a commit hash, branch name,
+    tag, or any git reference. The selected commit is stored per-window, ensuring that
+    buffer modifications will maintain diffing against the specified commit rather
+    than defaulting to HEAD.
 
 ==============================================================================
 7. API                                                        *unified-api*
@@ -122,13 +142,22 @@ Configuration with default values: >
     tag, or any git reference.
 
 *require('unified').toggle_diff()*
-    Function to toggle diff display on/off.
+    Function to toggle diff display and file tree explorer on/off.
 
 *require('unified').is_diff_displayed()*
     Function to check if diff is currently displayed in a buffer.
 
 *require('unified').setup_auto_refresh()*
     Function to set up automatic refresh of diff display on buffer changes.
+
+*require('unified').show_file_tree()*
+    Function to display the file tree explorer for the current buffer.
+    The tree shows the structure of the git repository with indicators for
+    files that have changes.
+
+*require('unified').get_main_window()*
+    Function to get the main content window (used for navigating from the
+    file tree back to the content window).
 
 *require('unified').get_window_commit_base()*
     Function to get the current window's stored commit base for diffing.
