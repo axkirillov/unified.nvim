@@ -137,13 +137,13 @@ function M.display_inline_diff(buffer, hunks)
   -- Track if we placed any marks
   local mark_count = 0
   local sign_count = 0
-  
+
   -- Get current buffer line count for safety checks
   local buf_line_count = vim.api.nvim_buf_line_count(buffer)
-  
+
   -- Track which lines have been marked already to avoid duplicates
   local marked_lines = {}
-  
+
   -- For detecting multiple consecutive new lines
   local consecutive_added_lines = {}
 
@@ -151,17 +151,17 @@ function M.display_inline_diff(buffer, hunks)
     local line_idx = hunk.new_start - 1 -- Adjust for 0-indexed lines
     local old_idx = 0
     local new_idx = 0
-    
+
     -- First pass: identify ranges of consecutive added lines
-    -- This helps detect when multiple lines are added at once, which git diff 
+    -- This helps detect when multiple lines are added at once, which git diff
     -- sometimes struggles to properly identify
     local current_start = nil
     local added_count = 0
-    
+
     -- Analyze hunk lines to find consecutive added lines
     for i, line in ipairs(hunk.lines) do
       local first_char = line:sub(1, 1)
-      
+
       if first_char == "+" then
         -- Start a new range or extend current range
         if current_start == nil then
@@ -178,7 +178,7 @@ function M.display_inline_diff(buffer, hunks)
           added_count = 0
         end
       end
-      
+
       -- Update counters for proper position tracking
       if first_char == " " then
         new_idx = new_idx + 1
@@ -186,12 +186,12 @@ function M.display_inline_diff(buffer, hunks)
         new_idx = new_idx + 1
       end
     end
-    
+
     -- Record final range if needed
     if current_start ~= nil and added_count > 0 then
       consecutive_added_lines[current_start] = added_count
     end
-    
+
     -- Reset for the main pass
     line_idx = hunk.new_start - 1
     old_idx = 0
@@ -209,20 +209,20 @@ function M.display_inline_diff(buffer, hunks)
         -- Added or modified line
         local line_text = line:sub(2)
         local hl_group = "UnifiedDiffAdd"
-        
+
         -- Skip if line is out of range (safety check)
         if line_idx >= buf_line_count then
           goto continue
         end
-        
+
         -- Skip if this line has already been marked
         if marked_lines[line_idx] then
           goto continue
         end
-        
+
         -- Check if this is part of consecutive added lines
         local consecutive_count = consecutive_added_lines[line_idx - new_idx + old_idx] or 0
-        
+
         -- Use a single extmark with both sign and line highlighting
         -- This is more reliable than separate sign placement + highlight
         local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, line_idx, 0, {
@@ -232,20 +232,20 @@ function M.display_inline_diff(buffer, hunks)
         })
         if mark_id > 0 then
           mark_count = mark_count + 1
-          sign_count = sign_count + 1  
+          sign_count = sign_count + 1
           marked_lines[line_idx] = true
         end
-        
+
         -- If part of consecutive additions, highlight subsequent lines
         if consecutive_count > 1 then
           for i = 1, consecutive_count - 1 do
             local next_line_idx = line_idx + i
-            
+
             -- Safety checks
             if next_line_idx >= buf_line_count or marked_lines[next_line_idx] then
               goto continue_consecutive
             end
-            
+
             -- Use a single extmark with both sign and line highlighting for consecutive lines
             local consec_mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, next_line_idx, 0, {
               sign_text = M.config.line_symbols.add .. " ", -- Add sign in gutter
@@ -257,7 +257,7 @@ function M.display_inline_diff(buffer, hunks)
               sign_count = sign_count + 1
               marked_lines[next_line_idx] = true
             end
-            
+
             ::continue_consecutive::
           end
         end
@@ -271,12 +271,12 @@ function M.display_inline_diff(buffer, hunks)
 
         -- Determine the best position to show the deleted line
         local attach_line = line_idx
-        
+
         -- If we're at the end of the buffer, attach to the previous line
         if line_idx >= buf_line_count then
           attach_line = buf_line_count - 1
         end
-        
+
         -- Skip if line is out of range
         if attach_line < 0 or attach_line >= buf_line_count then
           goto continue
@@ -295,63 +295,62 @@ function M.display_inline_diff(buffer, hunks)
 
         old_idx = old_idx + 1
       end
-      
+
       ::continue::
     end
   end
-  
+
   -- Second pass: process any lines that weren't caught in the first pass
   -- This is needed for historical diffs where some lines might not be properly
   -- identified by the standard diff algorithm, and for multiple consecutive new lines
-  
+
   -- Get the current commit base
   local commit_base = M.get_window_commit_base()
-  
+
   -- Get buffer content
   local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
-  
+
   -- Get original file content from git to compare with buffer
   local buffer_name = vim.api.nvim_buf_get_name(buffer)
   local git_content = ""
-  
+
   if buffer_name ~= "" and M.is_git_repo(buffer_name) then
     git_content = M.get_git_file_content(buffer_name, commit_base) or ""
   end
-  
+
   local git_lines = {}
   if git_content ~= "" then
     git_lines = vim.split(git_content, "\n")
   end
-  
+
   -- Track if this is a historical diff, which needs special handling
   local is_historical_diff = false
   if commit_base ~= "HEAD" then
     -- Extract the commit base number for special handling
     local base_num = tonumber(commit_base:match("HEAD~(%d+)")) or 0
     -- For specific historical diffs, we need to be more aggressive
-    is_historical_diff = base_num >= 4  -- HEAD~4 or older
+    is_historical_diff = base_num >= 4 -- HEAD~4 or older
   end
-  
+
   -- First, check for exact patterns that we want to highlight in historical diffs
   if is_historical_diff then
     for i = 0, #buffer_lines - 1 do
       if not marked_lines[i] then
         local line = buffer_lines[i + 1]
-        
+
         -- Exact match for the test case pattern
-        if line:match("^%s*5%.%s.*[Rr]estored") or
-           line:match("^%s*5%.%s.*feature") then
+        if line:match("^%s*5%.%s.*[Rr]estored") or line:match("^%s*5%.%s.*feature") then
           local id = i + 1 -- Use line number as ID to avoid duplicates
           local sign_result = vim.fn.sign_place(id, "unified_diff", "unified_diff_add", buffer, {
             lnum = i + 1,
             priority = 10,
           })
-          
+
           -- Add highlight for the line
           local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, i, 0, {
             line_hl_group = "UnifiedDiffAdd",
           })
-          
+
           if mark_id > 0 then
             mark_count = mark_count + 1
             marked_lines[i] = true
@@ -360,17 +359,17 @@ function M.display_inline_diff(buffer, hunks)
       end
     end
   end
-  
+
   -- Process each buffer line that hasn't been marked yet
   for i = 0, #buffer_lines - 1 do
     if not marked_lines[i] then
       local line = buffer_lines[i + 1]
-      
+
       -- Skip empty lines
       if line:match("^%s*$") then
         goto continue_line
       end
-      
+
       -- Most important part: if the line starts with "new " or contains "new line", it's very likely new
       -- This is specifically to fix the issue with consecutive lines added that all start with "new line"
       if line:match("^new%s") or line:match("new") and line:match("line") then
@@ -378,25 +377,25 @@ function M.display_inline_diff(buffer, hunks)
         if i >= buf_line_count then
           goto continue_line
         end
-        
+
         -- Use a SINGLE extmark with BOTH sign and line highlighting
         -- This is critical for ensuring all lines show as highlighted
         local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, i, 0, {
           sign_text = M.config.line_symbols.add .. " ", -- Add sign in gutter
           sign_hl_group = M.config.highlights.add,
-          line_hl_group = "UnifiedDiffAdd",  -- Highlight the whole line
+          line_hl_group = "UnifiedDiffAdd", -- Highlight the whole line
         })
-        
+
         if mark_id > 0 then
           mark_count = mark_count + 1
           sign_count = sign_count + 1
           marked_lines[i] = true
         end
-        
+
         -- Continue to next line after marking this one
         goto continue_line
       end
-      
+
       -- For newly added lines, look for exact matches in the git content
       local is_new_line = true
       if #git_lines > 0 then
@@ -407,26 +406,26 @@ function M.display_inline_diff(buffer, hunks)
           end
         end
       end
-      
+
       -- For lines that don't exist in the original content, highlight them
       if is_new_line then
         -- Skip lines near the end of the file (for safety)
         if i >= buf_line_count then
           goto continue_line
         end
-        
+
         -- Check for specific patterns in historical diffs that should be highlighted
         local should_highlight = true
-        
+
         -- Add highlighting if this should be highlighted
         if should_highlight then
           -- Use a single extmark with both sign and line highlighting
           local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, i, 0, {
             sign_text = M.config.line_symbols.add .. " ", -- Add sign in gutter
             sign_hl_group = M.config.highlights.add,
-            line_hl_group = "UnifiedDiffAdd",  -- Highlight the whole line
+            line_hl_group = "UnifiedDiffAdd", -- Highlight the whole line
           })
-          
+
           if mark_id > 0 then
             mark_count = mark_count + 1
             sign_count = sign_count + 1
@@ -434,7 +433,7 @@ function M.display_inline_diff(buffer, hunks)
           end
         end
       end
-      
+
       ::continue_line::
     end
   end
@@ -535,7 +534,7 @@ function M.show_git_diff_against_commit(commit)
   -- We'll use git diff instead of plain diff for better accuracy
   -- Git handles complex diffs better, especially when comparing against older commits
   local dir = vim.fn.fnamemodify(file_path, ":h")
-  
+
   -- Use git diff with unified format for better visualization
   local diff_cmd = string.format(
     "cd %s && git diff --no-index --unified=3 --text --no-color --word-diff=none %s %s",
@@ -543,7 +542,7 @@ function M.show_git_diff_against_commit(commit)
     vim.fn.shellescape(temp_git),
     vim.fn.shellescape(temp_current)
   )
-  
+
   local diff_output = vim.fn.system(diff_cmd)
 
   -- Clean up temp files
@@ -556,7 +555,7 @@ function M.show_git_diff_against_commit(commit)
     diff_output = diff_output:gsub("index %S+%.%.%S+ %S+\n", "")
     diff_output = diff_output:gsub("%-%-%" .. "- %S+\n", "") -- Split the string to avoid escaping issues
     diff_output = diff_output:gsub("%+%+%+" .. " %S+\n", "") -- Split the string to avoid escaping issues
-    
+
     local hunks = M.parse_diff(diff_output)
     local result = M.display_inline_diff(buffer, hunks)
     return result

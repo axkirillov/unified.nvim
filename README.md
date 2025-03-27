@@ -9,10 +9,7 @@ A Neovim plugin for displaying inline unified diffs directly in your buffer.
 - Display added, deleted, and modified lines with distinct highlighting
 - Customizable symbols and highlighting
 - Simple toggle functionality
-
-
 - Automatic refresh of diff as you type
-
 - Display added, modified and deleted lines with proper visualization
 
 ## Installation
