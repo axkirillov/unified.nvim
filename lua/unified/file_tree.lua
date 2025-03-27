@@ -128,7 +128,7 @@ function FileTree:scan_directory(dir)
 end
 
 -- Update status of files from git
-function FileTree:update_git_status(root_dir)
+function FileTree:update_git_status(root_dir, diff_only)
   -- Get git status for all changes
   local cmd = string.format("cd %s && git status --porcelain", vim.fn.shellescape(root_dir))
   local result = vim.fn.system(cmd)
@@ -150,11 +150,23 @@ function FileTree:update_git_status(root_dir)
     changed_files[path] = status:gsub("%s", " ")
   end
   
-  -- Now scan the entire directory structure to create the tree
-  self:scan_directory(root_dir)
-  
-  -- Apply the statuses we found to the tree nodes
-  self:apply_statuses(self.root, changed_files)
+  if diff_only then
+    -- Only add files that have changes
+    for path, status in pairs(changed_files) do
+      local rel_path = path
+      if path:sub(1, #root_dir) == root_dir then
+        rel_path = path:sub(#root_dir + 2)
+      end
+      
+      self:add_file(path, status)
+    end
+  else
+    -- Scan the entire directory structure to create the tree
+    self:scan_directory(root_dir)
+    
+    -- Apply the statuses we found to the tree nodes
+    self:apply_statuses(self.root, changed_files)
+  end
   
   -- Propagate status up to parent directories
   self:update_parent_statuses(self.root)
@@ -406,10 +418,12 @@ function M.refresh()
     return
   end
   
-  -- Re-create the tree
+  -- Re-create the tree with the same settings
   local file_path = M.tree_state.root_path
+  local diff_only = M.tree_state.diff_only
+  
   if file_path then
-    local tree = M.create_file_tree_buffer(file_path)
+    local tree = M.create_file_tree_buffer(file_path, diff_only)
     vim.api.nvim_win_set_buf(0, tree)
   end
 end
@@ -564,10 +578,24 @@ function FileTree:render(buffer)
     if changed_count > 0 then
       table.insert(lines, "  Git Repository - Changes (" .. changed_count .. ")")
     else
-      table.insert(lines, "  Git Repository - No Changes")
+      if M.tree_state.diff_only then
+        table.insert(lines, "  No changes to display")
+      else
+        table.insert(lines, "  Git Repository - No Changes")
+      end
+    end
+    
+    -- If we're in diff_only mode and there are no changes, show a message
+    if M.tree_state.diff_only and changed_count == 0 then
+      table.insert(lines, "")
+      table.insert(lines, "  No modified files found")
     end
   else
-    table.insert(lines, "  Directory View")
+    if #self.root.children > 0 then
+      table.insert(lines, "  Directory View")
+    else
+      table.insert(lines, "  Empty Directory")
+    end
   end
   
   local highlights = {}
@@ -698,9 +726,10 @@ function FileTree:render(buffer)
 end
 
 -- Build and render a file tree for the current buffer's git repository or directory
-function M.create_file_tree_buffer(buffer_path)
+function M.create_file_tree_buffer(buffer_path, diff_only)
   -- Store the root path for refresh
   M.tree_state.root_path = buffer_path
+  M.tree_state.diff_only = diff_only
   
   -- Check if path exists
   local path_exists = vim.fn.filereadable(buffer_path) == 1 or vim.fn.isdirectory(buffer_path) == 1
@@ -759,6 +788,7 @@ function M.create_file_tree_buffer(buffer_path)
     print("File Tree - Using root directory: " .. root_dir)
     if is_git_repo then
       print("File Tree - Git repository detected")
+      print("File Tree - Diff only mode: " .. (diff_only and "true" or "false"))
     else
       print("File Tree - Not a git repository")
     end
@@ -776,12 +806,17 @@ function M.create_file_tree_buffer(buffer_path)
   -- Create file tree
   local tree = FileTree.new(root_dir)
   
-  -- Always scan the directory first to get the structure
-  tree:scan_directory(root_dir)
+  -- If we're in diff_only mode, don't scan the directory first
+  if not diff_only then
+    tree:scan_directory(root_dir)
+  end
   
   -- If we're in a git repo, update statuses
   if is_git_repo then
-    tree:update_git_status(root_dir)
+    tree:update_git_status(root_dir, diff_only)
+  elseif not diff_only then
+    -- If not in a git repo and not in diff_only mode, scan the directory
+    tree:scan_directory(root_dir)
   end
   
   -- Create buffer for file tree

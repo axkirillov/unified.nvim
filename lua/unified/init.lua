@@ -722,7 +722,7 @@ function M.toggle_diff()
 end
 
 -- Show file tree for the current buffer or a specific directory
-function M.show_file_tree(path)
+function M.show_file_tree(path, show_all_files)
   -- Load file_tree module
   local file_tree = require("unified.file_tree")
   
@@ -745,14 +745,20 @@ function M.show_file_tree(path)
   end
   
   -- Check if path is in a git repo
-  if not M.is_git_repo(file_path) then
+  local is_git_repo = M.is_git_repo(file_path)
+  if not is_git_repo then
     vim.api.nvim_echo({ { "Not in a git repository, showing only directory structure", "WarningMsg" } }, false, {})
     -- Continue anyway to show directory structure
+    show_all_files = true -- Force showing all files if not in a git repo
   end
+  
+  -- If we're showing the diff and we're in a git repo, default to diff_only mode
+  -- unless show_all_files is explicitly true
+  local diff_only = is_git_repo and not show_all_files and M.is_diff_displayed()
   
   -- Create file tree buffer
   local current_win = vim.api.nvim_get_current_win()
-  local tree_buf = file_tree.create_file_tree_buffer(file_path)
+  local tree_buf = file_tree.create_file_tree_buffer(file_path, diff_only)
   
   -- Check if tree window already exists
   if M.file_tree_win and vim.api.nvim_win_is_valid(M.file_tree_win) then
