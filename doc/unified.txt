@@ -123,11 +123,6 @@ allowing you to easily navigate between files in your repository.
     this will show only files that have changes. If there are no changes, it will
     display an empty tree with a message.
 
-*:Unified tree-all*
-    Open the file tree explorer showing all files in the directory or repository,
-    not just those with changes. This is useful for navigating through the full
-    codebase structure.
-
 *:Unified refresh*
     Force refresh of the diff display (useful when auto-refresh is disabled).
 

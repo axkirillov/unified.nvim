@@ -603,8 +603,6 @@ function FileTree:render(buffer)
     else
       if M.tree_state.diff_only then
         table.insert(lines, "  No changes to display")
-        table.insert(lines, "")
-        table.insert(lines, "  Use :Unified tree-all to show all files")
       else
         table.insert(lines, "  Git Repository - No Changes")
       end

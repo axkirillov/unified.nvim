@@ -22,9 +22,6 @@ vim.api.nvim_create_user_command("Unified", function(opts)
   elseif args == "tree" then
     -- Just show the file tree with diff-only mode (only files with changes)
     require("unified").show_file_tree(nil, false)
-  elseif args == "tree-all" then
-    -- Show the complete file tree with all files
-    require("unified").show_file_tree(nil, true)
   elseif args == "debug" then
     -- Toggle debug mode
     vim.g.unified_debug = not vim.g.unified_debug
@@ -81,7 +78,7 @@ end, {
   complete = function(_, line, _)
     -- Basic command completion
     if line:match("^Unified%s+$") then
-      return { "toggle", "refresh", "tree", "tree-all", "commit", "debug" }
+      return { "toggle", "refresh", "tree", "commit", "debug" }
     elseif line:match("^Unified%s+commit%s+") then
       -- Try to get recent commits for completion
       local buffer = vim.api.nvim_get_current_buf()
