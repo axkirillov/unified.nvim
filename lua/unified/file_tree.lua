@@ -531,23 +531,43 @@ function FileTree:render(buffer)
   vim.api.nvim_buf_set_option(buffer, "modifiable", true)
   vim.api.nvim_buf_set_lines(buffer, 0, -1, false, {})
   
-  -- Add header
+  -- Add header with directory name
+  local header_text = self.root.path
+  
+  -- If path is long, truncate it to fit the window width
+  if #header_text > 50 then
+    -- Get just the last part of the path for display
+    local basename = vim.fn.fnamemodify(header_text, ":t")
+    local parent = vim.fn.fnamemodify(header_text, ":h:t")
+    header_text = "..." .. parent .. "/" .. basename
+  end
+  
   local lines = {
-    "  " .. self.root.path,
+    "  " .. header_text,
     "  Help: ? ",
     ""
   }
   
-  -- Add changed files count if we have any
-  local changed_count = 0
-  for _, v in pairs(self.root.children) do
-    if v.status and v.status:match("[AMD?]") then
-      changed_count = changed_count + 1
-    end
-  end
+  -- Determine if we're in a git repo by checking for .git directory
+  local is_git_repo = vim.fn.isdirectory(self.root.path .. "/.git") == 1
   
-  if changed_count > 0 then
-    table.insert(lines, "  Changes (" .. changed_count .. ")")
+  -- Add repository/directory type
+  if is_git_repo then
+    -- Add changed files count if we have any
+    local changed_count = 0
+    for _, v in pairs(self.root.children) do
+      if v.status and v.status:match("[AMD?]") then
+        changed_count = changed_count + 1
+      end
+    end
+    
+    if changed_count > 0 then
+      table.insert(lines, "  Git Repository - Changes (" .. changed_count .. ")")
+    else
+      table.insert(lines, "  Git Repository - No Changes")
+    end
+  else
+    table.insert(lines, "  Directory View")
   end
   
   local highlights = {}
@@ -652,6 +672,22 @@ function FileTree:render(buffer)
     end
   end
   
+  -- Add highlighting for the header
+  vim.api.nvim_buf_add_highlight(buffer, ns_id, "Title", 0, 0, -1)
+  vim.api.nvim_buf_add_highlight(buffer, ns_id, "Comment", 1, 0, -1)
+  
+  -- Add highlighting for repository status line
+  local status_line = 3
+  if is_git_repo then
+    if lines[4]:match("Changes") then
+      vim.api.nvim_buf_add_highlight(buffer, ns_id, "WarningMsg", status_line, 0, -1)
+    else
+      vim.api.nvim_buf_add_highlight(buffer, ns_id, "Comment", status_line, 0, -1)
+    end
+  else
+    vim.api.nvim_buf_add_highlight(buffer, ns_id, "Comment", status_line, 0, -1)
+  end
+  
   -- Set buffer as non-modifiable
   vim.api.nvim_buf_set_option(buffer, "modifiable", false)
   
@@ -666,8 +702,27 @@ function M.create_file_tree_buffer(buffer_path)
   -- Store the root path for refresh
   M.tree_state.root_path = buffer_path
   
-  -- Get directory from file path if it's a file
-  local dir = vim.fn.fnamemodify(buffer_path, ":h")
+  -- Check if path exists
+  local path_exists = vim.fn.filereadable(buffer_path) == 1 or vim.fn.isdirectory(buffer_path) == 1
+  
+  -- Get directory from path
+  local dir
+  if path_exists then
+    -- If path exists, use its directory if it's a file, or the path itself if it's a directory
+    if vim.fn.isdirectory(buffer_path) == 1 then
+      dir = buffer_path
+    else
+      dir = vim.fn.fnamemodify(buffer_path, ":h")
+    end
+  else
+    -- Path doesn't exist, try using its parent directory
+    dir = vim.fn.fnamemodify(buffer_path, ":h")
+    
+    -- If that doesn't exist either, use the current working directory
+    if vim.fn.isdirectory(dir) ~= 1 then
+      dir = vim.fn.getcwd()
+    end
+  end
   
   -- Try to get git root directory
   local cmd = string.format("cd %s && git rev-parse --show-toplevel 2>/dev/null", vim.fn.shellescape(dir))
@@ -676,6 +731,47 @@ function M.create_file_tree_buffer(buffer_path)
   
   -- Use git root or fallback to directory
   local root_dir = is_git_repo and git_root or dir
+  
+  -- Make sure we use the actual git root, not a parent directory
+  if is_git_repo then
+    -- Verify that git_root is actually a subdirectory of the file system root
+    -- This prevents showing too high a directory due to git worktrees or similar
+    local fs_root = "/"
+    if vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1 then
+      -- On Windows, use drive letter
+      fs_root = string.sub(dir, 1, 3) -- e.g., "C:\"
+    end
+    
+    if git_root:sub(1, #fs_root) ~= fs_root then
+      -- If somehow git_root doesn't start with fs_root, fall back to dir
+      root_dir = dir
+    end
+    
+    -- Double check that the git root really contains a .git directory
+    if vim.fn.isdirectory(root_dir .. "/.git") ~= 1 then
+      -- If no .git directory, fall back to original directory
+      root_dir = dir
+    end
+  end
+  
+  -- Log what we're doing in debug mode
+  if vim.g.unified_debug then
+    print("File Tree - Using root directory: " .. root_dir)
+    if is_git_repo then
+      print("File Tree - Git repository detected")
+    else
+      print("File Tree - Not a git repository")
+    end
+  end
+  
+  -- Final sanity check - make sure the directory exists
+  if vim.fn.isdirectory(root_dir) ~= 1 then
+    -- If somehow we got a non-existent directory, fall back to current working directory
+    root_dir = vim.fn.getcwd()
+    if vim.g.unified_debug then
+      print("File Tree - Directory doesn't exist, falling back to: " .. root_dir)
+    end
+  end
   
   -- Create file tree
   local tree = FileTree.new(root_dir)

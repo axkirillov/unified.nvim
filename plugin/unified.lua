@@ -22,6 +22,10 @@ vim.api.nvim_create_user_command("Unified", function(opts)
   elseif args == "tree" then
     -- Just show the file tree without diff
     require("unified").show_file_tree()
+  elseif args == "debug" then
+    -- Toggle debug mode
+    vim.g.unified_debug = not vim.g.unified_debug
+    vim.api.nvim_echo({ { "Debug mode " .. (vim.g.unified_debug and "enabled" or "disabled"), "Normal" } }, false, {})
   elseif args:match("^commit%s+") then
     -- Extract commit hash from the command
     local commit = args:match("^commit%s+(.+)$")
@@ -74,7 +78,7 @@ end, {
   complete = function(_, line, _)
     -- Basic command completion
     if line:match("^Unified%s+$") then
-      return { "toggle", "refresh", "tree", "commit" }
+      return { "toggle", "refresh", "tree", "commit", "debug" }
     elseif line:match("^Unified%s+commit%s+") then
       -- Try to get recent commits for completion
       local buffer = vim.api.nvim_get_current_buf()
