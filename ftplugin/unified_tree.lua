@@ -20,7 +20,6 @@ end
 
 -- Expand/collapse folder or open file
 set_keymap("n", "<CR>", ":lua require('unified.file_tree').toggle_node()<CR>")
-set_keymap("n", "o", ":lua require('unified.file_tree').toggle_node()<CR>")
 
 -- Close the tree
 set_keymap("n", "q", ":q<CR>")
