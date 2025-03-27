@@ -112,7 +112,8 @@ allowing you to easily navigate between files in your repository.
 
 *:Unified*
     Show differences between the current buffer and git HEAD, and opens a file tree
-    explorer in a split window. Works on named buffers in git repositories.
+    explorer in a split window. Works on named buffers in git repositories. Running
+    :Unified without arguments is the same as :Unified toggle.
 
 *:Unified toggle*
     Toggle diff display and file tree explorer on/off. Also works on empty buffers

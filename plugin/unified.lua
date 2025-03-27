@@ -9,7 +9,9 @@ vim.g.loaded_unified_nvim = true
 vim.api.nvim_create_user_command("Unified", function(opts)
   local args = opts.args
 
-  if args == "toggle" then
+  if args == "" then
+    require("unified").toggle_diff()
+  elseif args == "toggle" then
     require("unified").toggle_diff()
   elseif args == "refresh" then
     -- Force refresh if diff is displayed
