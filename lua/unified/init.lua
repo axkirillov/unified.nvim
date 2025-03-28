@@ -49,7 +49,7 @@ function M.display_inline_diff(buffer, hunks)
     local added_count = 0
 
     -- Analyze hunk lines to find consecutive added lines
-    for i, line in ipairs(hunk.lines) do
+    for _, line in ipairs(hunk.lines) do
       local first_char = line:sub(1, 1)
 
       if first_char == "+" then
