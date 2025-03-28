@@ -491,7 +491,7 @@ function FileTree:render(buffer)
   local has_git_dir = vim.fn.isdirectory(self.root.path .. "/.git") == 1
 
   -- Add repository/directory type
-  if has_git_dir or is_git_repo then
+  if has_git_dir then
     -- Count files with changes
     local changed_count = 0
     for _, v in pairs(self.root.children) do
