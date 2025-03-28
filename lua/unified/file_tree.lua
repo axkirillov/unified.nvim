@@ -219,37 +219,6 @@ function FileTree:update_parent_statuses(node)
 
   node.status = status
 end
-
--- Build and render a file tree for the current buffer's git repository
-function M.create_file_tree_buffer(buffer_path)
-  -- Get root directory of git repo
-  local dir = vim.fn.fnamemodify(buffer_path, ":h")
-  local cmd = string.format("cd %s && git rev-parse --show-toplevel", vim.fn.shellescape(dir))
-  local root_dir = vim.trim(vim.fn.system(cmd))
-
-  if vim.v.shell_error ~= 0 then
-    root_dir = dir
-  end
-
-  -- Create file tree
-  local tree = FileTree.new(root_dir)
-  tree:scan_directory(root_dir)
-  tree:update_git_status(root_dir)
-
-  -- Create buffer for file tree
-  local buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_name(buf, "Unified: File Tree")
-  vim.api.nvim_buf_set_option(buf, "buftype", "nofile")
-  vim.api.nvim_buf_set_option(buf, "swapfile", false)
-  vim.api.nvim_buf_set_option(buf, "bufhidden", "wipe")
-  vim.api.nvim_buf_set_option(buf, "filetype", "unified_tree")
-
-  -- Render file tree to buffer
-  tree:render(buf)
-
-  return buf
-end
-
 -- Store information about the current tree
 M.tree_state = {
   current_tree = nil,
