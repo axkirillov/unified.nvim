@@ -685,7 +685,7 @@ function M.create_file_tree_buffer(buffer_path, diff_only)
     if vim.v.shell_error ~= 0 or git_root == "" then
       local check_dir = dir
       local max_depth = 10 -- Avoid infinite loops
-      for i = 1, max_depth do
+      for _ = 1, max_depth do
         if vim.fn.isdirectory(check_dir .. "/.git") == 1 then
           git_root = check_dir
           break

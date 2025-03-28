@@ -356,7 +356,7 @@ function M.is_git_repo(file_path)
     -- Try to find .git directory by traversing up
     local check_dir = dir
     local max_depth = 10 -- Avoid infinite loops
-    for i = 1, max_depth do
+    for _ = 1, max_depth do
       if vim.fn.isdirectory(check_dir .. "/.git") == 1 then
         is_git_repo = true
         if vim.g.unified_debug then
