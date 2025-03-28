@@ -1,5 +1,6 @@
 local M = {}
 local config = require("unified.config")
+local diff_module = require("unified.diff")
 
 -- Setup function to be called by the user
 function M.setup(opts)
@@ -9,43 +10,8 @@ function M.setup(opts)
   M.ns_id = config.ns_id
 end
 
--- Parse diff and return a structured representation
-function M.parse_diff(diff_text)
-  local lines = vim.split(diff_text, "\n")
-  local hunks = {}
-  local current_hunk = nil
-
-  for _, line in ipairs(lines) do
-    if line:match("^@@") then
-      -- Hunk header line like "@@ -1,7 +1,6 @@"
-      if current_hunk then
-        table.insert(hunks, current_hunk)
-      end
-
-      -- Parse line numbers
-      local old_start, old_count, new_start, new_count = line:match("@@ %-(%d+),?(%d*) %+(%d+),?(%d*) @@")
-
-      old_count = old_count ~= "" and tonumber(old_count) or 1
-      new_count = new_count ~= "" and tonumber(new_count) or 1
-
-      current_hunk = {
-        old_start = tonumber(old_start),
-        old_count = old_count,
-        new_start = tonumber(new_start),
-        new_count = new_count,
-        lines = {},
-      }
-    elseif current_hunk and (line:match("^%+") or line:match("^%-") or line:match("^ ")) then
-      table.insert(current_hunk.lines, line)
-    end
-  end
-
-  if current_hunk then
-    table.insert(hunks, current_hunk)
-  end
-
-  return hunks
-end
+-- Use parse_diff function from diff module
+M.parse_diff = diff_module.parse_diff
 
 -- Display unified diff inline in the buffer with improved handling for historical diffs
 function M.display_inline_diff(buffer, hunks)
