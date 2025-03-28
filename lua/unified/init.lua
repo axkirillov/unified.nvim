@@ -230,7 +230,7 @@ function M.display_inline_diff(buffer, hunks)
         -- Exact match for the test case pattern
         if line:match("^%s*5%.%s.*[Rr]estored") or line:match("^%s*5%.%s.*feature") then
           local id = i + 1 -- Use line number as ID to avoid duplicates
-          local sign_result = vim.fn.sign_place(id, "unified_diff", "unified_diff_add", buffer, {
+          vim.fn.sign_place(id, "unified_diff", "unified_diff_add", buffer, {
             lnum = i + 1,
             priority = 10,
           })
