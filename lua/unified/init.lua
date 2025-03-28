@@ -1,33 +1,9 @@
 local M = {}
-
--- Configuration with default values
-M.config = {
-  signs = {
-    add = "│",
-    delete = "│",
-    change = "│",
-  },
-  highlights = {
-    add = "DiffAdd",
-    delete = "DiffDelete",
-    change = "DiffChange",
-  },
-  line_symbols = {
-    add = "+",
-    delete = "-",
-    change = "~",
-  },
-  auto_refresh = true, -- Whether to auto-refresh diff when buffer changes
-}
+local config = require("unified.config")
 
 -- Setup function to be called by the user
 function M.setup(opts)
-  M.config = vim.tbl_deep_extend("force", M.config, opts or {})
-
-  -- Create highlights based on config
-  vim.cmd("highlight default link UnifiedDiffAdd " .. M.config.highlights.add)
-  vim.cmd("highlight default link UnifiedDiffDelete " .. M.config.highlights.delete)
-  vim.cmd("highlight default link UnifiedDiffChange " .. M.config.highlights.change)
+  config.setup(opts)
 
   -- Create namespace if it doesn't exist
   if not M.ns_id then
@@ -41,22 +17,22 @@ function M.setup(opts)
     -- Define signs if not already defined
     if vim.fn.sign_getdefined("unified_diff_add")[1] == nil then
       vim.fn.sign_define("unified_diff_add", {
-        text = M.config.line_symbols.add,
-        texthl = M.config.highlights.add,
+        text = config.values.line_symbols.add,
+        texthl = config.values.highlights.add,
       })
     end
 
     if vim.fn.sign_getdefined("unified_diff_delete")[1] == nil then
       vim.fn.sign_define("unified_diff_delete", {
-        text = M.config.line_symbols.delete,
-        texthl = M.config.highlights.delete,
+        text = config.values.line_symbols.delete,
+        texthl = config.values.highlights.delete,
       })
     end
 
     if vim.fn.sign_getdefined("unified_diff_change")[1] == nil then
       vim.fn.sign_define("unified_diff_change", {
-        text = M.config.line_symbols.change,
-        texthl = M.config.highlights.change,
+        text = config.values.line_symbols.change,
+        texthl = config.values.highlights.change,
       })
     end
   end
@@ -115,22 +91,22 @@ function M.display_inline_diff(buffer, hunks)
   -- Define signs in case they aren't defined yet
   if vim.fn.sign_getdefined("unified_diff_add")[1] == nil then
     vim.fn.sign_define("unified_diff_add", {
-      text = M.config.line_symbols.add,
-      texthl = M.config.highlights.add,
+      text = config.values.line_symbols.add,
+      texthl = config.values.highlights.add,
     })
   end
 
   if vim.fn.sign_getdefined("unified_diff_delete")[1] == nil then
     vim.fn.sign_define("unified_diff_delete", {
-      text = M.config.line_symbols.delete,
-      texthl = M.config.highlights.delete,
+      text = config.values.line_symbols.delete,
+      texthl = config.values.highlights.delete,
     })
   end
 
   if vim.fn.sign_getdefined("unified_diff_change")[1] == nil then
     vim.fn.sign_define("unified_diff_change", {
-      text = M.config.line_symbols.change,
-      texthl = M.config.highlights.change,
+      text = config.values.line_symbols.change,
+      texthl = config.values.highlights.change,
     })
   end
 
@@ -226,8 +202,8 @@ function M.display_inline_diff(buffer, hunks)
         -- Use a single extmark with both sign and line highlighting
         -- This is more reliable than separate sign placement + highlight
         local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, line_idx, 0, {
-          sign_text = M.config.line_symbols.add .. " ", -- Add sign in gutter
-          sign_hl_group = M.config.highlights.add,
+          sign_text = config.values.line_symbols.add .. " ", -- Add sign in gutter
+          sign_hl_group = config.values.highlights.add,
           line_hl_group = hl_group,
         })
         if mark_id > 0 then
@@ -248,8 +224,8 @@ function M.display_inline_diff(buffer, hunks)
 
             -- Use a single extmark with both sign and line highlighting for consecutive lines
             local consec_mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, next_line_idx, 0, {
-              sign_text = M.config.line_symbols.add .. " ", -- Add sign in gutter
-              sign_hl_group = M.config.highlights.add,
+              sign_text = config.values.line_symbols.add .. " ", -- Add sign in gutter
+              sign_hl_group = config.values.highlights.add,
               line_hl_group = hl_group,
             })
             if consec_mark_id > 0 then
@@ -381,8 +357,8 @@ function M.display_inline_diff(buffer, hunks)
         -- Use a SINGLE extmark with BOTH sign and line highlighting
         -- This is critical for ensuring all lines show as highlighted
         local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, i, 0, {
-          sign_text = M.config.line_symbols.add .. " ", -- Add sign in gutter
-          sign_hl_group = M.config.highlights.add,
+          sign_text = config.values.line_symbols.add .. " ", -- Add sign in gutter
+          sign_hl_group = config.values.highlights.add,
           line_hl_group = "UnifiedDiffAdd", -- Highlight the whole line
         })
 
@@ -421,8 +397,8 @@ function M.display_inline_diff(buffer, hunks)
         if should_highlight then
           -- Use a single extmark with both sign and line highlighting
           local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, i, 0, {
-            sign_text = M.config.line_symbols.add .. " ", -- Add sign in gutter
-            sign_hl_group = M.config.highlights.add,
+            sign_text = config.values.line_symbols.add .. " ", -- Add sign in gutter
+            sign_hl_group = config.values.highlights.add,
             line_hl_group = "UnifiedDiffAdd", -- Highlight the whole line
           })
 
@@ -616,7 +592,7 @@ function M.setup_auto_refresh(buffer)
   buffer = buffer or vim.api.nvim_get_current_buf()
 
   -- Only set up if auto-refresh is enabled
-  if not M.config.auto_refresh then
+  if not config.values.auto_refresh then
     return
   end
 
@@ -688,7 +664,7 @@ function M.show_diff(commit)
   end
 
   -- If diff was successfully displayed, set up auto-refresh
-  if result and M.config.auto_refresh then
+  if result and config.values.auto_refresh then
     M.setup_auto_refresh()
   end
 

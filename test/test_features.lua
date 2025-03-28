@@ -11,16 +11,16 @@ function M.test_auto_refresh()
   -- because TextChanged events don't always fire reliably
 
   -- Check that auto-refresh is enabled by default
-  local current_config = require("unified").config
-  assert(current_config.auto_refresh == true, "Auto-refresh should be enabled by default")
+  local config = require("unified.config")
+  assert(config.values.auto_refresh == true, "Auto-refresh should be enabled by default")
 
   -- Test that we can disable it
   require("unified").setup({ auto_refresh = false })
-  assert(require("unified").config.auto_refresh == false, "Auto-refresh should be disabled after setup")
+  assert(config.values.auto_refresh == false, "Auto-refresh should be disabled after setup")
 
   -- Test that we can re-enable it
   require("unified").setup({ auto_refresh = true })
-  assert(require("unified").config.auto_refresh == true, "Auto-refresh should be re-enabled after setup")
+  assert(config.values.auto_refresh == true, "Auto-refresh should be re-enabled after setup")
 
   -- Reset to default
   require("unified").setup({})
