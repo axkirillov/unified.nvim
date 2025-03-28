@@ -5,37 +5,8 @@ local config = require("unified.config")
 function M.setup(opts)
   config.setup(opts)
 
-  -- Create namespace if it doesn't exist
-  if not M.ns_id then
-    M.ns_id = vim.api.nvim_create_namespace("unified_diff")
-  end
-
-  -- Ensure sign group exists
-  if not M.sign_group_defined then
-    M.sign_group_defined = true
-
-    -- Define signs if not already defined
-    if vim.fn.sign_getdefined("unified_diff_add")[1] == nil then
-      vim.fn.sign_define("unified_diff_add", {
-        text = config.values.line_symbols.add,
-        texthl = config.values.highlights.add,
-      })
-    end
-
-    if vim.fn.sign_getdefined("unified_diff_delete")[1] == nil then
-      vim.fn.sign_define("unified_diff_delete", {
-        text = config.values.line_symbols.delete,
-        texthl = config.values.highlights.delete,
-      })
-    end
-
-    if vim.fn.sign_getdefined("unified_diff_change")[1] == nil then
-      vim.fn.sign_define("unified_diff_change", {
-        text = config.values.line_symbols.change,
-        texthl = config.values.highlights.change,
-      })
-    end
-  end
+  -- Use namespace from config
+  M.ns_id = config.ns_id
 end
 
 -- Parse diff and return a structured representation
@@ -78,37 +49,14 @@ end
 
 -- Display unified diff inline in the buffer with improved handling for historical diffs
 function M.display_inline_diff(buffer, hunks)
-  -- Use module namespace if it exists, otherwise create one
-  local ns_id = M.ns_id or vim.api.nvim_create_namespace("unified_diff")
-  M.ns_id = ns_id
+  -- Use namespace from config
+  local ns_id = config.ns_id
 
   -- Clear existing extmarks
   vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
 
   -- Clear existing signs
   vim.fn.sign_unplace("unified_diff", { buffer = buffer })
-
-  -- Define signs in case they aren't defined yet
-  if vim.fn.sign_getdefined("unified_diff_add")[1] == nil then
-    vim.fn.sign_define("unified_diff_add", {
-      text = config.values.line_symbols.add,
-      texthl = config.values.highlights.add,
-    })
-  end
-
-  if vim.fn.sign_getdefined("unified_diff_delete")[1] == nil then
-    vim.fn.sign_define("unified_diff_delete", {
-      text = config.values.line_symbols.delete,
-      texthl = config.values.highlights.delete,
-    })
-  end
-
-  if vim.fn.sign_getdefined("unified_diff_change")[1] == nil then
-    vim.fn.sign_define("unified_diff_change", {
-      text = config.values.line_symbols.change,
-      texthl = config.values.highlights.change,
-    })
-  end
 
   -- Track if we placed any marks
   local mark_count = 0
@@ -674,7 +622,7 @@ end
 -- Function to check if diff is currently displayed in a buffer
 function M.is_diff_displayed(buffer)
   buffer = buffer or vim.api.nvim_get_current_buf()
-  local ns_id = M.ns_id or vim.api.nvim_create_namespace("unified_diff")
+  local ns_id = config.ns_id
   local marks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, {})
   return #marks > 0
 end
@@ -682,8 +630,7 @@ end
 -- Toggle diff display
 function M.toggle_diff()
   local buffer = vim.api.nvim_get_current_buf()
-  local ns_id = M.ns_id or vim.api.nvim_create_namespace("unified_diff")
-  M.ns_id = ns_id
+  local ns_id = config.ns_id
 
   -- Check if diff is already displayed
   if M.is_diff_displayed(buffer) then
