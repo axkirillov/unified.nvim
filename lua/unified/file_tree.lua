@@ -386,7 +386,7 @@ function M.show_help()
   local help_buf = vim.api.nvim_create_buf(false, true)
   vim.api.nvim_buf_set_lines(help_buf, 0, -1, false, help_text)
 
-  local win_id = vim.api.nvim_open_win(help_buf, true, win_opts)
+  vim.api.nvim_open_win(help_buf, true, win_opts)
 
   -- Set buffer options
   vim.bo[help_buf].modifiable = false
