@@ -97,7 +97,6 @@ function M.display_inline_diff(buffer, hunks)
         new_idx = new_idx + 1
       elseif first_char == "+" then
         -- Added or modified line
-        local line_text = line:sub(2)
         local hl_group = "UnifiedDiffAdd"
 
         -- Skip if line is out of range (safety check)
