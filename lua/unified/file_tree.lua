@@ -625,7 +625,7 @@ function FileTree:render(buffer)
 
   -- Add highlighting for repository status line
   local status_line = 3
-  if is_git_repo then
+  if has_git_dir then
     if lines[4]:match("Changes") then
       vim.api.nvim_buf_add_highlight(buffer, ns_id, "WarningMsg", status_line, 0, -1)
     else
