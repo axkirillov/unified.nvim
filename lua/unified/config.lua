@@ -30,7 +30,7 @@ M.values = vim.deepcopy(M.defaults)
 function M.setup(opts)
   -- Store user configuration
   M.user = vim.tbl_deep_extend("force", {}, opts or {})
-  
+
   -- Update values with user config
   M.values = vim.tbl_deep_extend("force", vim.deepcopy(M.defaults), M.user)
 
