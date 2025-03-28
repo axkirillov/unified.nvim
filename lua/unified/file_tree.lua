@@ -767,10 +767,10 @@ function M.create_file_tree_buffer(buffer_path, diff_only)
   -- Create buffer for file tree
   local buf = vim.api.nvim_create_buf(false, true)
   vim.api.nvim_buf_set_name(buf, "Unified: File Tree")
-  vim.api.nvim_buf_set_option(buf, "buftype", "nofile")
-  vim.api.nvim_buf_set_option(buf, "swapfile", false)
-  vim.api.nvim_buf_set_option(buf, "bufhidden", "wipe")
-  vim.api.nvim_buf_set_option(buf, "filetype", "unified_tree")
+  vim.bo[buf].buftype = "nofile"
+  vim.bo[buf].swapfile = false
+  vim.bo[buf].bufhidden = "wipe"
+  vim.bo[buf].filetype = "unified_tree"
 
   -- Render file tree to buffer
   tree:render(buf)
