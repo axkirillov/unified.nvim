@@ -220,74 +220,6 @@ function FileTree:update_parent_statuses(node)
   node.status = status
 end
 
--- Render the file tree to a buffer
-function FileTree:render(buffer)
-  buffer = buffer or vim.api.nvim_get_current_buf()
-  local ns_id = vim.api.nvim_create_namespace("unified_file_tree")
-
-  -- Clear buffer
-  vim.api.nvim_buf_set_option(buffer, "modifiable", true)
-  vim.api.nvim_buf_set_lines(buffer, 0, -1, false, {})
-
-  local lines = {}
-  local highlights = {}
-
-  local function add_node(node, depth)
-    local prefix = string.rep("  ", depth)
-    local icon = node.is_dir and "▸ " or "  "
-    local status_icon = " "
-
-    if node.status and node.status:match("[AM]") then
-      status_icon = "+"
-    elseif node.status and node.status:match("[D]") then
-      status_icon = "-"
-    end
-
-    table.insert(lines, prefix .. icon .. status_icon .. " " .. node.name)
-
-    -- Add highlight for node
-    local line_idx = #lines - 1
-    local hl_group = node.is_dir and "Directory" or "Normal"
-
-    -- Add highlight for status
-    if status_icon == "+" then
-      table.insert(highlights, { line = line_idx, col = #prefix + 2, length = 1, hl_group = "DiffAdd" })
-    elseif status_icon == "-" then
-      table.insert(highlights, { line = line_idx, col = #prefix + 2, length = 1, hl_group = "DiffDelete" })
-    end
-
-    -- Add highlight for name
-    table.insert(highlights, {
-      line = line_idx,
-      col = #prefix + 4,
-      length = #node.name,
-      hl_group = hl_group,
-    })
-
-    -- Add children if directory
-    if node.is_dir then
-      node:sort()
-      for _, child in ipairs(node.children) do
-        add_node(child, depth + 1)
-      end
-    end
-  end
-
-  -- Add root node
-  add_node(self.root, 0)
-
-  -- Set buffer contents
-  vim.api.nvim_buf_set_lines(buffer, 0, -1, false, lines)
-
-  -- Apply highlights
-  for _, hl in ipairs(highlights) do
-    vim.api.nvim_buf_add_highlight(buffer, ns_id, hl.hl_group, hl.line, hl.col, hl.col + hl.length)
-  end
-
-  -- Set buffer as non-modifiable
-  vim.api.nvim_buf_set_option(buffer, "modifiable", false)
-end
-
 -- Build and render a file tree for the current buffer's git repository
 function M.create_file_tree_buffer(buffer_path)
   -- Get root directory of git repo
@@ -488,8 +420,8 @@ function M.show_help()
   local win_id = vim.api.nvim_open_win(help_buf, true, win_opts)
 
   -- Set buffer options
-  vim.api.nvim_buf_set_option(help_buf, "modifiable", false)
-  vim.api.nvim_buf_set_option(help_buf, "bufhidden", "wipe")
+  vim.bo[help_buf].modifiable = false
+  vim.bo[help_buf].bufhidden = "wipe"
 
   -- Add highlighting
   local ns_id = vim.api.nvim_create_namespace("unified_help")
@@ -551,7 +483,7 @@ function FileTree:render(buffer)
   local ns_id = vim.api.nvim_create_namespace("unified_file_tree")
 
   -- Clear buffer
-  vim.api.nvim_buf_set_option(buffer, "modifiable", true)
+  vim.bo[buffer].modifiable = true
   vim.api.nvim_buf_set_lines(buffer, 0, -1, false, {})
 
   -- Format the directory path more concisely for display
@@ -735,7 +667,7 @@ function FileTree:render(buffer)
   end
 
   -- Set buffer as non-modifiable
-  vim.api.nvim_buf_set_option(buffer, "modifiable", false)
+  vim.bo[buffer].modifiable = false
 
   -- Update tree state
   M.tree_state.line_to_node = line_to_node
