@@ -170,4 +170,97 @@ function M.test_unified_commit_empty_buffer()
   return true
 end
 
+-- Test that 'Unified commit HEAD~4' updates the commit base without disabling the plugin
+function M.test_unified_commit_update_base()
+  -- Create temporary git repository
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  -- Create initial file and add commits for testing
+  local test_file = "test.txt"
+  local test_path = utils.create_and_commit_file(repo, test_file, { "line 1", "line 2", "line 3" }, "First commit")
+
+  -- Create 4 additional commits so HEAD~4 is valid
+  for i = 1, 4 do
+    vim.fn.writefile({ "line 1", "modified line 2 in commit " .. i, "line 3" }, test_path)
+    vim.fn.system("git -C " .. repo.repo_dir .. " add " .. test_file)
+    vim.fn.system("git -C " .. repo.repo_dir .. " commit -m 'Commit " .. i .. "'")
+  end
+
+  -- Open the file
+  vim.cmd("edit " .. test_path)
+
+  -- Make additional changes
+  vim.api.nvim_buf_set_lines(0, 1, 2, false, { "current modification" })
+
+  -- Mock the nvim_echo and deactivate functions to monitor calls
+  local old_nvim_echo = vim.api.nvim_echo
+  local unified = require("unified")
+  local old_deactivate = unified.deactivate
+  local state = require("unified.state")
+
+  local messages = {}
+  local deactivate_call_count = 0
+
+  vim.api.nvim_echo = function(chunks, history, opts)
+    for _, chunk in ipairs(chunks) do
+      local text, hl_group = chunk[1], chunk[2]
+      table.insert(messages, { text = text, hl_group = hl_group or "Normal" })
+      print(string.format("Message: '%s' with highlight: '%s'", text, hl_group or "Normal"))
+    end
+  end
+
+  unified.deactivate = function()
+    deactivate_call_count = deactivate_call_count + 1
+    -- Call original implementation
+    old_deactivate()
+  end
+
+  -- First activate with HEAD~1
+  vim.cmd("Unified commit HEAD~1")
+
+  -- Store initial state
+  local initial_active = state.is_active
+  local initial_winid = state.main_win
+
+  -- Verify initial state is active
+  assert(initial_active, "Unified plugin should be active after first commit command")
+  assert(state.commit_base == "HEAD~1", "Commit base should be set to HEAD~1")
+
+  -- Now change to HEAD~4 (should update base, not disable)
+  vim.cmd("Unified commit HEAD~4")
+
+  -- Restore mock functions
+  vim.api.nvim_echo = old_nvim_echo
+  unified.deactivate = old_deactivate
+
+  -- Verify deactivate was NOT called (since we changed behavior to preserve state)
+  assert(deactivate_call_count == 0, "deactivate() should not have been called when updating commit base")
+
+  -- Verify the plugin is still active
+  assert(state.is_active, "Unified plugin should still be active after changing commit base")
+  assert(state.commit_base == "HEAD~4", "Commit base should have been updated to HEAD~4")
+
+  -- Verify a message about updating the base was shown
+  local update_message_found = false
+  for _, msg in ipairs(messages) do
+    if msg.text:match("Showing diff against commit: HEAD~4") then
+      update_message_found = true
+      break
+    end
+  end
+  assert(update_message_found, "Expected message about updating to new commit base")
+
+  -- Clean up
+  unified.deactivate()
+  local buffer = vim.api.nvim_get_current_buf()
+  utils.clear_diff_marks(buffer)
+  vim.cmd("bdelete!")
+  utils.cleanup_git_repo(repo)
+
+  return true
+end
+
 return M

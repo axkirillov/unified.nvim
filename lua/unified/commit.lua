@@ -49,15 +49,13 @@ function M.handle_commit_command(commit_ref)
     return false
   end
 
-  -- If already active, deactivate first to reset state
-  if state.is_active then
-    unified.deactivate()
+  -- Store a reference to main window if not already active
+  if not state.is_active then
+    state.main_win = vim.api.nvim_get_current_win()
   end
 
-  -- Store current window as main window
-  state.main_win = vim.api.nvim_get_current_win()
-
   -- Store the commit in global state, even if buffer has no name
+  local previous_base = state.commit_base
   state.set_commit_base(commit_ref)
 
   -- Check if buffer has a name before showing diff
@@ -67,9 +65,13 @@ function M.handle_commit_command(commit_ref)
     result = unified.show_diff(commit_ref)
   end
 
-  -- Show file tree regardless of buffer content
-  -- This way we can browse repository even with an empty buffer
-  unified.show_file_tree()
+  -- Only show file tree if not already active, or if active with a different commit
+  -- This preserves the file tree state (cursor position, etc) when just updating the commit ref
+  if not state.is_active or previous_base ~= commit_ref then
+    -- Show file tree regardless of buffer content
+    -- This way we can browse repository even with an empty buffer
+    unified.show_file_tree()
+  end
 
   -- Update global state - activate even if we can't show diff in current buffer
   state.is_active = true
