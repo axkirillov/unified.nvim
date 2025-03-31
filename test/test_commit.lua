@@ -278,4 +278,202 @@ function M.test_unified_commit_passes_correct_ref()
   return true
 end
 
+-- Test that reflects the real bug: file tree not updating when switching commits
+function M.test_unified_commit_file_tree_actually_updates()
+  -- Create temporary git repository
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  -- Create initial file structure
+  local test_file = "test.txt"
+  local test_path = utils.create_and_commit_file(repo, test_file, { "line 1", "line 2", "line 3" }, "First commit")
+
+  -- Create additional file in second commit
+  local new_file = "new_file.txt"
+  local new_file_path = repo.repo_dir .. "/" .. new_file
+  vim.fn.writefile({ "new file content" }, new_file_path)
+  vim.fn.system("git -C " .. repo.repo_dir .. " add " .. new_file)
+  vim.fn.system("git -C " .. repo.repo_dir .. " commit -m 'Second commit with new file'")
+
+  -- Open the original file
+  vim.cmd("edit " .. test_path)
+
+  -- Get the file_tree module
+  local file_tree = require("unified.file_tree")
+  local unified = require("unified")
+  local state = require("unified.state")
+
+  -- Spy on file_tree.show_file_tree to verify it's being called correctly
+  local original_show_tree = file_tree.show_file_tree
+  local tree_calls = {}
+
+  -- THE REAL BUG: Our function calls show_file_tree but tree buffer isn't recreated
+  -- when switching commits, even though we pass the commit_ref
+  file_tree.show_file_tree = function(commit_ref, diff_only)
+    table.insert(tree_calls, { commit = commit_ref, diff_only = diff_only })
+
+    -- Record the call details for debugging
+    print("show_file_tree called with: " .. (commit_ref or "nil") .. ", diff_only: " .. tostring(diff_only or "nil"))
+
+    -- Call the real function
+    return original_show_tree(commit_ref, diff_only)
+  end
+
+  -- First activate with HEAD (should show both files)
+  vim.cmd("Unified commit HEAD")
+
+  -- Get tree buffer details after HEAD
+  local first_tree_buf = vim.fn.bufnr("unified_tree")
+  print("First tree buffer ID: " .. first_tree_buf)
+
+  -- Use vim.api.nvim_get_buf_lines to see what files are listed
+  local first_lines = {}
+  if first_tree_buf ~= -1 then
+    first_lines = vim.api.nvim_buf_get_lines(first_tree_buf, 0, -1, false)
+    print("First tree buffer lines: " .. table.concat(first_lines, ", "))
+  end
+
+  -- Verify new_file.txt is in the tree (should be since it's in HEAD)
+  local new_file_in_first = false
+  for _, line in ipairs(first_lines) do
+    if line:match("new_file%.txt") then
+      new_file_in_first = true
+      break
+    end
+  end
+
+  -- This should pass - the new file should be in the current HEAD
+  assert(new_file_in_first, "new_file.txt should be in the file tree for HEAD")
+
+  -- Now change to HEAD~1 (should only show test.txt, not new_file.txt)
+  vim.cmd("Unified commit HEAD~1")
+
+  -- Get tree buffer after switching to HEAD~1
+  local second_tree_buf = vim.fn.bufnr("unified_tree")
+  print("Second tree buffer ID: " .. second_tree_buf)
+  local second_lines = {}
+  if second_tree_buf ~= -1 then
+    second_lines = vim.api.nvim_buf_get_lines(second_tree_buf, 0, -1, false)
+    print("Second tree buffer lines: " .. table.concat(second_lines, ", "))
+  end
+
+  -- Verify new_file.txt is NOT in the tree (shouldn't be since it's not in HEAD~1)
+  local new_file_in_second = false
+  for _, line in ipairs(second_lines) do
+    if line:match("new_file%.txt") then
+      new_file_in_second = true
+      break
+    end
+  end
+
+  -- This is where we expect the test to fail - the new file should NOT be in HEAD~1
+  -- but our implementation currently doesn't update the file list properly
+  assert(not new_file_in_second, "new_file.txt should NOT be in the file tree for HEAD~1")
+
+  -- Restore original function
+  file_tree.show_file_tree = original_show_tree
+
+  -- Clean up
+  unified.deactivate()
+  local buffer = vim.api.nvim_get_current_buf()
+  utils.clear_diff_marks(buffer)
+  vim.cmd("bdelete!")
+  utils.cleanup_git_repo(repo)
+
+  return true
+end
+
+-- Test specifically for the bug where tree becomes empty when switching commit references
+function M.test_unified_commit_tree_not_empty_when_switching()
+  -- Create temporary git repository
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  -- Create files in multiple commits to test switching between them
+  local test_file = "test.txt"
+  local test_path = utils.create_and_commit_file(repo, test_file, { "line 1", "line 2", "line 3" }, "First commit")
+
+  -- Add more content in second commit
+  vim.fn.writefile({ "line 1 updated", "line 2", "line 3" }, test_path)
+  vim.fn.system("git -C " .. repo.repo_dir .. " add " .. test_file)
+  vim.fn.system("git -C " .. repo.repo_dir .. " commit -m 'Second commit with updates'")
+
+  -- Add another file in third commit
+  local second_file = "second_file.txt"
+  local second_path = repo.repo_dir .. "/" .. second_file
+  vim.fn.writefile({ "second file content" }, second_path)
+  vim.fn.system("git -C " .. repo.repo_dir .. " add " .. second_file)
+  vim.fn.system("git -C " .. repo.repo_dir .. " commit -m 'Third commit with second file'")
+
+  -- Open the original file
+  vim.cmd("edit " .. test_path)
+
+  -- Track the file tree creation and verify it's never empty
+  local file_tree = require("unified.file_tree")
+  local FileTree = file_tree.tree_state.current_tree and getmetatable(file_tree.tree_state.current_tree)
+  local orig_update_git_status = FileTree and FileTree.update_git_status
+
+  -- We'll use a flag to track if any empty trees were found
+  local found_empty_tree = false
+
+  -- Only patch if we can access the method
+  if FileTree and orig_update_git_status then
+    FileTree.update_git_status = function(self, root_dir, diff_only, commit_ref)
+      local result = orig_update_git_status(self, root_dir, diff_only, commit_ref)
+
+      -- After update, check if the tree is empty
+      if commit_ref and commit_ref ~= "HEAD" then
+        local has_children = false
+        if self.root and self.root.children then
+          for _, _ in pairs(self.root.children) do
+            has_children = true
+            break
+          end
+        end
+
+        -- Record if we found an empty tree for a commit reference
+        if not has_children then
+          print("Empty tree detected for commit: " .. commit_ref)
+          found_empty_tree = true
+        else
+          print("Tree for commit " .. commit_ref .. " has children")
+        end
+      end
+
+      return result
+    end
+  end
+
+  -- Show file tree with HEAD
+  vim.cmd("Unified commit HEAD")
+
+  -- Now switch to HEAD~1
+  vim.cmd("Unified commit HEAD~1")
+
+  -- Now switch to HEAD~2
+  vim.cmd("Unified commit HEAD~2")
+
+  -- Assert that we never found an empty tree
+  assert(not found_empty_tree, "Tree should never be empty when switching between commits")
+
+  -- Clean up - restore original function if we patched it
+  if FileTree and orig_update_git_status then
+    FileTree.update_git_status = orig_update_git_status
+  end
+
+  -- Restore state
+  local unified = require("unified")
+  unified.deactivate()
+  local buffer = vim.api.nvim_get_current_buf()
+  utils.clear_diff_marks(buffer)
+  vim.cmd("bdelete!")
+  utils.cleanup_git_repo(repo)
+
+  return true
+end
+
 return M
