@@ -65,13 +65,9 @@ function M.handle_commit_command(commit_ref)
     result = unified.show_diff(commit_ref)
   end
 
-  -- Only show file tree if not already active, or if active with a different commit
-  -- This preserves the file tree state (cursor position, etc) when just updating the commit ref
-  if not state.is_active or previous_base ~= commit_ref then
-    -- Show file tree regardless of buffer content
-    -- This way we can browse repository even with an empty buffer
-    unified.show_file_tree()
-  end
+  -- Always show file tree with the explicit commit reference
+  -- This ensures the file tree always reflects the correct files for the specific commit
+  unified.show_file_tree(commit_ref)
 
   -- Update global state - activate even if we can't show diff in current buffer
   state.is_active = true
