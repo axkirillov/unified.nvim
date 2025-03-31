@@ -599,4 +599,91 @@ function M.test_unified_commit_no_errors()
   return true
 end
 
+-- Test that 'Unified commit HEAD~1' handles empty buffer gracefully
+function M.test_unified_commit_empty_buffer()
+  -- Create temporary git repository
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  -- Create initial file and commit it
+  local test_file = "test.txt"
+  local test_path = utils.create_and_commit_file(repo, test_file, { "line 1", "line 2", "line 3" }, "Initial commit")
+
+  -- Make changes and create a second commit
+  vim.fn.writefile({ "line 1", "modified line 2", "line 3" }, test_path)
+  vim.fn.system("git add " .. test_file)
+  vim.fn.system("git commit -m 'Second commit'")
+
+  -- Do NOT open any file - test on a fresh buffer
+  vim.cmd("enew")
+
+  -- Mock the nvim_echo function to capture all messages
+  local old_nvim_echo = vim.api.nvim_echo
+  local error_messages = {}
+  local warning_messages = {}
+  local success_messages = {}
+
+  vim.api.nvim_echo = function(chunks, history, opts)
+    for _, chunk in ipairs(chunks) do
+      local text, hl_group = chunk[1], chunk[2]
+      if hl_group == "ErrorMsg" then
+        table.insert(error_messages, text)
+      elseif hl_group == "WarningMsg" then
+        table.insert(warning_messages, text)
+      else
+        table.insert(success_messages, text)
+      end
+
+      -- Print captured message for debugging
+      print(string.format("Message: '%s' with highlight: '%s'", text, hl_group or "Normal"))
+    end
+  end
+
+  -- Set current directory to the test repo to ensure git commands work
+  vim.cmd("cd " .. repo.repo_dir)
+
+  -- Run the Unified commit command
+  local success, error_msg = pcall(function()
+    vim.cmd("Unified commit HEAD~1")
+  end)
+
+  -- Restore the original nvim_echo function
+  vim.api.nvim_echo = old_nvim_echo
+
+  -- Check that the command didn't crash
+  assert(success, "Unified commit HEAD~1 crashed with error: " .. tostring(error_msg))
+
+  -- We expect to see an error message about buffer having no file name
+  local expected_message_found = false
+  for _, msg in ipairs(error_messages) do
+    if msg == "Buffer has no file name" then
+      expected_message_found = true
+      break
+    end
+  end
+
+  -- We should get a specific error message, not crash
+  assert(
+    expected_message_found,
+    "Expected 'Buffer has no file name' error, but got: " .. table.concat(error_messages, ", ")
+  )
+
+  -- Show all collected messages for debugging
+  print("Error messages: " .. table.concat(error_messages, ", "))
+  print("Warning messages: " .. table.concat(warning_messages, ", "))
+  print("Success messages: " .. table.concat(success_messages, ", "))
+
+  -- Clean up
+  local buffer = vim.api.nvim_get_current_buf()
+  utils.clear_diff_marks(buffer)
+  vim.cmd("bdelete!")
+
+  -- Clean up git repo
+  utils.cleanup_git_repo(repo)
+
+  return true
+end
+
 return M
