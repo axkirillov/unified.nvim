@@ -257,11 +257,20 @@ function M.toggle_node()
       M.tree_state.current_tree:render(buf)
     end
   else
-    -- Open file in the main window
+    -- Open file in the main window and show diff
     local win = window.get_main_window() -- Use window module
     if win and vim.api.nvim_win_is_valid(win) then
       vim.api.nvim_set_current_win(win)
       vim.cmd("edit " .. vim.fn.fnameescape(node.path))
+
+      -- Show diff for the newly opened file
+      local unified = require("unified")
+      if not unified.is_active then
+        unified.activate()
+      else
+        -- If already active, refresh the diff display
+        unified.show_diff()
+      end
     end
   end
 end
