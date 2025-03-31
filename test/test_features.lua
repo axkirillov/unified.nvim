@@ -490,18 +490,19 @@ function M.test_global_state()
     return table.concat(vim.fn.readfile(modified_tmp), "\n")
   end
 
-  -- Get the unified module
+  -- Get the unified module and state
   local unified = require("unified")
+  local state = require("unified.state")
 
   -- Reset the active state to start fresh
-  unified.is_active = false
+  state.is_active = false
 
   -- At start, the plugin should be inactive
-  assert(not unified.is_active, "Unified plugin should start inactive")
+  assert(not state.is_active, "Unified plugin should start inactive")
 
   -- First call should activate it
   unified.activate()
-  assert(unified.is_active, "Unified plugin should be active after activation")
+  assert(state.is_active, "Unified plugin should be active after activation")
 
   -- Verify the diff is displayed in the buffer
   local buffer = vim.api.nvim_get_current_buf()
@@ -509,14 +510,14 @@ function M.test_global_state()
 
   -- Second call should deactivate it
   unified.deactivate()
-  assert(not unified.is_active, "Unified plugin should be inactive after deactivation")
+  assert(not state.is_active, "Unified plugin should be inactive after deactivation")
 
   -- Test the toggle function
   unified.toggle_diff()
-  assert(unified.is_active, "Unified plugin should be active after toggle from inactive")
+  assert(state.is_active, "Unified plugin should be active after toggle from inactive")
 
   unified.toggle_diff()
-  assert(not unified.is_active, "Unified plugin should be inactive after toggle from active")
+  assert(not state.is_active, "Unified plugin should be inactive after toggle from active")
 
   -- Restore original functions
   git.is_git_repo = original_is_git_repo
