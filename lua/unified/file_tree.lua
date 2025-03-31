@@ -1,5 +1,8 @@
 local M = {}
 
+local git = require("unified.git")
+local window = require("unified.window")
+
 -- Node implementation for file tree
 local Node = {}
 Node.__index = Node
@@ -255,7 +258,7 @@ function M.toggle_node()
     end
   else
     -- Open file in the main window
-    local win = require("unified").get_main_window()
+    local win = window.get_main_window() -- Use window module
     if win and vim.api.nvim_win_is_valid(win) then
       vim.api.nvim_set_current_win(win)
       vim.cmd("edit " .. vim.fn.fnameescape(node.path))
@@ -673,7 +676,7 @@ function M.create_file_tree_buffer(buffer_path, diff_only)
   end
 
   -- Check if path is in a git repo using the unified module
-  local is_git_repo = require("unified").is_git_repo(dir)
+  local is_git_repo = git.is_git_repo(dir) -- Use git module
 
   -- If it's a git repo, get the root directory
   local git_root = ""
@@ -776,6 +779,80 @@ function M.create_file_tree_buffer(buffer_path, diff_only)
   tree:render(buf)
 
   return buf
+end
+
+-- Show file tree for the current buffer or a specific directory
+function M.show_file_tree(path, show_all_files)
+  -- Check if tree window already exists
+  if window.file_tree_win and vim.api.nvim_win_is_valid(window.file_tree_win) then -- Use window module
+    -- Tree is already showing, just set focus to it
+    vim.api.nvim_set_current_win(window.file_tree_win) -- Use window module
+    return true
+  end
+
+  local file_path = path
+
+  if not file_path then
+    -- Default to current buffer
+    local buffer = vim.api.nvim_get_current_buf()
+    file_path = vim.api.nvim_buf_get_name(buffer)
+
+    -- Skip if buffer has no name and no path was provided
+    if file_path == "" then
+      -- Try to get current working directory
+      file_path = vim.fn.getcwd()
+      if not file_path or file_path == "" then
+        vim.api.nvim_echo({ { "No file or directory available for tree view", "ErrorMsg" } }, false, {})
+        return false
+      end
+    end
+  end
+
+  -- Check if path is in a git repo
+  local is_git_repo = git.is_git_repo(file_path) -- Use git module
+  if not is_git_repo then
+    vim.api.nvim_echo({ { "Not in a git repository, showing only directory structure", "WarningMsg" } }, false, {})
+    -- Continue anyway to show directory structure
+    show_all_files = true -- Force showing all files if not in a git repo
+  end
+
+  -- Always use diff_only mode when in a git repo,
+  -- unless show_all_files is explicitly true
+  local diff_only = is_git_repo and not show_all_files
+
+  -- Create file tree buffer
+  local current_win = vim.api.nvim_get_current_win()
+  -- Use M.create_file_tree_buffer which is already in this module
+  local tree_buf = M.create_file_tree_buffer(file_path, diff_only)
+
+  -- Original window position and dimensions
+  -- local win_pos = vim.api.nvim_win_get_position(current_win) -- Not used
+  -- local win_width = vim.api.nvim_win_get_width(current_win) -- Not used
+  -- local win_height = vim.api.nvim_win_get_height(current_win) -- Not used
+
+  -- Create new window for tree
+  vim.cmd("topleft 30vsplit")
+  local tree_win = vim.api.nvim_get_current_win()
+  vim.api.nvim_win_set_buf(tree_win, tree_buf)
+
+  -- Set window options for a cleaner tree display
+  vim.api.nvim_win_set_option(tree_win, "number", false)
+  vim.api.nvim_win_set_option(tree_win, "relativenumber", false)
+  vim.api.nvim_win_set_option(tree_win, "signcolumn", "no")
+  vim.api.nvim_win_set_option(tree_win, "cursorline", true)
+  vim.api.nvim_win_set_option(tree_win, "winfixwidth", true)
+  vim.api.nvim_win_set_option(tree_win, "foldenable", false)
+  vim.api.nvim_win_set_option(tree_win, "list", false)
+  vim.api.nvim_win_set_option(tree_win, "fillchars", "vert:│")
+
+  -- Store window and buffer references in window module
+  window.file_tree_win = tree_win -- Use window module
+  window.file_tree_buf = tree_buf -- Use window module
+
+  -- Return to original window
+  vim.api.nvim_set_current_win(current_win)
+
+  return true
 end
 
 return M
