@@ -7,6 +7,8 @@ local file_tree = require("unified.file_tree")
 
 -- Global state for the plugin
 M.is_active = false
+-- Global commit base that persists across buffers
+M.global_commit_base = "HEAD"
 
 -- Setup function to be called by the user
 function M.setup(opts)
@@ -74,12 +76,12 @@ function M.show_diff(commit)
   local result
 
   if commit then
-    -- Store the commit reference in the window
-    window.set_window_commit_base(commit) -- Use window module
+    -- Store the commit reference globally
+    M.global_commit_base = commit
     result = git.show_git_diff_against_commit(commit) -- Use git module
   else
-    -- Use stored commit base or default to HEAD
-    local base = window.get_window_commit_base() -- Use window module
+    -- Use stored global commit base or default to HEAD
+    local base = M.global_commit_base or "HEAD"
     result = git.show_git_diff_against_commit(base) -- Use git module
   end
 

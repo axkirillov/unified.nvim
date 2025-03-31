@@ -5,10 +5,11 @@ M.main_win = nil
 M.file_tree_win = nil
 M.file_tree_buf = nil
 
--- Get the current commit base for the window, or default to HEAD
+-- Get the current commit base (now globally stored)
 function M.get_window_commit_base()
-  -- Use a window-local variable to store the commit reference
-  return vim.w.unified_commit_base or "HEAD"
+  -- Get the global commit base from the unified module
+  local unified = require("unified")
+  return unified.global_commit_base or "HEAD"
 end
 
 -- Get the main content window (to navigate from tree back to content)
@@ -31,9 +32,10 @@ function M.get_main_window()
   return vim.api.nvim_get_current_win()
 end
 
--- Set the commit base for the current window
+-- Set the commit base globally
 function M.set_window_commit_base(commit)
-  vim.w.unified_commit_base = commit
+  local unified = require("unified")
+  unified.global_commit_base = commit
 end
 
 return M
