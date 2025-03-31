@@ -461,4 +461,72 @@ function M.test_historical_commit_highlighting()
   return true
 end
 
+-- Test the global state of the unified plugin
+function M.test_global_state()
+  -- Create temporary file
+  local tmp_file = utils.setup()
+  vim.fn.writefile({ "line 1", "line 2", "line 3", "line 4", "line 5" }, tmp_file.test_file)
+
+  -- Save temporary buffer
+  vim.cmd("edit " .. tmp_file.test_file)
+  vim.cmd("write")
+
+  -- Create a modified version for diff
+  local modified_tmp = vim.fn.tempname()
+  vim.fn.writefile({ "modified line 1", "line 2", "modified line 3", "line 4", "line 5" }, modified_tmp)
+
+  -- Set up mock git functions for testing
+  local git = require("unified.git")
+  local original_is_git_repo = git.is_git_repo
+  local original_get_git_file_content = git.get_git_file_content
+
+  -- Mock git repo check
+  git.is_git_repo = function(_)
+    return true
+  end
+
+  -- Mock git file content
+  git.get_git_file_content = function(_, _)
+    return table.concat(vim.fn.readfile(modified_tmp), "\n")
+  end
+
+  -- Get the unified module
+  local unified = require("unified")
+
+  -- Reset the active state to start fresh
+  unified.is_active = false
+
+  -- At start, the plugin should be inactive
+  assert(not unified.is_active, "Unified plugin should start inactive")
+
+  -- First call should activate it
+  unified.activate()
+  assert(unified.is_active, "Unified plugin should be active after activation")
+
+  -- Verify the diff is displayed in the buffer
+  local buffer = vim.api.nvim_get_current_buf()
+  assert(unified.is_diff_displayed(buffer), "Diff should be displayed in the buffer")
+
+  -- Second call should deactivate it
+  unified.deactivate()
+  assert(not unified.is_active, "Unified plugin should be inactive after deactivation")
+
+  -- Test the toggle function
+  unified.toggle_diff()
+  assert(unified.is_active, "Unified plugin should be active after toggle from inactive")
+
+  unified.toggle_diff()
+  assert(not unified.is_active, "Unified plugin should be inactive after toggle from active")
+
+  -- Restore original functions
+  git.is_git_repo = original_is_git_repo
+  git.get_git_file_content = original_get_git_file_content
+
+  -- Clean up
+  vim.fn.delete(modified_tmp)
+  utils.teardown(tmp_file)
+
+  return true
+end
+
 return M

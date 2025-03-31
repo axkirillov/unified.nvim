@@ -16,7 +16,7 @@ vim.api.nvim_create_user_command("Unified", function(opts)
   elseif args == "refresh" then
     -- Force refresh if diff is displayed
     local unified = require("unified")
-    if unified.is_diff_displayed() then
+    if unified.is_active then
       unified.show_diff()
     else
       vim.api.nvim_echo({ { "No diff currently displayed", "WarningMsg" } }, false, {})
@@ -68,12 +68,41 @@ vim.api.nvim_create_user_command("Unified", function(opts)
         return
       end
 
-      require("unified").show_diff(commit)
+      -- Get the unified module
+      local unified = require("unified")
+
+      -- If already active, deactivate first to reset state
+      if unified.is_active then
+        unified.deactivate()
+      end
+
+      -- Store current window as main window
+      local window = require("unified.window")
+      window.main_win = vim.api.nvim_get_current_win()
+
+      -- Show diff for the commit
+      local result = unified.show_diff(commit)
+
+      -- Also show the file tree when using commit command
+      unified.show_file_tree()
+
+      -- Update global state
+      if result then
+        unified.is_active = true
+      end
     else
       vim.api.nvim_echo({ { "Invalid commit format. Use: Unified commit <hash/ref>", "ErrorMsg" } }, false, {})
     end
   else
-    require("unified").show_diff()
+    local unified = require("unified")
+
+    -- If already active, deactivate first to reset state
+    if unified.is_active then
+      unified.deactivate()
+    end
+
+    -- Activate the diff display
+    unified.activate()
   end
 end, {
   nargs = "*",

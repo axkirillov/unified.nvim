@@ -83,6 +83,15 @@ function M.create_and_commit_file(repo, filename, content, commit_message)
   return file_path
 end
 
+-- Helper to modify and commit a file in a git repo
+function M.modify_and_commit_file(repo, filename, content, commit_message)
+  local file_path = repo.repo_dir .. "/" .. filename
+  vim.fn.writefile(content, file_path)
+  vim.fn.system("cd " .. repo.repo_dir .. " && git add " .. filename)
+  vim.fn.system("cd " .. repo.repo_dir .. " && git commit -m '" .. (commit_message or "Modify file") .. "'")
+  return file_path
+end
+
 -- Helper to check if extmarks exist
 function M.check_extmarks_exist(buffer, namespace)
   local ns_id = vim.api.nvim_create_namespace(namespace or "unified_diff")

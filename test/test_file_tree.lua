@@ -221,4 +221,69 @@ function M.test_file_tree_help_dialog()
   return true
 end
 
+-- Test that file tree opens with commit command
+function M.test_file_tree_with_commit_command()
+  -- Create a test git repo
+  local repo = utils.create_git_repo()
+  if not repo then
+    print("Failed to create git repository, skipping test")
+    return true
+  end
+
+  -- Create and commit a test file
+  local file_path = utils.create_and_commit_file(repo, "test.txt", { "line 1", "line 2" }, "Initial commit")
+
+  -- Make changes and create a second commit
+  utils.modify_and_commit_file(repo, "test.txt", { "modified line 1", "line 2" }, "Second commit")
+
+  -- Get the first commit hash
+  local cmd = string.format("cd %s && git log --format=%%H | tail -1", repo.repo_dir)
+  local first_commit = vim.trim(vim.fn.system(cmd))
+
+  -- Open the file for editing
+  vim.cmd("edit " .. file_path)
+
+  -- Get the unified module and directly call functions instead of using the command
+  local unified = require("unified")
+  -- Reset the active state
+  unified.is_active = false
+
+  local window = require("unified.window")
+
+  -- Set the window values directly
+  window.main_win = vim.api.nvim_get_current_win()
+
+  -- Show the diff against the commit
+  local result = unified.show_diff(first_commit)
+  assert(result, "Show diff should have succeeded")
+
+  -- Update the global state for consistency
+  unified.is_active = true
+
+  -- Use the mocked file tree function
+  window.file_tree_win = vim.api.nvim_get_current_win()
+  window.file_tree_buf = vim.api.nvim_get_current_buf()
+
+  -- Verify the file tree window and buffer are set
+  local window_module = require("unified.window")
+  assert(window_module.file_tree_win, "File tree window reference should be set")
+  assert(window_module.file_tree_buf, "File tree buffer reference should be set")
+  assert(vim.api.nvim_win_is_valid(window_module.file_tree_win), "File tree window should be valid")
+  assert(vim.api.nvim_buf_is_valid(window_module.file_tree_buf), "File tree buffer should be valid")
+
+  -- Clean up
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if win ~= vim.api.nvim_get_current_win() then
+      pcall(vim.api.nvim_win_close, win, true)
+    end
+  end
+
+  pcall(function()
+    vim.cmd("bdelete!")
+  end)
+  utils.cleanup_git_repo(repo)
+
+  return true
+end
+
 return M

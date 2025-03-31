@@ -5,6 +5,9 @@ local git = require("unified.git")
 local window = require("unified.window")
 local file_tree = require("unified.file_tree")
 
+-- Global state for the plugin
+M.is_active = false
+
 -- Setup function to be called by the user
 function M.setup(opts)
   config.setup(opts)
@@ -19,6 +22,21 @@ M.parse_diff = diff_module.parse_diff
 -- Expose git functions directly for testing or specific use cases
 M.show_git_diff = git.show_git_diff
 M.show_git_diff_against_commit = git.show_git_diff_against_commit
+
+-- Expose file tree functions
+M.show_file_tree = file_tree.show_file_tree
+
+-- Helper function to check if diff is displayed (for compatibility)
+function M.is_diff_displayed(buffer)
+  -- Check the global state first
+  if M.is_active then
+    return true
+  end
+
+  -- Also check the buffer as a fallback (for compatibility with older code)
+  buffer = buffer or vim.api.nvim_get_current_buf()
+  return diff_module.is_diff_displayed(buffer)
+end
 
 -- Set up auto-refresh for current buffer
 function M.setup_auto_refresh(buffer)
@@ -73,58 +91,76 @@ function M.show_diff(commit)
   return result
 end
 
--- Toggle diff display
-function M.toggle_diff()
+-- Helper function to deactivate diff display
+function M.deactivate()
   local buffer = vim.api.nvim_get_current_buf()
   local ns_id = config.ns_id
 
-  -- Check if diff is already displayed
-  if diff_module.is_diff_displayed(buffer) then -- Use diff_module
-    -- Clear diff display
-    vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
-    vim.fn.sign_unplace("unified_diff", { buffer = buffer })
+  -- Clear diff display
+  vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
+  vim.fn.sign_unplace("unified_diff", { buffer = buffer })
 
-    -- Remove auto-refresh autocmd if it exists
-    if M.auto_refresh_augroup then
-      vim.api.nvim_del_augroup_by_id(M.auto_refresh_augroup)
-      M.auto_refresh_augroup = nil
-    end
+  -- Remove auto-refresh autocmd if it exists
+  if M.auto_refresh_augroup then
+    vim.api.nvim_del_augroup_by_id(M.auto_refresh_augroup)
+    M.auto_refresh_augroup = nil
+  end
 
-    -- Close file tree window if it exists
-    if window.file_tree_win and vim.api.nvim_win_is_valid(window.file_tree_win) then -- Use window module
-      vim.api.nvim_win_close(window.file_tree_win, true) -- Use window module
-      window.file_tree_win = nil -- Use window module
-      window.file_tree_buf = nil -- Use window module
-    end
+  -- Close file tree window if it exists
+  if window.file_tree_win and vim.api.nvim_win_is_valid(window.file_tree_win) then -- Use window module
+    vim.api.nvim_win_close(window.file_tree_win, true) -- Use window module
+    window.file_tree_win = nil -- Use window module
+    window.file_tree_buf = nil -- Use window module
+  end
 
-    -- Clear main window reference
-    window.main_win = nil -- Use window module
+  -- Clear main window reference
+  window.main_win = nil -- Use window module
 
-    vim.api.nvim_echo({ { "Diff display cleared", "Normal" } }, false, {})
+  -- Update global state
+  M.is_active = false
+
+  vim.api.nvim_echo({ { "Unified diff deactivated", "Normal" } }, false, {})
+end
+
+-- Helper function to activate diff display
+function M.activate()
+  local buffer = vim.api.nvim_get_current_buf()
+
+  -- Store current window as main window
+  window.main_win = vim.api.nvim_get_current_win() -- Use window module
+
+  -- Get buffer name
+  local filename = vim.api.nvim_buf_get_name(buffer)
+
+  -- Check if buffer has a name
+  if filename == "" then
+    -- It's an empty buffer with no name, just show file tree without diff
+    file_tree.show_file_tree(vim.fn.getcwd()) -- Use file_tree module
+    vim.api.nvim_echo({ { "Showing file tree for current directory", "Normal" } }, false, {})
+    return
+  end
+
+  -- Show diff based on the stored commit base (or default to HEAD)
+  local result = M.show_diff() -- Call M.show_diff in this module
+
+  -- Always show file tree, even if diff fails
+  file_tree.show_file_tree() -- Use file_tree module
+
+  -- Update global state only if diff was successful
+  if result then
+    M.is_active = true
+    vim.api.nvim_echo({ { "Unified diff activated", "Normal" } }, false, {})
   else
-    -- Store current window as main window
-    window.main_win = vim.api.nvim_get_current_win() -- Use window module
+    vim.api.nvim_echo({ { "Failed to display diff, showing file tree only", "WarningMsg" } }, false, {})
+  end
+end
 
-    -- Get buffer name
-    local filename = vim.api.nvim_buf_get_name(buffer)
-
-    -- Check if buffer has a name
-    if filename == "" then
-      -- It's an empty buffer with no name, just show file tree without diff
-      file_tree.show_file_tree(vim.fn.getcwd()) -- Use file_tree module
-      vim.api.nvim_echo({ { "Showing file tree for current directory", "Normal" } }, false, {})
-      return
-    end
-
-    -- Show diff based on the stored commit base (or default to HEAD)
-    local result = M.show_diff() -- Call M.show_diff in this module
-
-    -- Always show file tree, even if diff fails
-    file_tree.show_file_tree() -- Use file_tree module
-
-    if not result then
-      vim.api.nvim_echo({ { "Failed to display diff, showing file tree only", "WarningMsg" } }, false, {})
-    end
+-- Toggle diff display based on global state
+function M.toggle_diff()
+  if M.is_active then
+    M.deactivate()
+  else
+    M.activate()
   end
 end
 
