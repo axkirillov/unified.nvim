@@ -137,6 +137,12 @@ To run a manual test for git diff:
 nvim -u NONE -c "set rtp+=." -c "luafile test/manual_test_git.lua"
 ```
 
+To run a manual test for comparing against different commits:
+
+```bash
+nvim -u NONE -c "set rtp+=." -c "luafile test/manual_test_commit.lua"
+```
+
 ## License
 
 MIT

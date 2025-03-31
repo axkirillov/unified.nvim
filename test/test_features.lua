@@ -530,4 +530,73 @@ function M.test_global_state()
   return true
 end
 
+-- Test that 'Unified commit HEAD~1' doesn't produce error messages
+function M.test_unified_commit_no_errors()
+  -- Create temporary git repository
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  -- Create initial file and commit it
+  local test_file = "test.txt"
+  local test_path = utils.create_and_commit_file(
+    repo,
+    test_file,
+    { "line 1", "line 2", "line 3", "line 4", "line 5" },
+    "Initial commit"
+  )
+
+  -- Make changes and create a second commit
+  vim.fn.writefile({ "line 1", "modified line 2", "line 3", "line 4", "line 5" }, test_path)
+  vim.fn.system("git add " .. test_file)
+  vim.fn.system("git commit -m 'Second commit'")
+
+  -- Open the file
+  vim.cmd("edit " .. test_path)
+
+  -- Make additional changes for diffing
+  vim.api.nvim_buf_set_lines(0, 1, 2, false, { "further modified line 2" })
+
+  -- Mock the nvim_echo function to capture error messages
+  local old_nvim_echo = vim.api.nvim_echo
+  local error_messages = {}
+  vim.api.nvim_echo = function(chunks, history, opts)
+    for _, chunk in ipairs(chunks) do
+      local text, hl_group = chunk[1], chunk[2]
+      if hl_group == "ErrorMsg" then
+        table.insert(error_messages, text)
+      end
+    end
+  end
+
+  -- Run the Unified commit command
+  vim.cmd("Unified commit HEAD~1")
+
+  -- Restore the original nvim_echo function
+  vim.api.nvim_echo = old_nvim_echo
+
+  -- Check that no error messages were produced
+  assert(#error_messages == 0, "Unified commit HEAD~1 produced error messages: " .. table.concat(error_messages, ", "))
+
+  -- Verify that we have extmarks showing the diff (indicating success)
+  local buffer = vim.api.nvim_get_current_buf()
+  local has_extmarks, marks = utils.check_extmarks_exist(buffer)
+  assert(has_extmarks, "No diff extmarks were created after running Unified commit HEAD~1")
+
+  -- Also check the global state is properly set
+  local state = require("unified.state")
+  assert(state.is_active, "Unified plugin should be active after running Unified commit HEAD~1")
+  assert(state.commit_base == "HEAD~1", "Commit base should be set to HEAD~1")
+
+  -- Clean up
+  utils.clear_diff_marks(buffer)
+  vim.cmd("bdelete!")
+
+  -- Clean up git repo
+  utils.cleanup_git_repo(repo)
+
+  return true
+end
+
 return M
