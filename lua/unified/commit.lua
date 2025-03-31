@@ -4,15 +4,22 @@ local M = {}
 -- Dependencies
 local state = require("unified.state")
 
+-- Forward declaration
+local show_diff_func
+local show_file_tree_func
+
+-- Set functions that will be called (to break circular dependency)
+function M.set_functions(show_diff, show_file_tree)
+  show_diff_func = show_diff
+  show_file_tree_func = show_file_tree
+end
+
 -- Handle the "Unified commit <ref>" command
 function M.handle_commit_command(commit_ref)
   if not commit_ref or #commit_ref == 0 then
     vim.api.nvim_echo({ { "Invalid commit format. Use: Unified commit <hash/ref>", "ErrorMsg" } }, false, {})
     return false
   end
-
-  -- Get the unified module
-  local unified = require("unified")
 
   -- Validate commit reference with git
   local cwd = vim.fn.getcwd()
@@ -60,14 +67,16 @@ function M.handle_commit_command(commit_ref)
 
   -- Check if buffer has a name before showing diff
   local result = false
-  if file_path ~= "" then
+  if file_path ~= "" and show_diff_func then
     -- Show diff for the commit
-    result = unified.show_diff(commit_ref)
+    result = show_diff_func(commit_ref)
   end
 
   -- Always show file tree with the explicit commit reference
   -- This ensures the file tree always reflects the correct files for the specific commit
-  unified.show_file_tree(commit_ref)
+  if show_file_tree_func then
+    show_file_tree_func(commit_ref)
+  end
 
   -- Update global state - activate even if we can't show diff in current buffer
   state.is_active = true

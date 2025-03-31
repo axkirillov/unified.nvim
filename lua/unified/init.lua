@@ -27,6 +27,10 @@ M.show_file_tree = file_tree.show_file_tree
 -- Expose commit functions
 M.handle_commit_command = commit.handle_commit_command
 
+-- Set functions on commit module to break circular dependency
+-- Do this after defining all the needed functions
+commit.set_functions(M.show_diff, M.show_file_tree)
+
 -- Helper function to check if diff is displayed (for compatibility)
 function M.is_diff_displayed(buffer)
   -- Check the global state first

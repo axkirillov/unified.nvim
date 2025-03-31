@@ -134,84 +134,55 @@ end
 function FileTree:update_git_status(root_dir, diff_only, commit_ref)
   local changed_files = {}
 
-  -- If a specific commit is provided, list files that changed in that commit
+  -- Choose the appropriate command based on the commit_ref
+  local cmd
   if commit_ref and commit_ref ~= "HEAD" then
+    -- If a specific commit_ref is provided, compare it with the working tree
+    cmd =
+      string.format("cd %s && git diff --name-status %s", vim.fn.shellescape(root_dir), vim.fn.shellescape(commit_ref))
+
     if vim.g.unified_debug then
-      print("File Tree - Getting changed files for commit: " .. commit_ref)
-    end
-
-    -- Get the parent commit (or use empty tree for initial commit)
-    local parent_cmd = string.format(
-      "cd %s && git rev-parse %s^@ || git rev-parse %s^",
-      vim.fn.shellescape(root_dir),
-      vim.fn.shellescape(commit_ref),
-      vim.fn.shellescape(commit_ref)
-    )
-    local parent_result = vim.fn.system(parent_cmd)
-    local parent_commit = ""
-
-    if vim.v.shell_error == 0 then
-      parent_commit = vim.trim(parent_result)
-    end
-
-    -- If we can't find a parent (might be initial commit), use empty tree
-    local cmd
-    if parent_commit == "" then
-      -- For initial commit, compare with empty tree
-      cmd = string.format(
-        "cd %s && git diff-tree --name-status --no-commit-id -r %s",
-        vim.fn.shellescape(root_dir),
-        vim.fn.shellescape(commit_ref)
-      )
-    else
-      -- Normal case - get files changed between parent and commit
-      cmd = string.format(
-        "cd %s && git diff --name-status %s %s",
-        vim.fn.shellescape(root_dir),
-        vim.fn.shellescape(parent_commit),
-        vim.fn.shellescape(commit_ref)
-      )
-    end
-
-    local result = vim.fn.system(cmd)
-
-    if vim.v.shell_error ~= 0 then
-      if vim.g.unified_debug then
-        print("File Tree - Error getting changed files: " .. vim.v.shell_error)
-      end
-      return
-    end
-
-    -- Process file list - format is similar to git status:
-    -- A       file/added.txt
-    -- M       file/modified.txt
-    -- D       file/deleted.txt
-    for line in result:gmatch("[^\r\n]+") do
-      local status = line:sub(1, 1) .. " " -- First letter is the status (A/M/D)
-      local file = line:sub(2):gsub("^%s+", "") -- Rest is the filename
-      local path = root_dir .. "/" .. file
-
-      -- Store the status for this file
-      changed_files[path] = status
+      print("File Tree - Getting changed files vs commit: " .. commit_ref)
     end
   else
-    -- Standard git status for current files
-    local cmd = string.format("cd %s && git status --porcelain", vim.fn.shellescape(root_dir))
-    local result = vim.fn.system(cmd)
+    -- If no commit_ref or HEAD is provided, use standard git status
+    cmd = string.format("cd %s && git status --porcelain", vim.fn.shellescape(root_dir))
 
-    if vim.v.shell_error ~= 0 then
-      return
+    if vim.g.unified_debug then
+      print("File Tree - Getting working tree status")
+    end
+  end
+
+  -- Run the chosen command
+  local result = vim.fn.system(cmd)
+  if vim.v.shell_error ~= 0 then
+    if vim.g.unified_debug then
+      print("File Tree - Error getting file status: " .. vim.v.shell_error)
+    end
+    return
+  end
+
+  -- Process the command output to get changed files and their statuses
+  for line in result:gmatch("[^\r\n]+") do
+    local status, file
+
+    if commit_ref and commit_ref ~= "HEAD" then
+      -- git diff --name-status output format:
+      -- A       file/added.txt
+      -- M       file/modified.txt
+      -- D       file/deleted.txt
+      status = line:sub(1, 1) .. " " -- First letter is the status (A/M/D)
+      file = line:sub(2):gsub("^%s+", "") -- Rest is the filename
+    else
+      -- git status --porcelain output format:
+      -- XY path
+      status = line:sub(1, 2)
+      file = line:sub(4)
     end
 
-    -- Process git status
-    for line in result:gmatch("[^\r\n]+") do
-      local status = line:sub(1, 2)
-      local file = line:sub(4)
-      local path = root_dir .. "/" .. file
-
-      -- Store the status for this file
-      changed_files[path] = status:gsub("%s", " ")
-    end
+    local path = root_dir .. "/" .. file
+    -- Store the status for this file
+    changed_files[path] = status:gsub("%s", " ")
   end
 
   -- Check if we have any changes
@@ -221,45 +192,79 @@ function FileTree:update_git_status(root_dir, diff_only, commit_ref)
     break
   end
 
+  -- Handle the case when we're in diff_only mode
   if diff_only then
-    if commit_ref and commit_ref ~= "HEAD" then
-      -- Special handling for commit references: always show files even if no changes
-      -- If there are no changes detected, get the list of files in the commit
-      if not has_changes then
-        -- Get all files in the specified commit
-        local cmd = string.format(
-          "cd %s && git ls-tree -r --name-only %s",
-          vim.fn.shellescape(root_dir),
-          vim.fn.shellescape(commit_ref)
-        )
-        local result = vim.fn.system(cmd)
+    local show_all_files_from_commit = false
 
-        if vim.v.shell_error == 0 then
-          -- Process all files in the commit
-          for file in result:gmatch("[^\r\n]+") do
-            local path = root_dir .. "/" .. file
-            -- Mark all files with "C" status to indicate they exist in this commit
-            self:add_file(path, "C ")
-          end
+    -- When no changes are found but we have a commit reference, get all files in that commit
+    if not has_changes and commit_ref then
+      show_all_files_from_commit = true
+
+      if vim.g.unified_debug then
+        print("File Tree - No changes found for commit, getting all files in commit: " .. commit_ref)
+      end
+    end
+
+    -- Special case: for any commit reference (especially HEAD), always fall back to listing all files
+    -- This ensures repeated calls to "Unified commit <ref>" work properly
+    if commit_ref then
+      show_all_files_from_commit = true
+
+      if vim.g.unified_debug then
+        print("File Tree - Using commit reference: " .. commit_ref)
+      end
+    end
+
+    -- Get all files from commit if needed
+    if show_all_files_from_commit then
+      -- Make sure we're in the root directory when running the command
+      local orig_dir = vim.fn.getcwd()
+      vim.cmd("cd " .. vim.fn.fnameescape(root_dir))
+
+      local all_files_cmd = string.format("git ls-tree -r --name-only %s", vim.fn.shellescape(commit_ref))
+
+      if vim.g.unified_debug then
+        print("Using command: " .. all_files_cmd .. " in dir: " .. root_dir)
+      end
+
+      local all_files_result = vim.fn.system(all_files_cmd)
+
+      -- Return to original directory
+      vim.cmd("cd " .. vim.fn.fnameescape(orig_dir))
+
+      if vim.v.shell_error == 0 then
+        local file_count = 0
+        for file in all_files_result:gmatch("[^\r\n]+") do
+          local path = root_dir .. "/" .. file
+          -- Mark all files with "C" status to indicate they exist in this commit
+          changed_files[path] = "C "
+          has_changes = true
+          file_count = file_count + 1
+        end
+
+        if vim.g.unified_debug then
+          print("File Tree - Found " .. file_count .. " files in commit")
         end
       else
-        -- Add files with changes
-        for path, status in pairs(changed_files) do
-          self:add_file(path, status)
+        if vim.g.unified_debug then
+          print("File Tree - Error getting files from commit: " .. vim.v.shell_error)
+          print("Command output: " .. all_files_result)
         end
       end
-    else
-      -- Standard diff_only mode for working directory
-      if not has_changes then
-        -- Clear all children to show empty tree
-        self.root.children = {}
-        return
-      end
+    end
 
-      -- Only add files that have changes
-      for path, status in pairs(changed_files) do
-        self:add_file(path, status)
+    -- Only clear children if we still have no changes after all attempts
+    if not has_changes then
+      self.root.children = {}
+      if vim.g.unified_debug then
+        print("File Tree - No files found after all attempts, tree will be empty")
       end
+      return
+    end
+
+    -- Only add files that have changes
+    for path, status in pairs(changed_files) do
+      self:add_file(path, status)
     end
   else
     -- Scan the entire directory structure to create the tree
@@ -859,21 +864,22 @@ function M.create_file_tree_buffer(buffer_path, diff_only)
   -- If we're in a git repo, update statuses
   if is_git_repo then
     -- Let the git status function handle creating the tree with only diff files or all files
-    -- Use the commit reference from path_args if it's a valid Git reference
+    -- Use the commit reference from buffer_path if it's a valid Git reference
     local commit_ref = nil
 
-    -- Check if path_args is a valid Git reference
-    if path_args and path_args ~= "" then
+    -- Check if buffer_path is a valid Git reference
+    local path_to_check = buffer_path
+    if path_to_check and path_to_check ~= "" then
       local cmd = string.format(
         "cd %s && git rev-parse --verify %s^{commit} 2>/dev/null",
         vim.fn.shellescape(root_dir),
-        vim.fn.shellescape(path_args)
+        vim.fn.shellescape(path_to_check)
       )
       local result = vim.fn.system(cmd)
 
       if vim.v.shell_error == 0 then
         -- Valid commit reference
-        commit_ref = path_args
+        commit_ref = path_to_check
         if vim.g.unified_debug then
           print("File Tree - Valid commit reference: " .. commit_ref)
         end
@@ -888,7 +894,18 @@ function M.create_file_tree_buffer(buffer_path, diff_only)
 
   -- Create buffer for file tree
   local buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_name(buf, "Unified: File Tree")
+
+  -- Create a unique buffer name that includes the commit reference if available
+  local buffer_name = "Unified: File Tree"
+  if commit_ref then
+    buffer_name = buffer_name .. " (" .. commit_ref .. ")"
+  end
+
+  -- Try to set the name, ignoring errors if a buffer with that name already exists
+  pcall(function()
+    vim.api.nvim_buf_set_name(buf, buffer_name)
+  end)
+
   vim.bo[buf].buftype = "nofile"
   vim.bo[buf].swapfile = false
   vim.bo[buf].bufhidden = "wipe"
@@ -903,8 +920,18 @@ end
 -- Show file tree for the current buffer or a specific directory
 function M.show_file_tree(path, show_all_files)
   -- Get commit reference from state if available
+  local commit_ref = nil
   if not path and state.commit_base then
     path = state.commit_base
+    commit_ref = state.commit_base
+  elseif path and (path == "HEAD" or path:match("^HEAD~")) then
+    -- If path is a commit reference like HEAD or HEAD~n, keep track of it
+    commit_ref = path
+  end
+
+  -- Default to current directory if no path is provided
+  if not path then
+    path = vim.fn.getcwd()
   end
 
   -- Check if tree window already exists
@@ -914,8 +941,8 @@ function M.show_file_tree(path, show_all_files)
     and state.file_tree_buf
     and vim.api.nvim_buf_is_valid(state.file_tree_buf)
   then
-    -- Tree is already showing, check if we need to update its content based on path/commit
-    local file_path = path or vim.fn.getcwd()
+    -- Tree is already showing, update its content
+    local file_path = path
 
     -- Always update the tree when showing file_tree with a path
     if vim.g.unified_debug then
@@ -934,20 +961,53 @@ function M.show_file_tree(path, show_all_files)
       -- Check if path is a valid Git reference
       local commit_ref = nil
 
-      if path and path ~= "" then
-        local cmd = string.format(
-          "cd %s && git rev-parse --verify %s^{commit} 2>/dev/null",
-          vim.fn.shellescape(file_path),
-          vim.fn.shellescape(path)
-        )
-        local result = vim.fn.system(cmd)
+      -- If we already have identified this as a commit reference, use it
+      if commit_ref then
+        if vim.g.unified_debug then
+          print("File Tree - Using pre-identified commit reference: " .. commit_ref)
+        end
+      elseif path and path ~= "" then
+        -- Store original directory
+        local orig_dir = vim.fn.getcwd()
 
-        if vim.v.shell_error == 0 then
-          -- Valid commit reference
-          commit_ref = path
-          if vim.g.unified_debug then
-            print("File Tree - Valid commit reference for update: " .. commit_ref)
+        -- Go to the git root to ensure commands work correctly
+        -- This is critical for commands like git status and git ls-tree
+        local git_root_cmd = string.format("cd %s && git rev-parse --show-toplevel", vim.fn.shellescape(file_path))
+        local git_root = vim.trim(vim.fn.system(git_root_cmd))
+
+        if vim.v.shell_error == 0 and git_root ~= "" then
+          -- Change to git root directory
+          vim.cmd("cd " .. vim.fn.fnameescape(git_root))
+
+          -- Now check if the path is a valid commit reference
+          local cmd = string.format("git rev-parse --verify %s^{commit} 2>/dev/null", vim.fn.shellescape(path))
+          local result = vim.fn.system(cmd)
+
+          if vim.v.shell_error == 0 then
+            -- Valid commit reference
+            commit_ref = path
+            if vim.g.unified_debug then
+              print("File Tree - Valid commit reference for update: " .. commit_ref)
+            end
           end
+
+          -- Make sure to use the git root for update_git_status
+          file_path = git_root
+        else
+          if vim.g.unified_debug then
+            print("File Tree - Failed to determine git root for: " .. file_path)
+          end
+        end
+
+        -- Restore original directory
+        vim.cmd("cd " .. vim.fn.fnameescape(orig_dir))
+      end
+
+      -- If path is HEAD or related, always use it as commit_ref
+      if path and (path == "HEAD" or path:match("^HEAD~")) then
+        commit_ref = path
+        if vim.g.unified_debug then
+          print("File Tree - Using HEAD reference: " .. commit_ref)
         end
       end
 
@@ -959,6 +1019,24 @@ function M.show_file_tree(path, show_all_files)
 
     -- Render the updated tree to the existing buffer
     tree:render(state.file_tree_buf)
+
+    -- If the buffer is empty and we have a commit_ref, it might be the "empty tree" bug
+    -- In this case, we'll create a fresh buffer and replace the existing one
+    local line_count = vim.api.nvim_buf_line_count(state.file_tree_buf)
+    if line_count <= 4 and commit_ref then
+      if vim.g.unified_debug then
+        print("File Tree - Detected empty tree with commit reference, creating fresh buffer")
+      end
+
+      -- Create a new buffer with proper content
+      local new_buf = M.create_file_tree_buffer(file_path, diff_only)
+
+      -- Replace the old buffer in the window
+      vim.api.nvim_win_set_buf(state.file_tree_win, new_buf)
+
+      -- Update global state
+      state.file_tree_buf = new_buf
+    end
 
     -- Focus the tree window
     vim.api.nvim_set_current_win(state.file_tree_win)

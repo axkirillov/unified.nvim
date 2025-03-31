@@ -4,13 +4,19 @@ This directory contains tests for the unified.nvim plugin.
 
 ## Running Tests
 
-There are two ways to run the tests:
+There are multiple ways to run the tests:
 
 ```bash
-# Run all tests
+# Run all tests (using shared Git repository by default)
 ./run_tests.sh
 
-# Or use the more detailed runner:
+# Run all tests with individual Git repositories
+./run_tests.sh --no-shared-repo
+
+# Run a specific test
+./run_tests.sh --test=test_multiple_lines.test_multiple_added_lines
+
+# Or use the more detailed runner directly:
 ./run_modular_tests.sh
 ```
 
@@ -23,6 +29,16 @@ The modular test runner offers additional options:
 # Run a specific test by module and function name
 ./run_modular_tests.sh test_multiple_lines.test_multiple_added_lines
 ```
+
+### Performance Optimization
+
+The tests now support a shared Git repository mode (enabled by default) which significantly reduces disk I/O and improves test performance by:
+
+1. Creating a single Git repository once for all tests
+2. Using Git branches and resets instead of file system operations
+3. Isolating each test in its own branch
+
+To use individual repositories (old behavior), run with the `--no-shared-repo` flag.
 
 ## Test Structure
 

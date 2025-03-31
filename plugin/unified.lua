@@ -32,8 +32,9 @@ vim.api.nvim_create_user_command("Unified", function(opts)
   elseif args:match("^commit%s+") then
     -- Extract commit hash from the command
     local commit = args:match("^commit%s+(.+)$")
-    -- Use the dedicated commit module to handle this command
-    require("unified.commit").handle_commit_command(commit)
+    -- Use the handle_commit_command function through the main module
+    -- This avoids circular dependency issues
+    require("unified").handle_commit_command(commit)
   else
     local unified = require("unified")
     local state = require("unified.state")
