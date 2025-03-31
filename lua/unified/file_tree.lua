@@ -1,7 +1,7 @@
 local M = {}
 
 local git = require("unified.git")
-local window = require("unified.window")
+local state = require("unified.state")
 
 -- Node implementation for file tree
 local Node = {}
@@ -258,14 +258,14 @@ function M.toggle_node()
     end
   else
     -- Open file in the main window and show diff
-    local win = window.get_main_window() -- Use window module
+    local win = state.get_main_window() -- Use state module
     if win and vim.api.nvim_win_is_valid(win) then
       vim.api.nvim_set_current_win(win)
       vim.cmd("edit " .. vim.fn.fnameescape(node.path))
 
       -- Show diff for the newly opened file
       local unified = require("unified")
-      if not unified.is_active then
+      if not state.is_active then
         unified.activate()
       else
         -- If already active, refresh the diff display
@@ -793,9 +793,9 @@ end
 -- Show file tree for the current buffer or a specific directory
 function M.show_file_tree(path, show_all_files)
   -- Check if tree window already exists
-  if window.file_tree_win and vim.api.nvim_win_is_valid(window.file_tree_win) then -- Use window module
+  if state.file_tree_win and vim.api.nvim_win_is_valid(state.file_tree_win) then -- Use state module
     -- Tree is already showing, just set focus to it
-    vim.api.nvim_set_current_win(window.file_tree_win) -- Use window module
+    vim.api.nvim_set_current_win(state.file_tree_win) -- Use state module
     return true
   end
 
@@ -854,9 +854,9 @@ function M.show_file_tree(path, show_all_files)
   vim.api.nvim_win_set_option(tree_win, "list", false)
   vim.api.nvim_win_set_option(tree_win, "fillchars", "vert:│")
 
-  -- Store window and buffer references in window module
-  window.file_tree_win = tree_win -- Use window module
-  window.file_tree_buf = tree_buf -- Use window module
+  -- Store window and buffer references in state module
+  state.file_tree_win = tree_win -- Use state module
+  state.file_tree_buf = tree_buf -- Use state module
 
   -- Return to original window
   vim.api.nvim_set_current_win(current_win)
