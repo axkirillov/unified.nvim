@@ -4,6 +4,7 @@ local diff_module = require("unified.diff")
 local git = require("unified.git")
 local state = require("unified.state")
 local file_tree = require("unified.file_tree")
+local commit = require("unified.commit")
 
 -- Setup function to be called by the user
 function M.setup(opts)
@@ -22,6 +23,9 @@ M.show_git_diff_against_commit = git.show_git_diff_against_commit
 
 -- Expose file tree functions
 M.show_file_tree = file_tree.show_file_tree
+
+-- Expose commit functions
+M.handle_commit_command = commit.handle_commit_command
 
 -- Helper function to check if diff is displayed (for compatibility)
 function M.is_diff_displayed(buffer)

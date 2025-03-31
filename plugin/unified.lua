@@ -32,68 +32,8 @@ vim.api.nvim_create_user_command("Unified", function(opts)
   elseif args:match("^commit%s+") then
     -- Extract commit hash from the command
     local commit = args:match("^commit%s+(.+)$")
-    if commit and #commit > 0 then
-      -- Validate commit reference
-      local buffer = vim.api.nvim_get_current_buf()
-      local file_path = vim.api.nvim_buf_get_name(buffer)
-
-      if file_path == "" then
-        vim.api.nvim_echo({ { "Buffer has no file name", "ErrorMsg" } }, false, {})
-        return
-      end
-
-      -- Check if we're in a git repo
-      local repo_check = vim.fn.system(
-        string.format(
-          "cd %s && git rev-parse --is-inside-work-tree 2>/dev/null",
-          vim.fn.shellescape(vim.fn.fnamemodify(file_path, ":h"))
-        )
-      )
-
-      if vim.trim(repo_check) ~= "true" then
-        vim.api.nvim_echo({ { "File is not in a git repository", "ErrorMsg" } }, false, {})
-        return
-      end
-
-      -- Try to resolve the commit
-      local commit_check = vim.fn.system(
-        string.format(
-          "cd %s && git rev-parse --verify %s 2>/dev/null",
-          vim.fn.shellescape(vim.fn.fnamemodify(file_path, ":h")),
-          vim.fn.shellescape(commit)
-        )
-      )
-
-      if vim.v.shell_error ~= 0 then
-        vim.api.nvim_echo({ { "Invalid git reference: " .. commit, "ErrorMsg" } }, false, {})
-        return
-      end
-
-      -- Get the unified module and state
-      local unified = require("unified")
-      local state = require("unified.state")
-
-      -- If already active, deactivate first to reset state
-      if state.is_active then
-        unified.deactivate()
-      end
-
-      -- Store current window as main window
-      state.main_win = vim.api.nvim_get_current_win()
-
-      -- Show diff for the commit
-      local result = unified.show_diff(commit)
-
-      -- Also show the file tree when using commit command
-      unified.show_file_tree()
-
-      -- Update global state
-      if result then
-        state.is_active = true
-      end
-    else
-      vim.api.nvim_echo({ { "Invalid commit format. Use: Unified commit <hash/ref>", "ErrorMsg" } }, false, {})
-    end
+    -- Use the dedicated commit module to handle this command
+    require("unified.commit").handle_commit_command(commit)
   else
     local unified = require("unified")
     local state = require("unified.state")
@@ -116,17 +56,19 @@ end, {
       -- Try to get recent commits for completion
       local buffer = vim.api.nvim_get_current_buf()
       local file_path = vim.api.nvim_buf_get_name(buffer)
+      local repo_dir
 
       if file_path == "" then
-        return {}
+        -- Use current directory for empty buffers
+        repo_dir = vim.fn.getcwd()
+      else
+        -- Use file's directory
+        repo_dir = vim.fn.fnamemodify(file_path, ":h")
       end
 
       -- Check if we're in a git repo
       local repo_check = vim.fn.system(
-        string.format(
-          "cd %s && git rev-parse --is-inside-work-tree 2>/dev/null",
-          vim.fn.shellescape(vim.fn.fnamemodify(file_path, ":h"))
-        )
+        string.format("cd %s && git rev-parse --is-inside-work-tree 2>/dev/null", vim.fn.shellescape(repo_dir))
       )
 
       if vim.trim(repo_check) ~= "true" then

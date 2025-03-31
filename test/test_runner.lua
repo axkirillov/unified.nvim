@@ -8,6 +8,7 @@ local test_rendering = require("test.test_rendering")
 local test_features = require("test.test_features")
 local test_multiple_lines = require("test.test_multiple_lines")
 local test_file_tree = require("test.test_file_tree")
+local test_commit = require("test.test_commit")
 
 -- Helper to run a group of tests
 local function run_test_group(group, group_name)
@@ -64,6 +65,7 @@ function M.run_all_tests()
     { name = "test_features", module = test_features },
     { name = "test_multiple_lines", module = test_multiple_lines },
     { name = "test_file_tree", module = test_file_tree },
+    { name = "test_commit", module = test_commit },
   }
 
   local all_results = {}
@@ -132,6 +134,7 @@ function M.run_test(test_name)
     test_features = test_features,
     test_multiple_lines = test_multiple_lines,
     test_file_tree = test_file_tree,
+    test_commit = test_commit,
   }
 
   local group = groups[group_name]
