@@ -237,8 +237,8 @@ function M.test_file_tree_with_commit_command()
   utils.modify_and_commit_file(repo, "test.txt", { "modified line 1", "line 2" }, "Second commit")
 
   -- Get the first commit hash
-  local cmd = string.format("cd %s && git log --format=%%H | tail -1", repo.repo_dir)
-  local first_commit = vim.trim(vim.fn.system(cmd))
+  local cmd = string.format("cd %s && git rev-parse HEAD~1", repo.repo_dir)
+  local target_commit = vim.trim(vim.fn.system(cmd))
 
   -- Open the file for editing
   vim.cmd("edit " .. file_path)
@@ -254,7 +254,7 @@ function M.test_file_tree_with_commit_command()
   window.main_win = vim.api.nvim_get_current_win()
 
   -- Show the diff against the commit
-  local result = unified.show_diff(first_commit)
+  local result = unified.show_diff(target_commit)
   assert(result, "Show diff should have succeeded")
 
   -- Update the global state for consistency
