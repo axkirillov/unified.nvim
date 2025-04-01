@@ -1,0 +1,17 @@
+{
+  "diagnostics.globals": ["vim"],
+  "runtime.version": "LuaJIT",
+  "runtime.path": [
+    "lua/?.lua",
+    "lua/?/init.lua"
+  ],
+  "workspace.library": [
+    "${3rd}/luv/library",
+    "${3rd}/busted/library",
+    "${3rd}/luassert/library",
+    "${3rd}/vim/library"
+  ],
+  "diagnostics.disable": [
+    "undefined-field"
+  ]
+}

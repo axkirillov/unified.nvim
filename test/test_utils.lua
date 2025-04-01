@@ -98,7 +98,7 @@ function M.create_test_branch(repo, branch_name)
     return false
   end
 
-  branch_name = branch_name or "test_branch_" .. os.time()
+  branch_name = branch_name or ("test_branch_" .. os.time())
   vim.fn.system("git checkout -b " .. branch_name)
   return branch_name
 end
