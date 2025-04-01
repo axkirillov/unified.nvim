@@ -1,9 +1,9 @@
 local M = {}
 local config = require("unified.config")
-local diff_module = require("unified.diff")
-local git = require("unified.git")
+local diff_module = require("unified.diff") -- Restore require
+local git = require("unified.git") -- Restore require
 local state = require("unified.state")
-local file_tree = require("unified.file_tree")
+local file_tree = require("unified.file_tree") -- Restore require
 local commit = require("unified.commit")
 
 -- Setup function to be called by the user
@@ -15,21 +15,19 @@ function M.setup(opts)
 end
 
 -- Use parse_diff function from diff module
-M.parse_diff = diff_module.parse_diff
+M.parse_diff = diff_module.parse_diff -- Restore assignment
 
 -- Expose git functions directly for testing or specific use cases
-M.show_git_diff = git.show_git_diff
-M.show_git_diff_against_commit = git.show_git_diff_against_commit
+M.show_git_diff = git.show_git_diff -- Restore assignment
+M.show_git_diff_against_commit = git.show_git_diff_against_commit -- Restore assignment
 
 -- Expose file tree functions
-M.show_file_tree = file_tree.show_file_tree
+M.show_file_tree = file_tree.show_file_tree -- Restore assignment
 
 -- Expose commit functions
 M.handle_commit_command = commit.handle_commit_command
 
--- Set functions on commit module to break circular dependency
--- Do this after defining all the needed functions
-commit.set_functions(M.show_diff, M.show_file_tree)
+-- No longer need to set functions on commit module
 
 -- Helper function to check if diff is displayed (for compatibility)
 function M.is_diff_displayed(buffer)
@@ -40,7 +38,7 @@ function M.is_diff_displayed(buffer)
 
   -- Also check the buffer as a fallback (for compatibility with older code)
   buffer = buffer or vim.api.nvim_get_current_buf()
-  return diff_module.is_diff_displayed(buffer)
+  return diff_module.is_diff_displayed(buffer) -- Restore original call
 end
 
 -- Set up auto-refresh for current buffer
@@ -66,7 +64,7 @@ function M.setup_auto_refresh(buffer)
     buffer = buffer,
     callback = function()
       -- Only refresh if diff is currently displayed
-      if diff_module.is_diff_displayed(buffer) then
+      if diff_module.is_diff_displayed(buffer) then -- Restore original call
         -- Use the stored commit base for refresh
         M.show_diff()
       end
@@ -81,11 +79,11 @@ function M.show_diff(commit)
   if commit then
     -- Store the commit reference globally
     state.set_commit_base(commit)
-    result = git.show_git_diff_against_commit(commit)
+    result = git.show_git_diff_against_commit(commit) -- Restore original call
   else
     -- Use stored global commit base or default to HEAD
     local base = state.get_commit_base()
-    result = git.show_git_diff_against_commit(base)
+    result = git.show_git_diff_against_commit(base) -- Restore original call
   end
 
   -- If diff was successfully displayed, set up auto-refresh
@@ -140,7 +138,7 @@ function M.activate()
   -- Check if buffer has a name
   if filename == "" then
     -- It's an empty buffer with no name, just show file tree without diff
-    file_tree.show_file_tree(vim.fn.getcwd())
+    file_tree.show_file_tree(vim.fn.getcwd()) -- Restore original call
     vim.api.nvim_echo({ { "Showing file tree for current directory", "Normal" } }, false, {})
     return
   end
@@ -149,7 +147,7 @@ function M.activate()
   local result = M.show_diff()
 
   -- Always show file tree, even if diff fails
-  file_tree.show_file_tree()
+  file_tree.show_file_tree() -- Restore original call
 
   -- Update global state only if diff was successful
   if result then
@@ -168,5 +166,6 @@ function M.toggle_diff()
     M.activate()
   end
 end
+-- Comment out the deferred initialization to avoid potential load cycle
 
 return M

@@ -44,6 +44,10 @@ end
 
 -- Display unified diff inline in the buffer with improved handling for historical diffs
 function M.display_inline_diff(buffer, hunks)
+  -- if vim.g.unified_debug then -- Removed debug log
+  --   print("Diff: display_inline_diff called for buffer: " .. buffer)
+  --   print("Diff: Input hunks: " .. vim.inspect(hunks))
+  -- end -- Removed stray end
   -- Lazily require git module here
   if not git then
     git = require("unified.git")
@@ -52,6 +56,9 @@ function M.display_inline_diff(buffer, hunks)
   -- Use namespace from config
   local ns_id = config.ns_id
 
+  -- if vim.g.unified_debug then -- Removed debug log
+  --   print("Diff: Clearing namespace " .. ns_id .. " and signs for buffer " .. buffer)
+  -- end
   -- Clear existing extmarks
   vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
 
@@ -71,7 +78,10 @@ function M.display_inline_diff(buffer, hunks)
   -- For detecting multiple consecutive new lines
   local consecutive_added_lines = {}
 
-  for _, hunk in ipairs(hunks) do
+  for hunk_idx, hunk in ipairs(hunks) do
+    -- if vim.g.unified_debug then -- Removed debug log
+    --   print(string.format("Diff: Processing Hunk %d: old_start=%d, old_count=%d, new_start=%d, new_count=%d", hunk_idx, hunk.old_start, hunk.old_count, hunk.new_start, hunk.new_count))
+    -- end
     local line_idx = hunk.new_start - 1 -- Adjust for 0-indexed lines
     local old_idx = 0
     local new_idx = 0
@@ -119,9 +129,11 @@ function M.display_inline_diff(buffer, hunks)
     old_idx = 0
     new_idx = 0
 
-    for _, line in ipairs(hunk.lines) do
+    for line_hunk_idx, line in ipairs(hunk.lines) do
       local first_char = line:sub(1, 1)
-
+      -- if vim.g.unified_debug then -- Removed debug log
+      --   print(string.format("Diff: Hunk %d, Line %d: Type='%s', Current line_idx=%d, new_idx=%d, old_idx=%d, Content='%s'", hunk_idx, line_hunk_idx, first_char, line_idx, new_idx, old_idx, line))
+      -- end
       if first_char == " " then
         -- Context line
         line_idx = line_idx + 1
@@ -145,11 +157,18 @@ function M.display_inline_diff(buffer, hunks)
         local consecutive_count = consecutive_added_lines[line_idx - new_idx + old_idx] or 0
 
         -- Use a single extmark with both sign and line highlighting
-        local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, line_idx, 0, {
+        local extmark_opts = {
           sign_text = config.values.line_symbols.add .. " ", -- Add sign in gutter
           sign_hl_group = config.values.highlights.add,
           line_hl_group = hl_group,
-        })
+        }
+        -- if vim.g.unified_debug then -- Removed debug log
+        --   print(string.format("Diff: Attempting ADD extmark at line_idx %d. Opts: %s", line_idx, vim.inspect(extmark_opts)))
+        -- end
+        local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, line_idx, 0, extmark_opts)
+        -- if vim.g.unified_debug then -- Removed debug log
+        --   print("Diff: ADD extmark result mark_id: " .. mark_id)
+        -- end
         if mark_id > 0 then
           mark_count = mark_count + 1
           sign_count = sign_count + 1
@@ -167,11 +186,18 @@ function M.display_inline_diff(buffer, hunks)
             end
 
             -- Use a single extmark with both sign and line highlighting for consecutive lines
-            local consec_mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, next_line_idx, 0, {
+            local consec_extmark_opts = {
               sign_text = config.values.line_symbols.add .. " ", -- Add sign in gutter
               sign_hl_group = config.values.highlights.add,
               line_hl_group = hl_group,
-            })
+            }
+            -- if vim.g.unified_debug then -- Removed debug log
+            --   print(string.format("Diff: Attempting CONSECUTIVE ADD extmark at next_line_idx %d. Opts: %s", next_line_idx, vim.inspect(consec_extmark_opts)))
+            -- end
+            local consec_mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, next_line_idx, 0, consec_extmark_opts)
+            -- if vim.g.unified_debug then -- Removed debug log
+            --   print("Diff: CONSECUTIVE ADD extmark result mark_id: " .. consec_mark_id)
+            -- end
             if consec_mark_id > 0 then
               mark_count = mark_count + 1
               sign_count = sign_count + 1
@@ -203,10 +229,17 @@ function M.display_inline_diff(buffer, hunks)
         end
 
         -- Add virtual line for deleted content
-        local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, attach_line, 0, {
+        local virt_line_opts = {
           virt_lines = { { { line_text, hl_group } } },
           virt_lines_above = true,
-        })
+        }
+        -- if vim.g.unified_debug then -- Removed debug log
+        --   print(string.format("Diff: Attempting DELETE virtual line at attach_line %d. Opts: %s", attach_line, vim.inspect(virt_line_opts)))
+        -- end
+        local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, attach_line, 0, virt_line_opts)
+        -- if vim.g.unified_debug then -- Removed debug log
+        --   print("Diff: DELETE virtual line result mark_id: " .. mark_id)
+        -- end
         if mark_id > 0 then
           mark_count = mark_count + 1
         end
@@ -312,6 +345,9 @@ function M.display_inline_diff(buffer, hunks)
     end
   end
 
+  -- if vim.g.unified_debug then -- Removed debug log
+  --   print("Diff: display_inline_diff finished. Final mark_count: " .. mark_count)
+  -- end
   return mark_count > 0
 end
 

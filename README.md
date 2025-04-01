@@ -1,6 +1,7 @@
 # unified.nvim
 
 A Neovim plugin for displaying inline unified diffs directly in your buffer.
+**Important:** The plugin always shows the difference between the **current state** of the buffer and a specified **base commit** (or HEAD by default).
 
 ## Features
 

@@ -4,15 +4,7 @@ local M = {}
 -- Dependencies
 local state = require("unified.state")
 
--- Forward declaration
-local show_diff_func
-local show_file_tree_func
-
--- Set functions that will be called (to break circular dependency)
-function M.set_functions(show_diff, show_file_tree)
-  show_diff_func = show_diff
-  show_file_tree_func = show_file_tree
-end
+-- No longer need forward declarations or set_functions
 
 -- Handle the "Unified commit <ref>" command
 function M.handle_commit_command(commit_ref)
@@ -67,16 +59,20 @@ function M.handle_commit_command(commit_ref)
 
   -- Check if buffer has a name before showing diff
   local result = false
-  if file_path ~= "" and show_diff_func then
-    -- Show diff for the commit
-    result = show_diff_func(commit_ref)
-  end
+  if file_path ~= "" then
+    local unified = require("unified") -- Require directly here
+    if unified.show_diff then
+      -- Show diff for the commit
+      result = unified.show_diff(commit_ref)
+    end -- Added missing end
 
-  -- Always show file tree with the explicit commit reference
-  -- This ensures the file tree always reflects the correct files for the specific commit
-  if show_file_tree_func then
-    show_file_tree_func(commit_ref)
-  end
+    -- Always show file tree with the explicit commit reference
+    -- This ensures the file tree always reflects the correct files for the specific commit
+    local unified = require("unified") -- Require directly here
+    if unified.show_file_tree then
+      unified.show_file_tree(commit_ref)
+    end
+  end -- Added missing end for 'if file_path ~= ""'
 
   -- Update global state - activate even if we can't show diff in current buffer
   state.is_active = true
