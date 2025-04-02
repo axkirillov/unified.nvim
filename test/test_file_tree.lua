@@ -195,11 +195,13 @@ function M.test_file_tree_help_dialog()
   local tree_buf = file_tree.create_file_tree_buffer(file_path, false)
 
   -- Store tree buffer as the current buffer in the tree state
-  file_tree.tree_state.buffer = tree_buf
+  -- State is managed internally now, no need to set it here
 
+  -- Switch to the tree buffer before calling help
+  vim.api.nvim_set_current_buf(tree_buf)
   -- Try to show help dialog
   local success, err = pcall(function()
-    file_tree.show_help()
+    file_tree.actions.show_help() -- Access show_help via the actions table
   end)
 
   -- Check that no error occurred when showing help

@@ -404,23 +404,25 @@ function M.test_unified_commit_tree_not_empty_when_switching()
   vim.cmd("edit " .. test_path)
 
   -- Track the file tree creation and verify it's never empty
-  local file_tree = require("unified.file_tree")
-  local FileTree = file_tree.tree_state.current_tree and getmetatable(file_tree.tree_state.current_tree)
-  local orig_update_git_status = FileTree and FileTree.update_git_status
+  -- Require the necessary internal modules after refactoring
+  local tree_state_module = require("unified.file_tree.state")
+  local FileTree = require("unified.file_tree.tree") -- Get the class directly
+  local orig_update_git_status = FileTree.update_git_status -- Access method from the class
 
   -- We'll use a flag to track if any empty trees were found
   local found_empty_tree = false
 
   -- Only patch if we can access the method
-  if FileTree and orig_update_git_status then
+  if orig_update_git_status then -- Check if the method exists on the class
     FileTree.update_git_status = function(self, root_dir, diff_only, commit_ref)
       local result = orig_update_git_status(self, root_dir, diff_only, commit_ref)
 
       -- After update, check if the tree is empty
       if commit_ref and commit_ref ~= "HEAD" then
         local has_children = false
-        if self.root and self.root.children then
-          for _, _ in pairs(self.root.children) do
+        if self.root then
+          local children = self.root:get_children() -- Use the getter method
+          for _, _ in ipairs(children) do -- Use ipairs for ordered list
             has_children = true
             break
           end
@@ -453,7 +455,7 @@ function M.test_unified_commit_tree_not_empty_when_switching()
 
   -- Clean up - restore original function if we patched it
   if FileTree and orig_update_git_status then
-    FileTree.update_git_status = orig_update_git_status
+    FileTree.update_git_status = orig_update_git_status -- Restore original method on the class
   end
 
   -- Restore state
