@@ -147,7 +147,8 @@ function M.show_file_tree(path_or_commit, show_all_files)
 
     -- Replace the buffer in the existing window
     vim.api.nvim_win_set_buf(tree_state.window, new_buf)
-    -- The create function updates tree_state.buffer
+    -- The create function updates tree_state.buffer, but we also need to update global state
+    global_state.file_tree_buf = new_buf -- Update global state reference
 
     -- Focus the tree window
     vim.api.nvim_set_current_win(tree_state.window)
