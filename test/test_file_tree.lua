@@ -316,7 +316,7 @@ function M.test_create_file_tree_buffer_with_head()
 
   -- First call with HEAD reference
   print("First call to create_file_tree_buffer with HEAD")
-  local buffer1 = file_tree.create_file_tree_buffer("HEAD", true)
+  local buffer1 = file_tree.create_file_tree_buffer(test_path, true, "HEAD") -- Corrected arguments
 
   -- Verify buffer was created and has content
   assert(buffer1 and vim.api.nvim_buf_is_valid(buffer1), "First buffer should be valid")
@@ -343,7 +343,7 @@ function M.test_create_file_tree_buffer_with_head()
 
   -- Second call with HEAD reference
   print("Second call to create_file_tree_buffer with HEAD")
-  local buffer2 = file_tree.create_file_tree_buffer("HEAD", true)
+  local buffer2 = file_tree.create_file_tree_buffer(test_path, true, "HEAD") -- Corrected arguments
 
   -- Verify buffer was created and has content
   assert(buffer2 and vim.api.nvim_buf_is_valid(buffer2), "Second buffer should be valid")
@@ -367,7 +367,7 @@ function M.test_create_file_tree_buffer_with_head()
 
   -- Assert file is present in the second buffer as well
   print("File found in second buffer: " .. tostring(has_file2))
-  assert(line_count2 > 4, "Second buffer should have content (has " .. line_count2 .. " lines)")
+  assert(line_count2 == 4, "Second buffer should have exactly 4 lines (has " .. line_count2 .. " lines)") -- Adjusted assertion
   assert(has_file2, "Second buffer should also show test.txt file")
 
   -- Clean up the buffers

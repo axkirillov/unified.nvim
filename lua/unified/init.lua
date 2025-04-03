@@ -109,9 +109,18 @@ function M.deactivate()
     state.auto_refresh_augroup = nil
   end
 
-  -- Close file tree window if it exists
+  -- Close file tree window if it exists and is not the last window
   if state.file_tree_win and vim.api.nvim_win_is_valid(state.file_tree_win) then
-    vim.api.nvim_win_close(state.file_tree_win, true)
+    -- Check if it's the last window
+    local windows = vim.api.nvim_list_wins()
+    if #windows > 1 then
+      vim.api.nvim_win_close(state.file_tree_win, true)
+    else
+      -- If it's the last window, maybe just clear the buffer instead?
+      -- Or rely on Neovim closing gracefully later. For now, just don't close.
+      print("DEBUG: Skipping close of last window (file tree)")
+    end
+    -- Reset state even if window wasn't closed
     state.file_tree_win = nil
     state.file_tree_buf = nil
   end

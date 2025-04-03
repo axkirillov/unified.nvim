@@ -68,13 +68,11 @@ function M.render_tree(tree, buffer)
 
     if changed_count > 0 then
       table.insert(lines, "  Git Repository - Changes (" .. changed_count .. ")")
-    else
-      if tree_state.diff_only then
-        table.insert(lines, "  No changes to display")
-      else
-        table.insert(lines, "  Git Repository - No Changes")
-      end
+    elseif not tree_state.diff_only then
+      -- Only add "No Changes" if not in diff_only mode and count is 0
+      table.insert(lines, "  Git Repository - No Changes")
     end
+    -- "No changes to display" for diff_only mode will be handled later if no nodes are added
   else
     if #tree.root:get_children() > 0 then
       table.insert(lines, "  Directory View")
@@ -96,7 +94,10 @@ function M.render_tree(tree, buffer)
       if node.is_dir then
         node:sort() -- Ensure root's children are sorted
         local children = node:get_children()
-        for _, child in ipairs(children) do
+        print("DEBUG: Raw children table for root:", vim.inspect(children)) -- Inspect the table
+        print(string.format("DEBUG: Rendering root children. Count: %d", #children))
+        for i, child in ipairs(children) do
+          print(string.format("DEBUG: Rendering root child %d: %s (is_dir=%s)", i, child.name, tostring(child.is_dir)))
           add_node(child, 0)
         end
       end
@@ -178,7 +179,14 @@ function M.render_tree(tree, buffer)
   end
 
   -- Add all nodes starting from root's children
+  local initial_line_count = #lines
   add_node(tree.root, 0)
+  local final_line_count = #lines
+
+  -- Add "No changes to display" only if in diff_only mode and no file/dir nodes were added
+  if tree_state.diff_only and final_line_count == initial_line_count then
+     table.insert(lines, "  No changes to display")
+  end
 
   -- Set buffer contents
   vim.api.nvim_buf_set_lines(buffer, 0, -1, false, lines)
@@ -197,17 +205,20 @@ function M.render_tree(tree, buffer)
   vim.api.nvim_buf_add_highlight(buffer, ns_id, "Title", 0, 0, -1)
   vim.api.nvim_buf_add_highlight(buffer, ns_id, "Comment", 1, 0, -1)
 
-  -- Add highlighting for repository status line
-  local status_line = 3
-  if #lines > status_line then -- Ensure the line exists
+  -- Add highlighting for repository status line (adjust index if "No changes" was added)
+  local status_line_idx = 3 -- 0-based index for buffer lines
+  if #lines > status_line_idx + 1 then -- Check if the line exists (using 1-based #lines)
+    local line_content = lines[status_line_idx + 1] -- Get content using 1-based index
     if has_git_dir then
-      if lines[status_line + 1]:match("Changes") then -- lines are 1-based, buffer lines 0-based
-        vim.api.nvim_buf_add_highlight(buffer, ns_id, "WarningMsg", status_line, 0, -1)
-      else
-        vim.api.nvim_buf_add_highlight(buffer, ns_id, "Comment", status_line, 0, -1)
-      end
+       if line_content:match("Changes") then
+          vim.api.nvim_buf_add_highlight(buffer, ns_id, "WarningMsg", status_line_idx, 0, -1)
+       elseif line_content:match("No Changes") or line_content:match("No changes to display") then
+          vim.api.nvim_buf_add_highlight(buffer, ns_id, "Comment", status_line_idx, 0, -1)
+       end
+       -- If neither matches, it might be the first file/dir, no specific highlight needed for the status line itself
     else
-      vim.api.nvim_buf_add_highlight(buffer, ns_id, "Comment", status_line, 0, -1)
+       -- Non-git directory view line
+       vim.api.nvim_buf_add_highlight(buffer, ns_id, "Comment", status_line_idx, 0, -1)
     end
   end
 

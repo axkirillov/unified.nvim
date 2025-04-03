@@ -212,9 +212,7 @@ function FileTree:update_git_status(root_dir, diff_only, commit_ref)
     if has_changes then
       for path, status in pairs(changed_files) do
         self:add_file(path, status)
-        print(string.format("DEBUG: Added file %s with status %s", path, status))
       end
-      print(string.format("DEBUG: Root node children count after add_file loop: %d", #self.root:get_children()))
     else
       -- If still no changes, the tree remains empty (except root)
       return -- Explicitly return if tree should be empty
@@ -229,7 +227,7 @@ function FileTree:update_git_status(root_dir, diff_only, commit_ref)
   -- Propagate status up to parent directories
   self:update_parent_statuses(self.root)
   -- Ensure the tree is sorted after updates
-  self.root:sort()
+  -- self.root:sort() -- Temporarily disable sorting to test rendering
 end
 
 -- Apply stored statuses to the tree nodes
