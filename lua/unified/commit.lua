@@ -68,11 +68,14 @@ function M.handle_commit_command(commit_ref)
 
     -- Always show file tree with the explicit commit reference
     -- This ensures the file tree always reflects the correct files for the specific commit
-    local unified = require("unified") -- Require directly here
-    if unified.show_file_tree then
-      unified.show_file_tree(commit_ref)
-    end
-  end -- Added missing end for 'if file_path ~= ""'
+    -- Moved the show_file_tree call outside the if block
+  end
+
+  -- Always show file tree with the explicit commit reference, regardless of buffer name
+  local unified = require("unified") -- Require directly here
+  if unified.show_file_tree then
+    unified.show_file_tree(commit_ref)
+  end
 
   -- Update global state - activate even if we can't show diff in current buffer
   state.is_active = true
