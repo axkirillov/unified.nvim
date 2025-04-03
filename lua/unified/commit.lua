@@ -77,6 +77,11 @@ function M.handle_commit_command(commit_ref)
     unified.show_file_tree(commit_ref)
   end
 
+  -- Focus the file tree window if it exists and is valid
+  if state.file_tree_win and vim.api.nvim_win_is_valid(state.file_tree_win) then
+    vim.api.nvim_set_current_win(state.file_tree_win)
+  end
+
   -- Update global state - activate even if we can't show diff in current buffer
   state.is_active = true
 

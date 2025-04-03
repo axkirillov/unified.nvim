@@ -129,7 +129,7 @@ function M.render_tree(tree, buffer)
     local tree_char = icon .. " " -- Icon plus space
 
     -- Format line with proper spacing
-    table.insert(lines, indent .. tree_char .. node.name)
+    table.insert(lines, "  " .. indent .. tree_char .. node.name)
     current_line = current_line + 1
 
     -- Map line to node
