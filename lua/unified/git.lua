@@ -116,10 +116,11 @@ function M.show_git_diff_against_commit(commit)
   -- Get content from git at specified commit
   local git_content = M.get_git_file_content(file_path, commit)
 
-  -- If file isn't in git at that commit, show error
+  -- If file isn't in git at that commit, treat it as empty for diffing new files
   if not git_content then
-    vim.api.nvim_echo({ { "File not found in git at commit " .. commit, "ErrorMsg" } }, false, {})
-    return false
+    -- vim.api.nvim_echo({ { "File not found in git at commit " .. commit .. ". Diffing against empty.", "Comment" } }, false, {}) -- Optional: Inform user
+    git_content = "" -- Treat as empty content
+    -- Do not return false here, proceed to diff against empty content
   end
 
   -- Check if there are any changes at all
@@ -162,6 +163,7 @@ function M.show_git_diff_against_commit(commit)
   vim.fn.delete(temp_git)
 
   if diff_output ~= "" then
+    -- print("DEBUG [unified.git]: Raw diff_output for buffer " .. buffer .. ":\n" .. diff_output) -- <<< REMOVED LOG
     -- Remove the git diff header lines that might confuse our parser
     diff_output = diff_output:gsub("diff %-%-%S+ %S+\n", "")
     diff_output = diff_output:gsub("index %S+%.%.%S+ %S+\n", "")
@@ -169,6 +171,7 @@ function M.show_git_diff_against_commit(commit)
     diff_output = diff_output:gsub("%+%+%+" .. " %S+\n", "") -- Split the string to avoid escaping issues
 
     local hunks = diff_module.parse_diff(diff_output)
+    -- print("DEBUG [unified.git]: Parsed hunks for buffer " .. buffer .. ": " .. vim.inspect(hunks)) -- <<< REMOVED LOG
     local result = diff_module.display_inline_diff(buffer, hunks) -- Use diff_module
     return result
   else
