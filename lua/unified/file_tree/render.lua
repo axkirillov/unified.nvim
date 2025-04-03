@@ -166,7 +166,7 @@ function M.render_tree(tree, buffer)
     })
 
     -- Add children if directory is expanded
-    if node.is_dir and is_expanded then
+    if node.is_dir then
       node:sort() -- Ensure children are sorted before rendering
       local children = node:get_children()
       for _, child in ipairs(children) do

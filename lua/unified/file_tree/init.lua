@@ -98,36 +98,22 @@ function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
 
   -- Set up keymaps for the buffer
   -- Pass options directly to avoid potential issues with shared table
-  vim.api.nvim_buf_set_keymap(buf, "n", "j", "j", { noremap = true, silent = true })
-  vim.api.nvim_buf_set_keymap(buf, "n", "k", "k", { noremap = true, silent = true })
   vim.api.nvim_buf_set_keymap(
     buf,
     "n",
-    "l",
-    "<Cmd>lua require('unified.file_tree.actions').expand_node()<CR>",
+    "j",
+    "<Cmd>lua require('unified.file_tree.actions').move_cursor_and_open_file(1)<CR>",
     { noremap = true, silent = true }
   )
   vim.api.nvim_buf_set_keymap(
     buf,
     "n",
-    "h",
-    "<Cmd>lua require('unified.file_tree.actions').collapse_node()<CR>",
+    "k",
+    "<Cmd>lua require('unified.file_tree.actions').move_cursor_and_open_file(-1)<CR>",
     { noremap = true, silent = true }
   )
-  vim.api.nvim_buf_set_keymap(
-    buf,
-    "n",
-    "<CR>",
-    "<Cmd>lua require('unified.file_tree.actions').toggle_node()<CR>",
-    { noremap = true, silent = true }
-  )
-  vim.api.nvim_buf_set_keymap(
-    buf,
-    "n",
-    "<C-j>",
-    "<Cmd>lua require('unified.file_tree.actions').toggle_node()<CR>",
-    { noremap = true, silent = true }
-  )
+  -- Remove h/l mappings as expand/collapse is automatic/removed
+  -- Remove <CR> and <C-j> mappings as j/k now handle opening files
   vim.api.nvim_buf_set_keymap(
     buf,
     "n",

@@ -12,7 +12,38 @@ local function is_file_tree_buffer()
   return vim.api.nvim_get_current_buf() == tree_state.buffer
 end
 
--- Toggle node expansion/collapse or open file
+-- Helper function to open a file node in the main window and show diff
+local function open_file_node(node)
+  if not node or node.is_dir then
+    return -- Only open files
+  end
+
+  local win = global_state.get_main_window() -- Use global state module
+  if win and vim.api.nvim_win_is_valid(win) then
+    -- Execute edit command in the target window without switching focus
+    vim.fn.win_execute(win, "edit " .. vim.fn.fnameescape(node.path))
+
+    -- Show diff for the newly opened file
+    -- Use lazy loading via package.loaded to avoid circular dependency
+    local unified_module = package.loaded["unified"]
+    if not unified_module then
+      return -- Should ideally be loaded by now
+    end
+
+    if not global_state.is_active then
+      if unified_module.activate then
+        unified_module.activate() -- Activate the diff view
+      end
+    else
+      -- If already active, refresh the diff display for the new file
+      if unified_module.show_diff then
+        unified_module.show_diff() -- Will use the current commit_base from global_state
+      end
+    end
+  end
+end
+
+-- Open file under cursor (previously toggle_node)
 function M.toggle_node()
   if not is_file_tree_buffer() then
     return
@@ -25,44 +56,8 @@ function M.toggle_node()
     return
   end
 
-  if node.is_dir then
-    -- Toggle directory expansion
-    if tree_state.expanded_dirs[node.path] then
-      tree_state.expanded_dirs[node.path] = nil
-    else
-      tree_state.expanded_dirs[node.path] = true
-    end
-
-    -- Re-render the tree
-    if tree_state.current_tree then
-      render.render_tree(tree_state.current_tree, tree_state.buffer)
-    end
-  else
-    -- Open file in the main window and show diff
-    local win = global_state.get_main_window() -- Use global state module
-    if win and vim.api.nvim_win_is_valid(win) then
-      vim.api.nvim_set_current_win(win)
-      vim.cmd("edit " .. vim.fn.fnameescape(node.path))
-
-      -- Show diff for the newly opened file
-      -- Use lazy loading via package.loaded to avoid circular dependency
-      local unified_module = package.loaded["unified"]
-      if not unified_module then
-        return -- Should ideally be loaded by now
-      end
-
-      if not global_state.is_active then
-        if unified_module.activate then
-          unified_module.activate() -- Activate the diff view
-        end
-      else
-        -- If already active, refresh the diff display for the new file
-        if unified_module.show_diff then
-          unified_module.show_diff() -- Will use the current commit_base from global_state
-        end
-      end
-    end
-  end
+  -- Call the helper function to open the file
+  open_file_node(node)
 end
 
 -- Expand node
@@ -74,14 +69,7 @@ function M.expand_node()
   local line = vim.api.nvim_win_get_cursor(0)[1] - 1
   local node = tree_state.line_to_node[line]
 
-  if node and node.is_dir and not tree_state.expanded_dirs[node.path] then
-    tree_state.expanded_dirs[node.path] = true
-
-    -- Re-render the tree
-    if tree_state.current_tree then
-      render.render_tree(tree_state.current_tree, tree_state.buffer)
-    end
-  end
+  -- Expansion is now automatic via render, this action is no longer needed.
 end
 
 -- Collapse node or go to parent
@@ -97,15 +85,8 @@ function M.collapse_node()
     return
   end
 
-  if node.is_dir and tree_state.expanded_dirs[node.path] then
-    -- Collapse this directory
-    tree_state.expanded_dirs[node.path] = nil
-
-    -- Re-render the tree
-    if tree_state.current_tree then
-      render.render_tree(tree_state.current_tree, tree_state.buffer)
-    end
-  elseif node.parent and node.parent ~= tree_state.current_tree.root then
+  -- Collapse is no longer needed. Only handle going to parent.
+  if node.parent and node.parent ~= tree_state.current_tree.root then
     -- If not an expanded directory, or it's a file, try to go to parent
     M.go_to_parent()
   end
@@ -259,6 +240,30 @@ function M.close_tree()
   global_state.is_active = false
   global_state.file_tree_win = nil
   global_state.file_tree_buf = nil
-end
+end -- End of M.close_tree
+
+-- Move cursor to the next/previous file node and open it
+function M.move_cursor_and_open_file(direction)
+  if not is_file_tree_buffer() then
+    return
+  end
+
+  local current_line = vim.api.nvim_win_get_cursor(0)[1] - 1 -- 0-based
+  local total_lines = vim.api.nvim_buf_line_count(tree_state.buffer)
+  local next_line = current_line
+
+  for i = 1, total_lines do -- Iterate at most total_lines times
+    next_line = (next_line + direction + total_lines) % total_lines -- Wrap around
+
+    local node = tree_state.line_to_node[next_line]
+    if node and not node.is_dir then
+      -- Found the next file node
+      vim.api.nvim_win_set_cursor(0, { next_line + 1, 0 }) -- Set cursor (1-based)
+      open_file_node(node) -- Open the file
+      return -- Done
+    end
+  end
+  -- If no file node found after full loop (unlikely in a populated tree), do nothing
+end -- End of M.move_cursor_and_open_file
 
 return M
