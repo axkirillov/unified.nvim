@@ -261,5 +261,4 @@ function M.close_tree()
   global_state.file_tree_buf = nil
 end
 
-
 return M

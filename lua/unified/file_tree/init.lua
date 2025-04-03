@@ -46,7 +46,9 @@ function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
           break
         end
         local parent = vim.fn.fnamemodify(check_dir, ":h")
-        if parent == check_dir then break end
+        if parent == check_dir then
+          break
+        end
         check_dir = parent
       end
     end
@@ -81,7 +83,7 @@ function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
   if commit_ref then
     buffer_name = buffer_name .. " (" .. commit_ref .. ")"
   elseif diff_only then
-     buffer_name = buffer_name .. " (Diff)"
+    buffer_name = buffer_name .. " (Diff)"
   end
   -- Try to set the name, ignoring errors
   pcall(vim.api.nvim_buf_set_name, buf, buffer_name)
@@ -98,14 +100,62 @@ function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
   -- Pass options directly to avoid potential issues with shared table
   vim.api.nvim_buf_set_keymap(buf, "n", "j", "j", { noremap = true, silent = true })
   vim.api.nvim_buf_set_keymap(buf, "n", "k", "k", { noremap = true, silent = true })
-  vim.api.nvim_buf_set_keymap(buf, "n", "l", "<Cmd>lua require('unified.file_tree.actions').expand_node()<CR>", { noremap = true, silent = true })
-  vim.api.nvim_buf_set_keymap(buf, "n", "h", "<Cmd>lua require('unified.file_tree.actions').collapse_node()<CR>", { noremap = true, silent = true })
-  vim.api.nvim_buf_set_keymap(buf, "n", "<CR>", "<Cmd>lua require('unified.file_tree.actions').toggle_node()<CR>", { noremap = true, silent = true })
-  vim.api.nvim_buf_set_keymap(buf, "n", "<C-j>", "<Cmd>lua require('unified.file_tree.actions').toggle_node()<CR>", { noremap = true, silent = true })
-  vim.api.nvim_buf_set_keymap(buf, "n", "-", "<Cmd>lua require('unified.file_tree.actions').go_to_parent()<CR>", { noremap = true, silent = true })
-  vim.api.nvim_buf_set_keymap(buf, "n", "R", "<Cmd>lua require('unified.file_tree.actions').refresh()<CR>", { noremap = true, silent = true })
-  vim.api.nvim_buf_set_keymap(buf, "n", "q", "<Cmd>lua require('unified.file_tree.actions').close_tree()<CR>", { noremap = true, silent = true })
-  vim.api.nvim_buf_set_keymap(buf, "n", "?", "<Cmd>lua require('unified.file_tree.actions').show_help()<CR>", { noremap = true, silent = true })
+  vim.api.nvim_buf_set_keymap(
+    buf,
+    "n",
+    "l",
+    "<Cmd>lua require('unified.file_tree.actions').expand_node()<CR>",
+    { noremap = true, silent = true }
+  )
+  vim.api.nvim_buf_set_keymap(
+    buf,
+    "n",
+    "h",
+    "<Cmd>lua require('unified.file_tree.actions').collapse_node()<CR>",
+    { noremap = true, silent = true }
+  )
+  vim.api.nvim_buf_set_keymap(
+    buf,
+    "n",
+    "<CR>",
+    "<Cmd>lua require('unified.file_tree.actions').toggle_node()<CR>",
+    { noremap = true, silent = true }
+  )
+  vim.api.nvim_buf_set_keymap(
+    buf,
+    "n",
+    "<C-j>",
+    "<Cmd>lua require('unified.file_tree.actions').toggle_node()<CR>",
+    { noremap = true, silent = true }
+  )
+  vim.api.nvim_buf_set_keymap(
+    buf,
+    "n",
+    "-",
+    "<Cmd>lua require('unified.file_tree.actions').go_to_parent()<CR>",
+    { noremap = true, silent = true }
+  )
+  vim.api.nvim_buf_set_keymap(
+    buf,
+    "n",
+    "R",
+    "<Cmd>lua require('unified.file_tree.actions').refresh()<CR>",
+    { noremap = true, silent = true }
+  )
+  vim.api.nvim_buf_set_keymap(
+    buf,
+    "n",
+    "q",
+    "<Cmd>lua require('unified.file_tree.actions').close_tree()<CR>",
+    { noremap = true, silent = true }
+  )
+  vim.api.nvim_buf_set_keymap(
+    buf,
+    "n",
+    "?",
+    "<Cmd>lua require('unified.file_tree.actions').show_help()<CR>",
+    { noremap = true, silent = true }
+  )
 
   return buf
 end
@@ -116,18 +166,26 @@ function M.show_file_tree(path_or_commit, show_all_files)
   local file_path = path_or_commit
 
   -- Determine if the input is likely a commit reference
-  if path_or_commit and (path_or_commit == "HEAD" or path_or_commit:match("^HEAD~%d*$") or #path_or_commit == 40 or #path_or_commit == 7) then
-     -- Basic check for HEAD, HEAD~N, or commit hash length
-     -- A more robust check would involve `git rev-parse --verify` but might be slow here
-     commit_ref = path_or_commit
-     -- If it's a commit ref, we need a file path to determine the repo root. Use CWD.
-     file_path = vim.fn.getcwd()
+  if
+    path_or_commit
+    and (
+      path_or_commit == "HEAD"
+      or path_or_commit:match("^HEAD~%d*$")
+      or #path_or_commit == 40
+      or #path_or_commit == 7
+    )
+  then
+    -- Basic check for HEAD, HEAD~N, or commit hash length
+    -- A more robust check would involve `git rev-parse --verify` but might be slow here
+    commit_ref = path_or_commit
+    -- If it's a commit ref, we need a file path to determine the repo root. Use CWD.
+    file_path = vim.fn.getcwd()
   elseif not path_or_commit then
-     -- Default to current buffer's file or CWD if no path given
-     file_path = vim.api.nvim_buf_get_name(vim.api.nvim_get_current_buf())
-     if file_path == "" then
-        file_path = vim.fn.getcwd()
-     end
+    -- Default to current buffer's file or CWD if no path given
+    file_path = vim.api.nvim_buf_get_name(vim.api.nvim_get_current_buf())
+    if file_path == "" then
+      file_path = vim.fn.getcwd()
+    end
   end
 
   -- Check if tree window already exists and is valid
@@ -162,7 +220,9 @@ function M.show_file_tree(path_or_commit, show_all_files)
 
   -- Create file tree buffer (passing commit_ref if determined)
   local tree_buf = M.create_file_tree_buffer(file_path, diff_only_create, commit_ref)
-  if not tree_buf then return false end -- Exit if buffer creation failed
+  if not tree_buf then
+    return false
+  end -- Exit if buffer creation failed
 
   -- Create new window for tree
   local current_win = vim.api.nvim_get_current_win()

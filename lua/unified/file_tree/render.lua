@@ -94,10 +94,7 @@ function M.render_tree(tree, buffer)
       if node.is_dir then
         node:sort() -- Ensure root's children are sorted
         local children = node:get_children()
-        print("DEBUG: Raw children table for root:", vim.inspect(children)) -- Inspect the table
-        print(string.format("DEBUG: Rendering root children. Count: %d", #children))
         for i, child in ipairs(children) do
-          print(string.format("DEBUG: Rendering root child %d: %s (is_dir=%s)", i, child.name, tostring(child.is_dir)))
           add_node(child, 0)
         end
       end
@@ -185,7 +182,7 @@ function M.render_tree(tree, buffer)
 
   -- Add "No changes to display" only if in diff_only mode and no file/dir nodes were added
   if tree_state.diff_only and final_line_count == initial_line_count then
-     table.insert(lines, "  No changes to display")
+    table.insert(lines, "  No changes to display")
   end
 
   -- Set buffer contents
@@ -210,15 +207,15 @@ function M.render_tree(tree, buffer)
   if #lines > status_line_idx + 1 then -- Check if the line exists (using 1-based #lines)
     local line_content = lines[status_line_idx + 1] -- Get content using 1-based index
     if has_git_dir then
-       if line_content:match("Changes") then
-          vim.api.nvim_buf_add_highlight(buffer, ns_id, "WarningMsg", status_line_idx, 0, -1)
-       elseif line_content:match("No Changes") or line_content:match("No changes to display") then
-          vim.api.nvim_buf_add_highlight(buffer, ns_id, "Comment", status_line_idx, 0, -1)
-       end
-       -- If neither matches, it might be the first file/dir, no specific highlight needed for the status line itself
+      if line_content:match("Changes") then
+        vim.api.nvim_buf_add_highlight(buffer, ns_id, "WarningMsg", status_line_idx, 0, -1)
+      elseif line_content:match("No Changes") or line_content:match("No changes to display") then
+        vim.api.nvim_buf_add_highlight(buffer, ns_id, "Comment", status_line_idx, 0, -1)
+      end
+      -- If neither matches, it might be the first file/dir, no specific highlight needed for the status line itself
     else
-       -- Non-git directory view line
-       vim.api.nvim_buf_add_highlight(buffer, ns_id, "Comment", status_line_idx, 0, -1)
+      -- Non-git directory view line
+      vim.api.nvim_buf_add_highlight(buffer, ns_id, "Comment", status_line_idx, 0, -1)
     end
   end
 

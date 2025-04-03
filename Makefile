@@ -3,7 +3,7 @@ all: test
 .PHONY: test
 test:
 	@echo "Running tests..."
-	@./test/run_tests.sh
+	@./test/run_tests.sh $(TEST_ARGS)
 
 .PHONY: lint
 lint:

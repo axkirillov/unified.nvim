@@ -191,7 +191,6 @@ function FileTree:update_git_status(root_dir, diff_only, commit_ref)
 
       pcall(vim.cmd, "cd " .. vim.fn.fnameescape(orig_dir)) -- Return to original directory
 
-      print(string.format("DEBUG: ls-tree for %s: error=%d, output=[%s]", commit_ref, ls_tree_error, vim.trim(all_files_result)))
       if ls_tree_error == 0 then -- Check the captured error code
         for file in all_files_result:gmatch("[^\r\n]+") do
           local path = root_dir .. "/" .. file
@@ -227,7 +226,7 @@ function FileTree:update_git_status(root_dir, diff_only, commit_ref)
   -- Propagate status up to parent directories
   self:update_parent_statuses(self.root)
   -- Ensure the tree is sorted after updates
-  -- self.root:sort() -- Temporarily disable sorting to test rendering
+  self.root:sort() -- Ensure the tree is sorted after updates
 end
 
 -- Apply stored statuses to the tree nodes
@@ -266,16 +265,15 @@ function FileTree:update_parent_statuses(node)
 
   -- Apply derived status only if it's different from space and node isn't root
   if derived_status ~= " " and node ~= self.root then
-     node.status = derived_status
+    node.status = derived_status
   -- If node is root, don't give it a status unless explicitly set elsewhere
   elseif node == self.root then
-     node.status = " "
+    node.status = " "
   end
 
   -- Return the node's own status (could be space, or M if child changed)
   -- Or return derived_status if you want to propagate the highest priority status up
   return node.status or " "
 end
-
 
 return FileTree
