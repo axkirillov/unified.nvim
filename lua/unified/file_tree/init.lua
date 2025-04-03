@@ -224,8 +224,8 @@ function M.show_file_tree(path_or_commit, show_all_files)
   vim.api.nvim_win_set_option(tree_win, "winfixwidth", true)
   vim.api.nvim_win_set_option(tree_win, "foldenable", false)
   vim.api.nvim_win_set_option(tree_win, "list", false)
+  vim.api.nvim_win_set_option(tree_win, "wrap", false) -- Disable line wrapping
   -- vim.api.nvim_win_set_option(tree_win, "fillchars", "vert:│") -- Optional: for visual vertical line
-
   -- Store window reference in tree state and global state
   tree_state.window = tree_win
   global_state.file_tree_win = tree_win

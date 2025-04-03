@@ -20,9 +20,31 @@ local function open_file_node(node)
 
   local win = global_state.get_main_window() -- Use global state module
   if win and vim.api.nvim_win_is_valid(win) then
-    -- Execute edit command in the target window without switching focus
-    vim.fn.win_execute(win, "edit " .. vim.fn.fnameescape(node.path))
+    -- Switch to the target window and use standard edit
+    local current_win = vim.api.nvim_get_current_win() -- Store current window
+    vim.api.nvim_set_current_win(win) -- Switch to the main/target window
+    vim.cmd("edit " .. vim.fn.fnameescape(node.path)) -- Open the file
+    -- Show diff for the newly opened file using the plugin's potential internal logic
+    -- Use lazy loading via package.loaded to avoid circular dependency
+    local unified_module = package.loaded["unified"]
+    if unified_module then
+      -- Check if the main unified view needs activation or just a refresh
+      if not global_state.is_active then
+        if unified_module.activate then
+          unified_module.activate() -- Activate the diff view
+        end
+      else
+        -- If already active, refresh the diff display for the new file
+        if unified_module.show_diff then
+          unified_module.show_diff() -- Will use the current commit_base from global_state
+        end
+      end
+    end
 
+    -- Switch focus back to the original window (file tree)
+    vim.api.nvim_set_current_win(current_win)
+    -- Keep the commented out line if it was there, or remove if not needed
+    -- vim.api.nvim_set_current_win(current_win)
     -- Show diff for the newly opened file
     -- Use lazy loading via package.loaded to avoid circular dependency
     local unified_module = package.loaded["unified"]
