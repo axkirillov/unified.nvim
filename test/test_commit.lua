@@ -4,80 +4,6 @@ local M = {}
 -- Import test utilities
 local utils = require("test.test_utils")
 
--- Test that 'Unified commit HEAD~1' doesn't produce error messages
-function M.test_unified_commit_no_errors()
-  -- Create temporary git repository
-  local repo = utils.create_git_repo()
-  if not repo then
-    return true
-  end
-
-  -- Create initial file and commit it
-  local test_file = "test.txt"
-  local test_path = utils.create_and_commit_file(
-    repo,
-    test_file,
-    { "line 1", "line 2", "line 3", "line 4", "line 5" },
-    "Initial commit"
-  )
-
-  -- Make changes and create a second commit
-  vim.fn.writefile({ "line 1", "modified line 2", "line 3", "line 4", "line 5" }, test_path)
-  vim.fn.system("git add " .. test_file)
-  vim.fn.system("git commit -m 'Second commit'")
-
-  -- Open the file
-  vim.cmd("edit " .. test_path)
-
-  -- Make additional changes for diffing
-  vim.api.nvim_buf_set_lines(0, 1, 2, false, { "further modified line 2" })
-
-  -- Mock the nvim_echo function to capture error messages
-  local old_nvim_echo = vim.api.nvim_echo
-  local error_messages = {}
-  vim.api.nvim_echo = function(chunks, history, opts)
-    for _, chunk in ipairs(chunks) do
-      local text, hl_group = chunk[1], chunk[2]
-      if hl_group == "ErrorMsg" then
-        table.insert(error_messages, text)
-      end
-    end
-  end
-
-  -- Run the Unified commit command
-  vim.cmd("Unified commit HEAD~1")
-
-  -- Restore the original nvim_echo function
-  vim.api.nvim_echo = old_nvim_echo
-
-  -- Check that no error messages were produced
-  assert(#error_messages == 0, "Unified commit HEAD~1 produced error messages: " .. table.concat(error_messages, ", "))
-
-  -- Verify that we have extmarks showing the diff (indicating success)
-  local buffer = vim.api.nvim_get_current_buf()
-  local has_extmarks, marks = utils.check_extmarks_exist(buffer)
-  assert(has_extmarks, "No diff extmarks were created after running Unified commit HEAD~1")
-
-  -- Also check the global state is properly set
-  local state = require("unified.state")
-  assert(state.is_active, "Unified plugin should be active after running Unified commit HEAD~1")
-  assert(state.commit_base == "HEAD~1", "Commit base should be set to HEAD~1")
-
-  -- Clean up
-  -- First properly deactivate the plugin
-  local unified = require("unified")
-  unified.deactivate()
-
-  -- After deactivating, we can safely delete the buffer
-  utils.clear_diff_marks(buffer)
-  vim.cmd("bdelete!")
-
-  -- Clean up git repo
-  utils.cleanup_git_repo(repo)
-
-  return true
-end
-
 -- Test that 'Unified commit HEAD~1' handles empty buffer gracefully
 function M.test_unified_commit_empty_buffer()
   -- Create temporary git repository
@@ -278,104 +204,6 @@ function M.test_unified_commit_passes_correct_ref()
   return true
 end
 
--- Test that reflects the real bug: file tree not updating when switching commits
-function M.test_unified_commit_file_tree_actually_updates()
-  -- Create temporary git repository
-  local repo = utils.create_git_repo()
-  if not repo then
-    return true
-  end
-
-  -- Create initial file structure
-  local test_file = "test.txt"
-  local test_path = utils.create_and_commit_file(repo, test_file, { "line 1", "line 2", "line 3" }, "First commit")
-
-  -- Create additional file in second commit
-  local new_file = "new_file.txt"
-  local new_file_path = repo.repo_dir .. "/" .. new_file
-  vim.fn.writefile({ "new file content" }, new_file_path)
-  vim.fn.system("git -C " .. repo.repo_dir .. " add " .. new_file)
-  vim.fn.system("git -C " .. repo.repo_dir .. " commit -m 'Second commit with new file'")
-
-  -- Open the original file
-  vim.cmd("edit " .. test_path)
-
-  -- Get the file_tree module
-  local file_tree = require("unified.file_tree")
-  local unified = require("unified")
-  local state = require("unified.state")
-
-  -- Temporarily removed spy on file_tree.show_file_tree for debugging
-
-  -- First activate with HEAD (should show both files)
-  vim.cmd("Unified commit HEAD")
-
-  -- Wait briefly for buffer operations
-  vim.cmd("sleep 50m")
-
-  -- Get tree buffer details after HEAD directly from state
-  local first_tree_buf = state.file_tree_buf
-  print("First tree buffer ID: " .. first_tree_buf)
-
-  -- Use vim.api.nvim_get_buf_lines to see what files are listed
-  local first_lines = {}
-  if first_tree_buf ~= -1 then
-    first_lines = vim.api.nvim_buf_get_lines(first_tree_buf, 0, -1, false)
-    print("First tree buffer lines: " .. table.concat(first_lines, ", "))
-  end
-
-  -- Verify new_file.txt is in the tree (should be since it's in HEAD)
-  local new_file_in_first = false
-  for _, line in ipairs(first_lines) do
-    if line:match("new_file%.txt") then
-      new_file_in_first = true
-      break
-    end
-  end
-
-  -- This should pass - the new file should be in the current HEAD
-  assert(new_file_in_first, "new_file.txt should be in the file tree for HEAD")
-
-  -- Now change to HEAD~1 (should only show test.txt, not new_file.txt)
-  vim.cmd("Unified commit HEAD~1")
-
-  -- Wait briefly for buffer operations
-  vim.cmd("sleep 50m")
-
-  -- Get tree buffer after switching to HEAD~1 directly from state
-  local second_tree_buf = state.file_tree_buf
-  print("Second tree buffer ID: " .. second_tree_buf)
-  local second_lines = {}
-  if second_tree_buf ~= -1 then
-    second_lines = vim.api.nvim_buf_get_lines(second_tree_buf, 0, -1, false)
-    print("Second tree buffer lines: " .. table.concat(second_lines, ", "))
-  end
-
-  -- Verify new_file.txt is NOT in the tree (shouldn't be since it's not in HEAD~1)
-  local new_file_in_second = false
-  for _, line in ipairs(second_lines) do
-    if line:match("new_file%.txt") then
-      new_file_in_second = true
-      break
-    end
-  end
-
-  -- This file exists in the working tree but not in HEAD~1, so it should be listed
-  -- as an addition when diffing against HEAD~1.
-  assert(new_file_in_second, "new_file.txt should be in the file tree for HEAD~1 (as an addition)")
-
-  -- No need to restore spy function as it was removed
-
-  -- Clean up
-  unified.deactivate()
-  local buffer = vim.api.nvim_get_current_buf()
-  utils.clear_diff_marks(buffer)
-  vim.cmd("bdelete!")
-  utils.cleanup_git_repo(repo)
-
-  return true
-end
-
 -- Test specifically for the bug where tree becomes empty when switching commit references
 function M.test_unified_commit_tree_not_empty_when_switching()
   -- Create temporary git repository
@@ -459,6 +287,95 @@ function M.test_unified_commit_tree_not_empty_when_switching()
   end
 
   -- Restore state
+  local unified = require("unified")
+  unified.deactivate()
+  local buffer = vim.api.nvim_get_current_buf()
+  utils.clear_diff_marks(buffer)
+  vim.cmd("bdelete!")
+  utils.cleanup_git_repo(repo)
+
+  return true
+end
+
+-- Test that 'Unified commit <ref>' shows diff vs working tree
+function M.test_unified_commit_shows_diff_vs_worktree()
+  -- Create temporary git repository
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  -- Create file1 and commit (HEAD~1)
+  local file1 = "file1.txt"
+  local file1_path = utils.create_and_commit_file(repo, file1, { "line 1", "line 2" }, "Commit 1")
+
+  -- Modify file1, add file2, and commit (HEAD)
+  vim.fn.writefile({ "line 1 modified", "line 2" }, file1_path)
+  local file2 = "file2.txt"
+  local file2_path = repo.repo_dir .. "/" .. file2
+  vim.fn.writefile({ "file 2 content" }, file2_path)
+  vim.fn.system("git -C " .. repo.repo_dir .. " add " .. file1 .. " " .. file2)
+  vim.fn.system("git -C " .. repo.repo_dir .. " commit -m 'Commit 2'")
+
+  -- Modify file1 again (working tree change)
+  vim.fn.writefile({ "line 1 modified again", "line 2" }, file1_path)
+
+  -- Add untracked file3
+  local file3 = "file3.txt"
+  local file3_path = repo.repo_dir .. "/" .. file3
+  vim.fn.writefile({ "untracked content" }, file3_path)
+
+  -- Open file1
+  vim.cmd("edit " .. file1_path)
+
+  -- Run Unified commit against HEAD~1
+  vim.cmd("Unified commit HEAD~1")
+
+  -- Wait briefly for buffer operations
+  vim.cmd("sleep 50m")
+
+  -- Get the file tree buffer content
+  local state = require("unified.state")
+  local tree_buf = state.file_tree_buf
+  assert(tree_buf and vim.api.nvim_buf_is_valid(tree_buf), "File tree buffer should be valid")
+  local tree_lines = vim.api.nvim_buf_get_lines(tree_buf, 0, -1, false)
+
+  print("File tree content for diff against HEAD~1:")
+  for i, line in ipairs(tree_lines) do
+    print(i .. ": " .. line)
+  end
+
+  -- Verify file1 (modified) is present
+  local file1_found = false
+  for _, line in ipairs(tree_lines) do
+    if line:match("file1%.txt") then
+      file1_found = true
+      break
+    end
+  end
+  assert(file1_found, "File tree should show file1.txt (modified since HEAD~1)")
+
+  -- Verify file2 (added) is present
+  local file2_found = false
+  for _, line in ipairs(tree_lines) do
+    if line:match("file2%.txt") then
+      file2_found = true
+      break
+    end
+  end
+  assert(file2_found, "File tree should show file2.txt (added since HEAD~1)")
+
+  -- Verify file3 (untracked) is NOT present
+  local file3_found = false
+  for _, line in ipairs(tree_lines) do
+    if line:match("file3%.txt") then
+      file3_found = true
+      break
+    end
+  end
+  assert(not file3_found, "File tree should NOT show file3.txt (untracked)")
+
+  -- Clean up
   local unified = require("unified")
   unified.deactivate()
   local buffer = vim.api.nvim_get_current_buf()

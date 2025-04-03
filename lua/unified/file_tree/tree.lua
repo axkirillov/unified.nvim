@@ -133,8 +133,6 @@ function FileTree:update_git_status(root_dir, diff_only, commit_ref)
     -- If no commit_ref or HEAD is provided, use standard git status
     cmd = string.format("cd %s && git status --porcelain", vim.fn.shellescape(root_dir))
   end
-
-  -- Run the chosen command
   local result = vim.fn.system(cmd)
   if vim.v.shell_error == 0 then
     -- Process the command output to get changed files and their statuses
@@ -176,7 +174,7 @@ function FileTree:update_git_status(root_dir, diff_only, commit_ref)
 
     -- When no changes are found but we have a commit reference, get all files in that commit
     -- OR always list files if a commit_ref is given (ensures `Unified commit <ref>` works)
-    if commit_ref and (not has_changes or true) then -- Simplified logic: always show if commit_ref exists
+    if commit_ref and not has_changes then -- Only run ls-tree if diff-tree returned nothing
       show_all_files_from_commit = true
     end
 
@@ -187,7 +185,6 @@ function FileTree:update_git_status(root_dir, diff_only, commit_ref)
 
       local all_files_cmd = string.format("git ls-tree -r --name-only %s", vim.fn.shellescape(commit_ref))
       local all_files_result = vim.fn.system(all_files_cmd)
-      local ls_tree_error = vim.v.shell_error -- Capture error code immediately after system()
 
       pcall(vim.cmd, "cd " .. vim.fn.fnameescape(orig_dir)) -- Return to original directory
 
