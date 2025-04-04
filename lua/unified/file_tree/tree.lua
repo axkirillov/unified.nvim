@@ -188,7 +188,7 @@ function FileTree:update_git_status(root_dir, diff_only, commit_ref)
 
       pcall(vim.cmd, "cd " .. vim.fn.fnameescape(orig_dir)) -- Return to original directory
 
-      if ls_tree_error == 0 then -- Check the captured error code
+      if vim.v.shell_error == 0 then -- Check the captured error code
         for file in all_files_result:gmatch("[^\r\n]+") do
           local path = root_dir .. "/" .. file
           -- Only add with 'C' status (for commit) if not already present with a real status
