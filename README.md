@@ -4,9 +4,14 @@ A Neovim plugin for displaying inline unified diffs directly in your buffer.
 
 ## Usage
 
-Calling `Unified <commit>` opens a file tree, showing files that changed since the specified commit.
-Opening any of the files in the tree will show a unified diff for that file.
+The primary command is `:Unified`. Its behavior depends on whether arguments are provided and the current state of the diff view:
 
+*   `:Unified <commit_ref>`: Shows a diff view comparing the current buffer(s) against the specified `<commit_ref>`. It also opens a file tree showing files changed in that commit range. Autocompletion for `<commit_ref>` is available.
+*   `:Unified` (no arguments):
+    *   If the unified view is **not** currently active, it shows the diff against `HEAD` (equivalent to `:Unified HEAD`).
+    *   If the unified view **is** currently active, it closes the view and removes highlights.
+
+Opening any file from the file tree will display its specific diff.
 ## Installation
 
 Using [lazy.nvim](https://github.com/folke/lazy.nvim):
@@ -35,8 +40,8 @@ require('unified').setup({
 
 ### Commands
 
-- `:Unified` - Show git differences between buffer and git HEAD
-- `:Unified <commit>` - Show git diff between index and commit
+- `:Unified <commit_ref>`: Shows the diff against the specified commit reference and opens the file tree for that range.
+- `:Unified`: Toggles the view. If closed, shows diff against `HEAD`. If open, closes the view.
 
 ### Lua API
 

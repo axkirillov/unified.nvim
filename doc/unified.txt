@@ -83,8 +83,9 @@ Configuration with default values: >
 
 1. Open a file in Neovim
 2. Make some changes to the file
-3. Run the command `:Unified` to display the diff and file tree explorer
-4. Use `:Unified toggle` to toggle the diff display and file tree on/off
+3. Run the command `:Unified` to display the diff against HEAD and the file tree.
+4. Run `:Unified` again to close the diff view and file tree.
+5. Run `:Unified <commit_ref>` to show the diff against a specific commit.
 
 File Tree:
 When you run `:Unified` to show a diff, a file tree explorer will also open
@@ -110,34 +111,23 @@ allowing you to easily navigate between files in your repository.
 ==============================================================================
 6. COMMANDS                                                *unified-commands*
 
-*:Unified*
-    Show differences between the current buffer and git HEAD, and opens a file tree
-    explorer in a split window. Works on named buffers in git repositories. Running
-    :Unified without arguments is the same as :Unified toggle.
+*:Unified* [{commit_ref}]                                       *:Unified*
+    The main command for the plugin. Behavior depends on arguments and state:
 
-*:Unified toggle*
-    Toggle diff display and file tree explorer on/off. Also works on empty buffers
-    to just show the file tree without diff.
+    *:Unified* (no arguments)
+        - If the unified view is **not** currently active: Shows the diff
+          between the current buffer and `HEAD`. Opens the file tree showing
+          files changed since `HEAD`. Equivalent to `:Unified HEAD`.
+        - If the unified view **is** currently active: Closes the view and
+          removes highlights.
 
-*:Unified tree*
-    Open only the file tree explorer without showing diffs. In git repositories,
-    this will show only files that have changes. If there are no changes, it will
-    display an empty tree with a message.
-
-*:Unified refresh*
-    Force refresh of the diff display (useful when auto-refresh is disabled).
-
-*:Unified debug*
-    Toggle debug mode, which prints additional diagnostic information about the file
-    tree and diff operations to help with troubleshooting. Use this command if you're
-    experiencing issues with the plugin.
-
-*:Unified commit {commit}*
-    Show differences between the current buffer and a specific git commit, and opens
-    a file tree explorer in a split window. {commit} can be a commit hash, branch name,
-    tag, or any git reference. The selected commit is stored per-window, ensuring that
-    buffer modifications will maintain diffing against the specified commit rather
-    than defaulting to HEAD.
+    *:Unified* {commit_ref}
+        Shows the diff between the current buffer and the specified git
+        reference ({commit_ref}). Opens the file tree showing files changed
+        since {commit_ref}. {commit_ref} can be a commit hash, branch name,
+        tag, etc. Autocompletion is provided for {commit_ref}.
+        The specified {commit_ref} is stored and used for subsequent refreshes
+        until a new reference is provided or the view is closed.
 
 ==============================================================================
 7. API                                                        *unified-api*
@@ -148,7 +138,7 @@ allowing you to easily navigate between files in your repository.
     stored as the window-local base reference for subsequent refreshes.
 
 *require('unified').show_git_diff()*
-    Function to show differences between buffer and git HEAD. 
+    Function to show differences between buffer and git HEAD.
     Note: This always uses HEAD and doesn't use the window-local base reference.
 
 *require('unified').show_git_diff_against_commit(commit)*
@@ -190,10 +180,11 @@ allowing you to easily navigate between files in your repository.
 8. MAPPINGS                                                *unified-mappings*
 
 The plugin does not define any mappings by default. You can create your own: >
-    vim.keymap.set('n', '<leader>ud', ':Unified toggle<CR>', 
-                  { silent = true, desc = "Toggle unified diff" })
-    vim.keymap.set('n', '<leader>us', ':Unified<CR>', 
-                  { silent = true, desc = "Show unified diff" })
+    vim.keymap.set('n', '<leader>ud', ':Unified<CR>',
+                  { silent = true, desc = "Unified: Toggle view / Show HEAD diff" })
+    -- Example for showing diff against a specific branch (e.g., main)
+    vim.keymap.set('n', '<leader>um', ':Unified main<CR>',
+                  { silent = true, desc = "Unified: Show diff against main" })
 <<
 
 ==============================================================================

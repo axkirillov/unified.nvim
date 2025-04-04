@@ -9,51 +9,28 @@ vim.g.loaded_unified_nvim = true
 vim.api.nvim_create_user_command("Unified", function(opts)
   local args = opts.args
 
+  local unified = require("unified")
+  local state = require("unified.state")
+
   if args == "" then
-    require("unified").toggle_diff()
-  elseif args == "toggle" then
-    require("unified").toggle_diff()
-  elseif args == "refresh" then
-    -- Force refresh if diff is displayed
-    local unified = require("unified")
-    local state = require("unified.state")
+    -- No arguments: Check state
     if state.is_active then
-      unified.show_diff()
-    else
-      vim.api.nvim_echo({ { "No diff currently displayed", "WarningMsg" } }, false, {})
-    end
-  elseif args == "tree" then
-    -- Just show the file tree with diff-only mode (only files with changes)
-    require("unified").show_file_tree(nil, false)
-  elseif args == "debug" then
-    -- Toggle debug mode
-    vim.g.unified_debug = not vim.g.unified_debug
-    vim.api.nvim_echo({ { "Debug mode " .. (vim.g.unified_debug and "enabled" or "disabled"), "Normal" } }, false, {})
-  elseif args:match("^commit%s+") then
-    -- Extract commit hash from the command
-    local commit = args:match("^commit%s+(.+)$")
-    -- Use the handle_commit_command function through the main module
-    -- This avoids circular dependency issues
-    require("unified").handle_commit_command(commit)
-  else
-    local unified = require("unified")
-    local state = require("unified.state")
-
-    -- If already active, deactivate first to reset state
-    if state.is_active then
+      -- If active, deactivate (close the view)
       unified.deactivate()
+    else
+      -- If inactive, show diff against HEAD
+      unified.handle_commit_command("HEAD")
     end
-
-    -- Activate the diff display
-    unified.activate()
+  else
+    -- Arguments provided: Treat as commit reference
+    unified.handle_commit_command(args)
   end
 end, {
   nargs = "*",
-  complete = function(_, line, _)
+  complete = function(ArgLead, CmdLine, _) -- Use ArgLead and CmdLine
     -- Basic command completion
-    if line:match("^Unified%s+$") then
-      return { "toggle", "refresh", "tree", "commit", "debug" }
-    elseif line:match("^Unified%s+commit%s+") then
+    -- Check if we are completing the argument for Unified
+    if CmdLine:match("^Unified%s+") then
       -- Try to get recent commits for completion
       local buffer = vim.api.nvim_get_current_buf()
       local file_path = vim.api.nvim_buf_get_name(buffer)
@@ -77,7 +54,14 @@ end, {
       end
 
       -- Provide some common references
-      return { "HEAD", "HEAD~1", "HEAD~2", "main", "master" }
+      local suggestions = { "HEAD", "HEAD~1", "HEAD~2", "main", "master" }
+      local filtered_suggestions = {}
+      for _, suggestion in ipairs(suggestions) do
+        if suggestion:sub(1, #ArgLead) == ArgLead then
+          table.insert(filtered_suggestions, suggestion)
+        end
+      end
+      return filtered_suggestions
     end
     return {}
   end,
