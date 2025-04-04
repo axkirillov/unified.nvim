@@ -77,10 +77,12 @@ function FileTree:add_file(file_path, status)
       existing_node.status = status or " "
     elseif not existing_node then
       -- Only add if it doesn't exist
-      local file = Node.new(filename, false)
-      file.path = path
-      file.status = status or " "
-      current:add_child(file)
+      -- Check if the path corresponds to a directory on the filesystem
+      local is_dir = vim.fn.isdirectory(path) == 1
+      local new_node = Node.new(filename, is_dir)
+      new_node.path = path
+      new_node.status = status or " "
+      current:add_child(new_node)
     else
       -- File node exists, update status
       existing_node.status = status or " "
@@ -131,7 +133,7 @@ function FileTree:update_git_status(root_dir, diff_only, commit_ref)
       string.format("cd %s && git diff --name-status %s", vim.fn.shellescape(root_dir), vim.fn.shellescape(commit_ref))
   else
     -- If no commit_ref or HEAD is provided, use standard git status
-    cmd = string.format("cd %s && git status --porcelain", vim.fn.shellescape(root_dir))
+    cmd = string.format("cd %s && git status --porcelain --untracked-files=all", vim.fn.shellescape(root_dir))
   end
   local result = vim.fn.system(cmd)
   if vim.v.shell_error == 0 then
