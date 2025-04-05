@@ -48,7 +48,7 @@ function M.test_unified_commit_empty_buffer()
 
   -- Run the Unified commit command
   local success, error_msg = pcall(function()
-    vim.cmd("Unified commit HEAD~1")
+    vim.cmd("Unified HEAD~1")
   end)
 
   -- Restore the original nvim_echo function
@@ -145,7 +145,7 @@ function M.test_unified_commit_update_base()
   end
 
   -- First activate with HEAD~1
-  vim.cmd("Unified commit HEAD~1")
+  vim.cmd("Unified HEAD~1")
 
   -- Store initial state
   local initial_active = state.is_active
@@ -156,7 +156,7 @@ function M.test_unified_commit_update_base()
   assert(state.commit_base == "HEAD~1", "Commit base should be set to HEAD~1")
 
   -- Now change to HEAD~4 (should update base, not disable)
-  vim.cmd("Unified commit HEAD~4")
+  vim.cmd("Unified HEAD~4")
 
   -- Restore mock functions
   vim.api.nvim_echo = old_nvim_echo
@@ -270,13 +270,13 @@ function M.test_unified_commit_tree_not_empty_when_switching()
   end
 
   -- Show file tree with HEAD
-  vim.cmd("Unified commit HEAD")
+  vim.cmd("Unified HEAD")
 
   -- Now switch to HEAD~1
-  vim.cmd("Unified commit HEAD~1")
+  vim.cmd("Unified HEAD~1")
 
   -- Now switch to HEAD~2
-  vim.cmd("Unified commit HEAD~2")
+  vim.cmd("Unified HEAD~2")
 
   -- Assert that we never found an empty tree
   assert(not found_empty_tree, "Tree should never be empty when switching between commits")
@@ -329,7 +329,7 @@ function M.test_unified_commit_shows_diff_vs_worktree()
   vim.cmd("edit " .. file1_path)
 
   -- Run Unified commit against HEAD~1
-  vim.cmd("Unified commit HEAD~1")
+  vim.cmd("Unified HEAD~1")
 
   -- Wait briefly for buffer operations
   vim.cmd("sleep 50m")

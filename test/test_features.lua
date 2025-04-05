@@ -89,7 +89,7 @@ function M.test_diff_against_commit()
   utils.clear_diff_marks(buffer)
 
   -- Use command to diff against first commit
-  vim.cmd("Unified commit " .. first_commit)
+  vim.cmd("Unified " .. first_commit)
   has_extmarks, marks = utils.check_extmarks_exist(buffer)
   assert(has_extmarks, "No diff extmarks were created after running Unified commit command")
 
