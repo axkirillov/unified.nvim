@@ -165,7 +165,7 @@ function M.show_git_diff_against_commit(commit)
   if diff_output ~= "" then
     -- print("DEBUG [unified.git]: Raw diff_output for buffer " .. buffer .. ":\n" .. diff_output) -- <<< REMOVED LOG
     -- Remove the git diff header lines that might confuse our parser
-    diff_output = diff_output:gsub("diff %-%-%S+ %S+\n", "")
+    diff_output = diff_output:gsub("diff %-%-git a/%S+ b/%S+\n", "") -- Match --no-index header
     diff_output = diff_output:gsub("index %S+%.%.%S+ %S+\n", "")
     diff_output = diff_output:gsub("%-%-%" .. "- %S+\n", "") -- Split the string to avoid escaping issues
     diff_output = diff_output:gsub("%+%+%+" .. " %S+\n", "") -- Split the string to avoid escaping issues

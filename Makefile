@@ -1,9 +1,15 @@
 all: test
 
+# rename this to tests
 .PHONY: test
 test:
 	@echo "Running tests..."
 	@./test/run_tests.sh $(TEST_ARGS)
+# rename this to test
+.PHONY: test-single
+test-single:
+	@echo "Running single test: $(TEST)"
+	@./test/run_tests.sh --test=$(TEST)
 
 .PHONY: lint
 lint:
