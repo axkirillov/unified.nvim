@@ -149,7 +149,6 @@ function M.test_diff_parsing()
       )
     )
     for j, line in ipairs(hunk.lines) do
-      print(string.format("  Line %d: %s", j, line))
     end
   end
 

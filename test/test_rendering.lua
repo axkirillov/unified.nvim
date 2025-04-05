@@ -263,15 +263,12 @@ function M.test_deletion_symbols_in_gutter()
   local found_sign_for_deleted_lines = false
 
   -- Debug all extmarks
-  print("Extmarks for deleted lines:")
   for _, mark in ipairs(extmarks) do
     local details = mark[4]
-    print(string.format("Extmark: row=%d, col=%d, details=%s", mark[2], mark[3], vim.inspect(details)))
 
     -- We should NOT have extmarks that have both virt_lines (for deleted content) AND sign_text
     if details.virt_lines and details.sign_text then
       found_sign_for_deleted_lines = true
-      print("Found sign for deleted line (this should not happen)")
       break
     end
   end
@@ -323,23 +320,17 @@ function M.test_no_line_numbers_in_deleted_lines()
   -- Get all buffer lines
   local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
   local buffer_line_count = #buffer_lines
-  print("Buffer lines after deletion:")
   for i, line in ipairs(buffer_lines) do
-    print(string.format("%d: '%s'", i, line))
   end
 
   -- Get all extmarks with details
   local extmarks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, { details = true })
-  print("Extmarks:")
   for _, mark in ipairs(extmarks) do
     local id, row, col, details = unpack(mark)
-    print(string.format("Extmark id=%d, row=%d, col=%d", id, row, col))
     if details.virt_lines then
-      print("  has virt_lines:")
       for i, vline in ipairs(details.virt_lines) do
         for j, vtext in ipairs(vline) do
           local text, hl = unpack(vtext)
-          print(string.format("    line %d, chunk %d: '%s'", i, j, text))
         end
       end
     end
@@ -366,7 +357,6 @@ function M.test_no_line_numbers_in_deleted_lines()
           -- Look for suspicious line number patterns
           for _, pattern in ipairs(suspicious_patterns) do
             if text:match(pattern) or (text:gsub("%s+", "") == "-") then
-              print(string.format("Found suspicious line number indicator: '%s'", text))
               found_line_number_indicators = true
               break
             end
@@ -379,7 +369,6 @@ function M.test_no_line_numbers_in_deleted_lines()
             -- If the text contains the pattern "line 11" (case insensitive)
             -- but is not exactly the full Line 11 content, it's suspicious
             if text:lower():match("line%s*11") and text ~= expected_deleted_line then
-              print(string.format("Found suspicious partial line content: '%s'", text))
               found_line_number_indicators = true
             end
           end
@@ -460,7 +449,6 @@ function M.test_single_deleted_line_element()
   local diff_output = vim.fn.system(diff_cmd)
 
   -- Print the diff for debugging
-  print("Diff output:\n" .. diff_output)
 
   -- Count lines starting with "-" (excluding the diff header lines)
   local deleted_lines_count = 0
@@ -469,8 +457,6 @@ function M.test_single_deleted_line_element()
       deleted_lines_count = deleted_lines_count + 1
     end
   end
-
-  print("Deleted lines count: " .. deleted_lines_count)
 
   -- Get all signs
   local signs = vim.fn.sign_getplaced(buffer, { group = "unified_diff" })

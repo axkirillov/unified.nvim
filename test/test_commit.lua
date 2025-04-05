@@ -39,7 +39,6 @@ function M.test_unified_commit_empty_buffer()
       end
 
       -- Print captured message for debugging
-      print(string.format("Message: '%s' with highlight: '%s'", text, hl_group or "Normal"))
     end
   end
 
@@ -77,8 +76,6 @@ function M.test_unified_commit_empty_buffer()
   assert(state.commit_base == "HEAD~1", "Commit base should be set to HEAD~1")
 
   -- Show all collected messages for debugging
-  print("Error messages: " .. table.concat(error_messages, ", "))
-  print("Normal messages: " .. table.concat(normal_messages, ", "))
 
   -- Clean up
   -- First properly deactivate the plugin
@@ -134,7 +131,6 @@ function M.test_unified_commit_update_base()
     for _, chunk in ipairs(chunks) do
       local text, hl_group = chunk[1], chunk[2]
       table.insert(messages, { text = text, hl_group = hl_group or "Normal" })
-      print(string.format("Message: '%s' with highlight: '%s'", text, hl_group or "Normal"))
     end
   end
 
@@ -258,10 +254,8 @@ function M.test_unified_commit_tree_not_empty_when_switching()
 
         -- Record if we found an empty tree for a commit reference
         if not has_children then
-          print("Empty tree detected for commit: " .. commit_ref)
           found_empty_tree = true
         else
-          print("Tree for commit " .. commit_ref .. " has children")
         end
       end
 
@@ -340,9 +334,7 @@ function M.test_unified_commit_shows_diff_vs_worktree()
   assert(tree_buf and vim.api.nvim_buf_is_valid(tree_buf), "File tree buffer should be valid")
   local tree_lines = vim.api.nvim_buf_get_lines(tree_buf, 0, -1, false)
 
-  print("File tree content for diff against HEAD~1:")
   for i, line in ipairs(tree_lines) do
-    print(i .. ": " .. line)
   end
 
   -- Verify file1 (modified) is present

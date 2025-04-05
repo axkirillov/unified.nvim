@@ -28,7 +28,7 @@ local function run_test_group(group, group_name)
   end
 
   local function run_test(test_name)
-    print("\nRunning " .. group_name .. "." .. test_name)
+    print("Running " .. group_name .. "." .. test_name)
     local status, result_or_err = pcall(function()
       return group[test_name]()
     end)

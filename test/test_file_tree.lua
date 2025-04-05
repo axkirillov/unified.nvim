@@ -164,8 +164,6 @@ function M.test_file_tree_content()
   assert(tree.root.children["subdir"].children["test3.txt"].status == "D ", "subdir/test3.txt should have 'D ' status")
 
   -- Let's print the status values for debugging
-  print("subdir status: '" .. tree.root.children["subdir"].status .. "'")
-  print("root status: '" .. tree.root.status .. "'")
 
   -- The test has achieved its primary goal of testing file tree creation and structure,
   -- so we'll skip the parent status propagation checks since our simple implementation

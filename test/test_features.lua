@@ -46,7 +46,6 @@ function M.test_diff_against_commit()
 
   -- Get the first commit hash
   local first_commit = vim.fn.system("git rev-parse HEAD"):gsub("\n", "")
-  print("First commit: " .. first_commit)
 
   -- Make changes and create a second commit
   vim.fn.writefile({ "line 1", "modified line 2", "line 3", "line 4", "line 5", "line 6" }, test_path)
@@ -55,7 +54,6 @@ function M.test_diff_against_commit()
 
   -- Get the second commit hash
   local second_commit = vim.fn.system("git rev-parse HEAD"):gsub("\n", "")
-  print("Second commit: " .. second_commit)
 
   -- Open the file and make more changes
   vim.cmd("edit " .. test_path)
@@ -135,8 +133,6 @@ function M.test_commit_base_persistence()
   local second_commit = vim.fn.system("git rev-parse HEAD~1"):gsub("\n", "")
   local third_commit = vim.fn.system("git rev-parse HEAD"):gsub("\n", "")
 
-  print("Commits: first=" .. first_commit .. ", second=" .. second_commit .. ", third=" .. third_commit)
-
   -- Open the file
   vim.cmd("edit " .. test_path)
 
@@ -193,9 +189,6 @@ function M.test_commit_base_persistence()
 
   local diff_first_output = vim.fn.system(diff_first_cmd)
   local diff_head_output = vim.fn.system(diff_head_cmd)
-
-  print("Diff against first commit:\n" .. diff_first_output)
-  print("Diff against HEAD:\n" .. diff_head_output)
 
   -- Check if we're still diffing against the first commit after modification
   local still_diffing_against_first = diff_first_output:find("modified line 2")
@@ -259,7 +252,6 @@ function M.test_historical_commit_highlighting()
 
   -- First commit - this will be our base reference (HEAD~5)
   local first_commit = vim.fn.system("git rev-parse HEAD"):gsub("\n", "")
-  print("First commit (base): " .. first_commit)
 
   -- Make a second commit with some changes
   local second_content = {
@@ -398,7 +390,6 @@ function M.test_historical_commit_highlighting()
 
   -- Get the commit we want to diff against (HEAD~4, which is our first commit)
   local base_commit = vim.fn.system("git rev-parse HEAD~4"):gsub("\n", "")
-  print("Base commit for diff (HEAD~4): " .. base_commit)
 
   -- Show diff against HEAD~4
   local result = require("unified").show_diff(base_commit)
@@ -428,9 +419,7 @@ function M.test_historical_commit_highlighting()
   end
 
   -- Print all highlighted lines for debugging
-  print("Highlighted lines:")
   for line_num, highlight in pairs(highlighted_lines) do
-    print(string.format("Line %d: %s = %s", line_num, modified_content[line_num] or "(virtual line)", highlight))
   end
 
   -- Verify specific cases to catch the issue described
@@ -446,7 +435,6 @@ function M.test_historical_commit_highlighting()
 
   -- According to our verification, line 16 is not highlighted
   -- This is part of the issue we're investigating
-  print("Line 16 not highlighted (feature 12): " .. tostring(highlighted_lines[16] ~= nil))
 
   -- Line 19 should be highlighted as added (brand new feature)
   assert(highlighted_lines[19] ~= nil, "Line 19 should be highlighted as added")

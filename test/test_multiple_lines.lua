@@ -50,10 +50,6 @@ function M.test_multiple_added_lines()
   local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
 
   -- Debug: Print all buffer lines and whether they're highlighted
-  print("Buffer lines and highlighting:")
-  for i, line in ipairs(buffer_lines) do
-    print(string.format("%d: '%s' %s", i, line, highlighted_lines[i] and "(highlighted)" or ""))
-  end
 
   -- Check that all three new lines are highlighted
   assert(highlighted_lines[3], "First new line (new line 1) not highlighted")
@@ -130,11 +126,9 @@ function M.test_multiple_added_lines_with_commit()
   local highlighted_lines = {}
 
   -- Print all extmarks for debugging
-  print("Extmarks details:")
   for _, mark in ipairs(extmarks) do
     local row = mark[2] + 1 -- Convert to 1-indexed
     local details = mark[4]
-    print(string.format("Extmark at row %d: %s", row, vim.inspect(details)))
 
     if details.line_hl_group then
       highlighted_lines[row] = true
@@ -142,13 +136,11 @@ function M.test_multiple_added_lines_with_commit()
 
     -- Check for virtual text (might be another way lines are highlighted)
     if details.virt_text then
-      print(string.format("Found virt_text at row %d", row))
       highlighted_lines[row] = true
     end
 
     -- Check for line highlights via extmarks
     if details.hl_eol or details.hl_group then
-      print(string.format("Found hl_eol or hl_group at row %d", row))
       highlighted_lines[row] = true
     end
   end
@@ -157,10 +149,6 @@ function M.test_multiple_added_lines_with_commit()
   local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
 
   -- Debug: Print all buffer lines and whether they're highlighted
-  print("Buffer lines and highlighting when diffing against commit:")
-  for i, line in ipairs(buffer_lines) do
-    print(string.format("%d: '%s' %s", i, line, highlighted_lines[i] and "(highlighted)" or ""))
-  end
 
   -- Make sure at least new lines are highlighted (main feature being tested)
   assert(highlighted_lines[2] or highlighted_lines[1], "First new line should be highlighted")
