@@ -288,4 +288,6 @@ function M.move_cursor_and_open_file(direction)
   -- If no file node found after full loop (unlikely in a populated tree), do nothing
 end -- End of M.move_cursor_and_open_file
 
+M.open_file_node = open_file_node -- Expose for use in init.lua
+
 return M

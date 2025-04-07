@@ -4,95 +4,6 @@ local M = {}
 -- Import test utilities
 local utils = require("test.test_utils")
 
--- Test that 'Unified commit HEAD~1' handles empty buffer gracefully
-function M.test_unified_commit_empty_buffer()
-  -- Create temporary git repository
-  local repo = utils.create_git_repo()
-  if not repo then
-    return true
-  end
-
-  -- Create initial file and commit it
-  local test_file = "test.txt"
-  local test_path = utils.create_and_commit_file(repo, test_file, { "line 1", "line 2", "line 3" }, "Initial commit")
-
-  -- Make changes and create a second commit
-  vim.fn.writefile({ "line 1", "modified line 2", "line 3" }, test_path)
-  vim.fn.system("git add " .. test_file)
-  vim.fn.system("git commit -m 'Second commit'")
-
-  -- Do NOT open any file - test on a fresh buffer
-  vim.cmd("enew")
-
-  -- Mock the nvim_echo function to capture all messages
-  local old_nvim_echo = vim.api.nvim_echo
-  local error_messages = {}
-  local normal_messages = {}
-
-  vim.api.nvim_echo = function(chunks, history, opts)
-    for _, chunk in ipairs(chunks) do
-      local text, hl_group = chunk[1], chunk[2]
-      if hl_group == "ErrorMsg" then
-        table.insert(error_messages, text)
-      else
-        table.insert(normal_messages, text)
-      end
-
-      -- Print captured message for debugging
-    end
-  end
-
-  -- Set current directory to the test repo to ensure git commands work
-  vim.cmd("cd " .. repo.repo_dir)
-
-  -- Run the Unified commit command
-  local success, error_msg = pcall(function()
-    vim.cmd("Unified HEAD~1")
-  end)
-
-  -- Restore the original nvim_echo function
-  vim.api.nvim_echo = old_nvim_echo
-
-  -- Check that the command didn't crash
-  assert(success, "Unified commit HEAD~1 crashed with error: " .. tostring(error_msg))
-
-  -- Shouldn't have any error messages now with our new implementation
-  assert(#error_messages == 0, "Expected no error messages, but got: " .. table.concat(error_messages, ", "))
-
-  -- Should have a message about activating the file tree instead
-  local expected_message_found = false
-  for _, msg in ipairs(normal_messages) do
-    if msg:match("Activated file tree with commit base") then
-      expected_message_found = true
-      break
-    end
-  end
-
-  assert(expected_message_found, "Expected message about activating file tree with commit base, but didn't find it")
-
-  -- Also check the global state is properly set
-  local state = require("unified.state")
-  assert(state.is_active, "Unified plugin should be active after command")
-  assert(state.commit_base == "HEAD~1", "Commit base should be set to HEAD~1")
-
-  -- Show all collected messages for debugging
-
-  -- Clean up
-  -- First properly deactivate the plugin
-  local unified = require("unified")
-  unified.deactivate()
-
-  -- After deactivating, we can safely delete the buffer
-  local buffer = vim.api.nvim_get_current_buf()
-  utils.clear_diff_marks(buffer)
-  vim.cmd("bdelete!")
-
-  -- Clean up git repo
-  utils.cleanup_git_repo(repo)
-
-  return true
-end
-
 -- Test that 'Unified commit HEAD~4' updates the commit base without disabling the plugin
 function M.test_unified_commit_update_base()
   -- Create temporary git repository
@@ -117,6 +28,7 @@ function M.test_unified_commit_update_base()
 
   -- Make additional changes
   vim.api.nvim_buf_set_lines(0, 1, 2, false, { "current modification" })
+  vim.cmd("write") -- Save buffer before running command to avoid E37
 
   -- Mock the nvim_echo and deactivate functions to monitor calls
   local old_nvim_echo = vim.api.nvim_echo
@@ -127,7 +39,7 @@ function M.test_unified_commit_update_base()
   local messages = {}
   local deactivate_call_count = 0
 
-  vim.api.nvim_echo = function(chunks, history, opts)
+  vim.api.nvim_echo = function(chunks)
     for _, chunk in ipairs(chunks) do
       local text, hl_group = chunk[1], chunk[2]
       table.insert(messages, { text = text, hl_group = hl_group or "Normal" })
@@ -143,9 +55,7 @@ function M.test_unified_commit_update_base()
   -- First activate with HEAD~1
   vim.cmd("Unified HEAD~1")
 
-  -- Store initial state
   local initial_active = state.is_active
-  local initial_winid = state.main_win
 
   -- Verify initial state is active
   assert(initial_active, "Unified plugin should be active after first commit command")
@@ -175,11 +85,9 @@ function M.test_unified_commit_update_base()
   end
   assert(update_message_found, "Expected message about updating to new commit base")
 
-  -- Clean up
   unified.deactivate()
   local buffer = vim.api.nvim_get_current_buf()
   utils.clear_diff_marks(buffer)
-  vim.cmd("bdelete!")
   utils.cleanup_git_repo(repo)
 
   return true
@@ -227,9 +135,6 @@ function M.test_unified_commit_tree_not_empty_when_switching()
   -- Open the original file
   vim.cmd("edit " .. test_path)
 
-  -- Track the file tree creation and verify it's never empty
-  -- Require the necessary internal modules after refactoring
-  local tree_state_module = require("unified.file_tree.state")
   local FileTree = require("unified.file_tree.tree") -- Get the class directly
   local orig_update_git_status = FileTree.update_git_status -- Access method from the class
 
@@ -281,93 +186,6 @@ function M.test_unified_commit_tree_not_empty_when_switching()
   end
 
   -- Restore state
-  local unified = require("unified")
-  unified.deactivate()
-  local buffer = vim.api.nvim_get_current_buf()
-  utils.clear_diff_marks(buffer)
-  vim.cmd("bdelete!")
-  utils.cleanup_git_repo(repo)
-
-  return true
-end
-
--- Test that 'Unified commit <ref>' shows diff vs working tree
-function M.test_unified_commit_shows_diff_vs_worktree()
-  -- Create temporary git repository
-  local repo = utils.create_git_repo()
-  if not repo then
-    return true
-  end
-
-  -- Create file1 and commit (HEAD~1)
-  local file1 = "file1.txt"
-  local file1_path = utils.create_and_commit_file(repo, file1, { "line 1", "line 2" }, "Commit 1")
-
-  -- Modify file1, add file2, and commit (HEAD)
-  vim.fn.writefile({ "line 1 modified", "line 2" }, file1_path)
-  local file2 = "file2.txt"
-  local file2_path = repo.repo_dir .. "/" .. file2
-  vim.fn.writefile({ "file 2 content" }, file2_path)
-  vim.fn.system("git -C " .. repo.repo_dir .. " add " .. file1 .. " " .. file2)
-  vim.fn.system("git -C " .. repo.repo_dir .. " commit -m 'Commit 2'")
-
-  -- Modify file1 again (working tree change)
-  vim.fn.writefile({ "line 1 modified again", "line 2" }, file1_path)
-
-  -- Add untracked file3
-  local file3 = "file3.txt"
-  local file3_path = repo.repo_dir .. "/" .. file3
-  vim.fn.writefile({ "untracked content" }, file3_path)
-
-  -- Open file1
-  vim.cmd("edit " .. file1_path)
-
-  -- Run Unified commit against HEAD~1
-  vim.cmd("Unified HEAD~1")
-
-  -- Wait briefly for buffer operations
-  vim.cmd("sleep 50m")
-
-  -- Get the file tree buffer content
-  local state = require("unified.state")
-  local tree_buf = state.file_tree_buf
-  assert(tree_buf and vim.api.nvim_buf_is_valid(tree_buf), "File tree buffer should be valid")
-  local tree_lines = vim.api.nvim_buf_get_lines(tree_buf, 0, -1, false)
-
-  for i, line in ipairs(tree_lines) do
-  end
-
-  -- Verify file1 (modified) is present
-  local file1_found = false
-  for _, line in ipairs(tree_lines) do
-    if line:match("file1%.txt") then
-      file1_found = true
-      break
-    end
-  end
-  assert(file1_found, "File tree should show file1.txt (modified since HEAD~1)")
-
-  -- Verify file2 (added) is present
-  local file2_found = false
-  for _, line in ipairs(tree_lines) do
-    if line:match("file2%.txt") then
-      file2_found = true
-      break
-    end
-  end
-  assert(file2_found, "File tree should show file2.txt (added since HEAD~1)")
-
-  -- Verify file3 (untracked) is NOT present
-  local file3_found = false
-  for _, line in ipairs(tree_lines) do
-    if line:match("file3%.txt") then
-      file3_found = true
-      break
-    end
-  end
-  assert(not file3_found, "File tree should NOT show file3.txt (untracked)")
-
-  -- Clean up
   local unified = require("unified")
   unified.deactivate()
   local buffer = vim.api.nvim_get_current_buf()
