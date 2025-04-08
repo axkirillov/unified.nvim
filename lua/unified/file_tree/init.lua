@@ -146,6 +146,37 @@ function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
   return buf
 end
 
+local function auto_select_and_open_first_file(tree_buf, tree_win)
+  local first_file_line = -1
+  local first_node = nil
+  local line_count = vim.api.nvim_buf_line_count(tree_buf)
+
+  for i = 3, line_count - 1 do
+    local node = tree_state.line_to_node[i]
+    if node and not node.is_dir then
+      first_file_line = i
+      first_node = node
+      break
+    end
+  end
+
+  if first_node then
+    actions.open_file_node(first_node)
+
+    local current_buf_id = vim.api.nvim_win_get_buf(tree_win)
+    if not vim.api.nvim_buf_is_valid(current_buf_id) then
+      return
+    end
+
+    local current_line_count = vim.api.nvim_buf_line_count(current_buf_id)
+    local target_line = first_file_line + 1
+
+    if target_line > 0 and target_line <= current_line_count then
+      vim.api.nvim_win_set_cursor(tree_win, { target_line, 0 })
+    end
+  end
+end
+
 -- Show file tree for the current buffer or a specific directory/commit
 function M.show_file_tree(path_or_commit, show_all_files)
   local commit_ref = nil
@@ -230,38 +261,8 @@ function M.show_file_tree(path_or_commit, show_all_files)
   tree_state.window = tree_win
   global_state.file_tree_win = tree_win
   global_state.file_tree_buf = tree_buf -- Keep global state updated too
-  -- --- BEGIN: Auto-select and open first file ---
-  local first_file_line = -1
-  local first_node = nil
-  local line_count = vim.api.nvim_buf_line_count(tree_buf)
-
-  for i = 3, line_count - 1 do
-    local node = tree_state.line_to_node[i]
-    if node and not node.is_dir then
-      first_file_line = i
-      first_node = node
-      break
-    end
-  end
-
-  if first_node then
-    actions.open_file_node(first_node)
-
-    local current_buf_id = vim.api.nvim_win_get_buf(tree_win) -- Get current buffer in the window
-
-    if not vim.api.nvim_buf_is_valid(current_buf_id) then
-      return
-    end
-
-    local current_line_count = vim.api.nvim_buf_line_count(current_buf_id)
-    local target_line = first_file_line + 1
-
-    if target_line > 0 and target_line <= current_line_count then
-      vim.api.nvim_win_set_cursor(tree_win, { target_line, 0 })
-    else
-    end
-  end
-  -- --- END: Auto-select and open first file ---
+  -- Auto-select and open the first file found in the tree
+  auto_select_and_open_first_file(tree_buf, tree_win)
 
   return true
 end
