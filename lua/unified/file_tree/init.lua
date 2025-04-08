@@ -235,9 +235,7 @@ function M.show_file_tree(path_or_commit, show_all_files)
   local first_node = nil
   local line_count = vim.api.nvim_buf_line_count(tree_buf)
 
-  -- Iterate through buffer lines, starting after potential headers (e.g., line 3 or 4)
-  -- Find the first line mapped to a file node
-  for i = 3, line_count - 1 do -- Start check after typical header lines (0-based index)
+  for i = 3, line_count - 1 do
     local node = tree_state.line_to_node[i]
     if node and not node.is_dir then
       first_file_line = i
@@ -247,12 +245,21 @@ function M.show_file_tree(path_or_commit, show_all_files)
   end
 
   if first_node then
-    -- Call the (now exposed) action function to open the file
-    -- This function handles opening in the main window and returning focus here
     actions.open_file_node(first_node)
 
-    -- Move cursor AFTER opening file and returning focus to tree window
-    vim.api.nvim_win_set_cursor(tree_win, { first_file_line + 1, 0 }) -- Use 1-based line num
+    local current_buf_id = vim.api.nvim_win_get_buf(tree_win) -- Get current buffer in the window
+
+    if not vim.api.nvim_buf_is_valid(current_buf_id) then
+      return
+    end
+
+    local current_line_count = vim.api.nvim_buf_line_count(current_buf_id)
+    local target_line = first_file_line + 1
+
+    if target_line > 0 and target_line <= current_line_count then
+      vim.api.nvim_win_set_cursor(tree_win, { target_line, 0 })
+    else
+    end
   end
   -- --- END: Auto-select and open first file ---
 
