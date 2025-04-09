@@ -28,6 +28,7 @@ local function open_file_node(node)
     -- Use lazy loading via package.loaded to avoid circular dependency
     local unified_module = package.loaded["unified"]
     if unified_module then
+      global_state.opening_from_tree = true -- Set flag before calling activate/show_diff
       -- Check if the main unified view needs activation or just a refresh
       if not global_state.is_active then
         if unified_module.activate then
@@ -39,6 +40,7 @@ local function open_file_node(node)
           unified_module.show_diff() -- Will use the current commit_base from global_state
         end
       end
+      global_state.opening_from_tree = false -- Reset flag after calling activate/show_diff
     end
 
     -- Switch focus back to the original window (file tree)
@@ -52,6 +54,7 @@ local function open_file_node(node)
       return -- Should ideally be loaded by now
     end
 
+    global_state.opening_from_tree = true -- Set flag before calling activate/show_diff
     if not global_state.is_active then
       if unified_module.activate then
         unified_module.activate() -- Activate the diff view
@@ -62,6 +65,7 @@ local function open_file_node(node)
         unified_module.show_diff() -- Will use the current commit_base from global_state
       end
     end
+    global_state.opening_from_tree = false -- Reset flag after calling activate/show_diff
   end
 end
 

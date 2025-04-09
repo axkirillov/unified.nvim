@@ -42,8 +42,8 @@ local function collect_and_filter_files(node, filter_changed_only)
     if not current_node.is_dir then
       local include_file = true
       if filter_changed_only then
-        local status_to_check = current_node.status or ""
-        include_file = status_to_check:match("^[AMDR?]")
+        local status_to_check = current_node.status or " "
+        include_file = status_to_check ~= " "
       end
       if include_file then
         table.insert(files, current_node)

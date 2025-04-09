@@ -17,6 +17,9 @@ M.file_tree_buf = nil
 -- Auto-refresh augroup ID
 M.auto_refresh_augroup = nil
 
+-- Flag to prevent recursive tree refresh when opening a file from the tree
+M.opening_from_tree = false
+
 -- Get the main content window (to navigate from tree back to content)
 function M.get_main_window()
   -- If we have stored a main window and it's valid, use it

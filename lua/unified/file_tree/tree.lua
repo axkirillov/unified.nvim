@@ -171,39 +171,7 @@ function FileTree:update_git_status(root_dir, diff_only, commit_ref)
     end
   end
 
-  -- Handle the case when we're in diff_only mode
   if diff_only then
-    local show_all_files_from_commit = false
-
-    -- When no changes are found but we have a commit reference, get all files in that commit
-    -- OR always list files if a commit_ref is given (ensures `Unified commit <ref>` works)
-    if commit_ref and not has_changes then -- Only run ls-tree if diff-tree returned nothing
-      show_all_files_from_commit = true
-    end
-
-    -- Get all files from commit if needed
-    if show_all_files_from_commit then
-      local orig_dir = vim.fn.getcwd()
-      pcall(vim.cmd, "cd " .. vim.fn.fnameescape(root_dir)) -- Use pcall for safety
-
-      local all_files_cmd = string.format("git ls-tree -r --name-only %s", vim.fn.shellescape(commit_ref))
-      local all_files_result = vim.fn.system(all_files_cmd)
-      local ls_tree_shell_error = vim.v.shell_error
-
-      pcall(vim.cmd, "cd " .. vim.fn.fnameescape(orig_dir)) -- Return to original directory
-
-      if ls_tree_shell_error == 0 then
-        for file in all_files_result:gmatch("[^\r\n]+") do
-          local path = root_dir .. "/" .. file
-          -- Only add with 'C' status (for commit) if not already present with a real status
-          if not changed_files[path] then
-            changed_files[path] = "C "
-          end
-          has_changes = true
-        end
-      end
-    end
-
     -- Clear existing tree structure before adding changed/commit files
     self.root.children = {}
     self.root.ordered_children = {}

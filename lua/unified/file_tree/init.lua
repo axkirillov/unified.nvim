@@ -173,6 +173,7 @@ local function auto_select_and_open_first_file(tree_buf, tree_win)
     if target_line > 0 and target_line <= current_line_count then
       vim.api.nvim_win_set_cursor(tree_win, { target_line, 0 })
     end
+  else
   end
 end
 
@@ -201,11 +202,6 @@ local function position_cursor_on_first_file(buffer, window)
 end
 
 function M.show_file_tree(path_or_commit, show_all_files)
-  if tree_state.ignore_next_refresh then
-    tree_state.ignore_next_refresh = false
-    return
-  end
-
   local commit_ref = nil
   local file_path = path_or_commit
 
@@ -216,6 +212,7 @@ function M.show_file_tree(path_or_commit, show_all_files)
       path_or_commit == "HEAD"
       or path_or_commit:match("^HEAD~%d*$")
       or #path_or_commit == 40
+      or #path_or_commit == 12
       or #path_or_commit == 7
     )
   then
@@ -230,6 +227,7 @@ function M.show_file_tree(path_or_commit, show_all_files)
     if file_path == "" then
       file_path = vim.fn.getcwd()
     end
+  else
   end
 
   -- Check if tree window already exists and is valid
@@ -293,7 +291,6 @@ function M.show_file_tree(path_or_commit, show_all_files)
   global_state.file_tree_win = tree_win
   global_state.file_tree_buf = tree_buf -- Keep global state updated too
 
-  tree_state.ignore_next_refresh = true
   auto_select_and_open_first_file(tree_buf, tree_win)
   return true
 end

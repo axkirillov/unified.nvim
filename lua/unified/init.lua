@@ -164,9 +164,9 @@ function M.activate()
   -- Show diff based on the stored commit base (or default to HEAD)
   local result = M.show_diff()
 
-  -- Always show file tree, even if diff fails
-  file_tree.show_file_tree() -- Restore original call
-
+  if not state.opening_from_tree then
+    file_tree.show_file_tree()
+  end
   -- Update global state only if diff was successful
   if result then
     state.is_active = true
