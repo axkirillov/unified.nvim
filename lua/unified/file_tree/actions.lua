@@ -120,10 +120,9 @@ function M.refresh()
     return
   end
 
-  -- Re-create the tree with the same settings stored in state
   local root_path = tree_state.root_path
   local diff_only = tree_state.diff_only
-  local commit_ref = global_state.get_commit_base() -- Get current commit base
+  local commit_ref = tree_state.commit_ref
 
   if root_path then
     -- Need to call the main function to recreate buffer and tree logic

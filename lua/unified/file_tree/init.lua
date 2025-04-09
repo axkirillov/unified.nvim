@@ -10,11 +10,10 @@ local actions = require("unified.file_tree.actions")
 
 local M = {}
 
--- Build and render a file tree, returning the buffer handle
 function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
-  -- Store the root path and mode for refresh action
   tree_state.root_path = buffer_path
   tree_state.diff_only = diff_only
+  tree_state.commit_ref = commit_ref_arg
 
   -- Determine the directory to use as the root for scanning/git commands
   local dir
