@@ -177,6 +177,30 @@ local function auto_select_and_open_first_file(tree_buf, tree_win)
   end
 end
 
+local function position_cursor_on_first_file(buffer, window)
+  if not buffer or not window or not vim.api.nvim_buf_is_valid(buffer) or not vim.api.nvim_win_is_valid(window) then
+    return
+  end
+
+  local first_file_line = -1
+  local line_count = vim.api.nvim_buf_line_count(buffer)
+  for i = 3, line_count - 1 do
+    local node = tree_state.line_to_node[i]
+    if node and not node.is_dir then
+      first_file_line = i
+      break
+    end
+  end
+
+  if first_file_line > 0 then
+    local target_line = first_file_line + 1
+    local current_line_count = vim.api.nvim_buf_line_count(vim.api.nvim_win_get_buf(window))
+    if target_line <= current_line_count then
+      vim.api.nvim_win_set_cursor(window, { target_line, 0 })
+    end
+  end
+end
+
 -- Show file tree for the current buffer or a specific directory/commit
 function M.show_file_tree(path_or_commit, show_all_files)
   local commit_ref = nil
@@ -228,22 +252,8 @@ function M.show_file_tree(path_or_commit, show_all_files)
     -- Focus the tree window
     vim.api.nvim_set_current_win(tree_state.window)
 
-    local first_file_line_update = -1
-    local line_count_update = vim.api.nvim_buf_line_count(new_buf)
-    for i = 3, line_count_update - 1 do
-      local node = tree_state.line_to_node[i] -- Assumes tree_state is updated by render_tree in create_file_tree_buffer
-      if node and not node.is_dir then
-        first_file_line_update = i
-        break
-      end
-    end
-
-    if first_file_line_update > 0 then
-      local target_line_update = first_file_line_update + 1
-      if target_line_update <= line_count_update then
-        vim.api.nvim_win_set_cursor(tree_state.window, { target_line_update, 0 })
-      end
-    end
+    -- Position cursor on the first file in the updated tree
+    position_cursor_on_first_file(new_buf, tree_state.window)
 
     return true
   end
