@@ -136,7 +136,8 @@ function FileTree:update_git_status(root_dir, diff_only, commit_ref)
     cmd = string.format("cd %s && git status --porcelain --untracked-files=all", vim.fn.shellescape(root_dir))
   end
   local result = vim.fn.system(cmd)
-  if vim.v.shell_error == 0 then
+  local shell_error = vim.v.shell_error
+  if shell_error == 0 then
     -- Process the command output to get changed files and their statuses
     for line in result:gmatch("[^\r\n]+") do
       local status, file
@@ -187,10 +188,11 @@ function FileTree:update_git_status(root_dir, diff_only, commit_ref)
 
       local all_files_cmd = string.format("git ls-tree -r --name-only %s", vim.fn.shellescape(commit_ref))
       local all_files_result = vim.fn.system(all_files_cmd)
+      local ls_tree_shell_error = vim.v.shell_error
 
       pcall(vim.cmd, "cd " .. vim.fn.fnameescape(orig_dir)) -- Return to original directory
 
-      if vim.v.shell_error == 0 then -- Check the captured error code
+      if ls_tree_shell_error == 0 then
         for file in all_files_result:gmatch("[^\r\n]+") do
           local path = root_dir .. "/" .. file
           -- Only add with 'C' status (for commit) if not already present with a real status

@@ -200,8 +200,12 @@ local function position_cursor_on_first_file(buffer, window)
   end
 end
 
--- Show file tree for the current buffer or a specific directory/commit
 function M.show_file_tree(path_or_commit, show_all_files)
+  if tree_state.ignore_next_refresh then
+    tree_state.ignore_next_refresh = false
+    return
+  end
+
   local commit_ref = nil
   local file_path = path_or_commit
 
@@ -288,9 +292,9 @@ function M.show_file_tree(path_or_commit, show_all_files)
   tree_state.window = tree_win
   global_state.file_tree_win = tree_win
   global_state.file_tree_buf = tree_buf -- Keep global state updated too
-  -- Auto-select and open the first file found in the tree
-  auto_select_and_open_first_file(tree_buf, tree_win)
 
+  tree_state.ignore_next_refresh = true
+  auto_select_and_open_first_file(tree_buf, tree_win)
   return true
 end
 

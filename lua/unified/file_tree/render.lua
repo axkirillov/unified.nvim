@@ -42,7 +42,8 @@ local function collect_and_filter_files(node, filter_changed_only)
     if not current_node.is_dir then
       local include_file = true
       if filter_changed_only then
-        include_file = current_node.status and current_node.status:match("[AMDR?]")
+        local status_to_check = current_node.status or ""
+        include_file = status_to_check:match("^[AMDR?]")
       end
       if include_file then
         table.insert(files, current_node)
@@ -165,7 +166,7 @@ function M.render_tree(tree, buffer)
   local extmarks = {}
   local current_line = #lines - 1 -- 0-based index for buffer lines
 
-  for _, shortened_path in ipairs(group_keys) do
+  for group_idx, shortened_path in ipairs(group_keys) do
     local files_in_group = grouped_files[shortened_path]
     local is_root_group = (shortened_path == "")
 
@@ -183,7 +184,7 @@ function M.render_tree(tree, buffer)
     end
 
     -- Render Files in Group
-    for _, file_info in ipairs(files_in_group) do
+    for file_idx, file_info in ipairs(files_in_group) do
       current_line = current_line + 1
       local node = file_info.node
       local indent = is_root_group and "" or "  " -- Indent files under path headers
