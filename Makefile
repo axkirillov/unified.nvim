@@ -1,13 +1,10 @@
-all: test
-
-# rename this to tests
-.PHONY: test
-test:
+.PHONY: tests
+tests:
 	@echo "Running tests..."
 	@./test/run_tests.sh $(TEST_ARGS)
-# rename this to test
-.PHONY: test-single
-test-single:
+
+.PHONY: test
+test:
 	@echo "Running single test: $(TEST)"
 	@./test/run_tests.sh --test=$(TEST)
 
