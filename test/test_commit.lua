@@ -39,7 +39,7 @@ function M.test_unified_commit_update_base()
   local messages = {}
   local deactivate_call_count = 0
 
-  vim.api.nvim_echo = function(chunks)
+  vim.api.nvim_echo = function(chunks, _, _)
     for _, chunk in ipairs(chunks) do
       local text, hl_group = chunk[1], chunk[2]
       table.insert(messages, { text = text, hl_group = hl_group or "Normal" })
