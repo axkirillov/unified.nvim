@@ -296,23 +296,6 @@ function M.display_inline_diff(buffer, hunks)
         goto continue_line
       end
 
-      if line:match("^new%s") or (line:match("new") and line:match("line")) then
-        if i >= buf_line_count then
-          goto continue_line
-        end
-        local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, i, 0, {
-          sign_text = config.values.line_symbols.add .. " ",
-          sign_hl_group = config.values.highlights.add,
-          line_hl_group = "UnifiedDiffAdd",
-        })
-        if mark_id > 0 then
-          mark_count = mark_count + 1
-          sign_count = sign_count + 1
-          marked_lines[i] = true
-        end
-        goto continue_line
-      end
-
       local is_new_line = true
       if #git_lines > 0 then
         for _, git_line in ipairs(git_lines) do
