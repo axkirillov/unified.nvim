@@ -54,7 +54,7 @@ function M.test_diff_against_commit()
   utils.clear_diff_marks(buffer)
 
   result = require("unified").show_git_diff_against_commit(second_commit)
-  local has_extmarks, marks = utils.check_extmarks_exist(buffer)
+  has_extmarks, _ = utils.check_extmarks_exist(buffer)
 
   assert(result, "show_git_diff_against_commit() should return true for second commit")
   assert(has_extmarks, "No diff extmarks were created for second commit")
