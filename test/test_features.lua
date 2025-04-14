@@ -54,7 +54,7 @@ function M.test_diff_against_commit()
   utils.clear_diff_marks(buffer)
 
   result = require("unified").show_git_diff_against_commit(second_commit)
-  has_extmarks, marks = utils.check_extmarks_exist(buffer)
+  local has_extmarks, marks = utils.check_extmarks_exist(buffer)
 
   assert(result, "show_git_diff_against_commit() should return true for second commit")
   assert(has_extmarks, "No diff extmarks were created for second commit")
@@ -417,11 +417,13 @@ function M.test_global_state()
   local original_get_git_file_content = git.get_git_file_content
 
   -- Mock git repo check
+  ---@diagnostic disable-next-line: duplicate-set-field
   git.is_git_repo = function(_)
     return true
   end
 
   -- Mock git file content
+  ---@diagnostic disable-next-line: duplicate-set-field
   git.get_git_file_content = function(_, _)
     return table.concat(vim.fn.readfile(modified_tmp), "\n")
   end
