@@ -20,8 +20,8 @@ CONTENTS                                                 *unified-contents*
 1. INTRODUCTION                                         *unified-introduction*
 
 unified.nvim is a plugin for Neovim that displays unified diffs inline in your
-buffers. It shows the differences between the current buffer content and the
-saved file, highlighting added, deleted, and changed lines.
+buffers. It shows the differences between the current buffer content and a
+reference commit (e.g., HEAD).
 
 ==============================================================================
 2. REQUIREMENTS                                        *unified-requirements*
