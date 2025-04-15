@@ -112,11 +112,8 @@ function M.display_inline_diff(buffer, hunks)
     old_idx = 0
     new_idx = 0
 
-    for line_hunk_idx, line in ipairs(hunk.lines) do
+    for _, line in ipairs(hunk.lines) do
       local first_char = line:sub(1, 1)
-      -- if vim.g.unified_debug then -- Removed debug log
-      --   print(string.format("Diff: Hunk %d, Line %d: Type='%s', Current line_idx=%d, new_idx=%d, old_idx=%d, Content='%s'", hunk_idx, line_hunk_idx, first_char, line_idx, new_idx, old_idx, line))
-      -- end
       if first_char == " " then
         -- Context line
         line_idx = line_idx + 1
@@ -145,13 +142,7 @@ function M.display_inline_diff(buffer, hunks)
           sign_hl_group = config.values.highlights.add,
           line_hl_group = hl_group,
         }
-        -- if vim.g.unified_debug then -- Removed debug log
-        --   print(string.format("Diff: Attempting ADD extmark at line_idx %d. Opts: %s", line_idx, vim.inspect(extmark_opts)))
-        -- end
         local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, line_idx, 0, extmark_opts)
-        -- if vim.g.unified_debug then -- Removed debug log
-        --   print("Diff: ADD extmark result mark_id: " .. mark_id)
-        -- end
         if mark_id > 0 then
           mark_count = mark_count + 1
           sign_count = sign_count + 1
@@ -174,13 +165,7 @@ function M.display_inline_diff(buffer, hunks)
               sign_hl_group = config.values.highlights.add,
               line_hl_group = hl_group,
             }
-            -- if vim.g.unified_debug then -- Removed debug log
-            --   print(string.format("Diff: Attempting CONSECUTIVE ADD extmark at next_line_idx %d. Opts: %s", next_line_idx, vim.inspect(consec_extmark_opts)))
-            -- end
             local consec_mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, next_line_idx, 0, consec_extmark_opts)
-            -- if vim.g.unified_debug then -- Removed debug log
-            --   print("Diff: CONSECUTIVE ADD extmark result mark_id: " .. consec_mark_id)
-            -- end
             if consec_mark_id > 0 then
               mark_count = mark_count + 1
               sign_count = sign_count + 1
@@ -216,13 +201,7 @@ function M.display_inline_diff(buffer, hunks)
           virt_lines = { { { line_text, hl_group } } },
           virt_lines_above = true,
         }
-        -- if vim.g.unified_debug then -- Removed debug log
-        --   print(string.format("Diff: Attempting DELETE virtual line at attach_line %d. Opts: %s", attach_line, vim.inspect(virt_line_opts)))
-        -- end
         local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, attach_line, 0, virt_line_opts)
-        -- if vim.g.unified_debug then -- Removed debug log
-        --   print("Diff: DELETE virtual line result mark_id: " .. mark_id)
-        -- end
         if mark_id > 0 then
           mark_count = mark_count + 1
         end
