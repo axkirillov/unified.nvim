@@ -6,7 +6,6 @@ local default = {
 }
 
 function M.setup()
-  local unified = require("unified")
   local diff = require("unified.diff")
   local async = require("unified.utils.async")
   local group_name = default.augroup_name
@@ -16,7 +15,9 @@ function M.setup()
   vim.api.nvim_create_augroup(group_name, { clear = true })
 
   local debounced_show_diff = async.debounce(function()
-    unified.show_diff()
+    local state = require("unified.state")
+    local commit = state.get_commit_base()
+    diff.show(commit)
   end, debounce_delay)
 
   vim.api.nvim_create_autocmd({
@@ -25,6 +26,7 @@ function M.setup()
     "FileChangedShell",
   }, {
     group = group_name,
+    buffer = buffer,
     callback = function()
       if diff.is_diff_displayed(buffer) then
         debounced_show_diff()

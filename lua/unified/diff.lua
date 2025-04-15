@@ -301,4 +301,16 @@ function M.is_diff_displayed(buffer)
   return #marks > 0
 end
 
+function M.show(commit)
+  local buffer = vim.api.nvim_get_current_buf()
+  local ft = vim.api.nvim_buf_get_option(buffer, "filetype")
+
+  if ft == "unified_tree" then
+    return false
+  end
+
+  local git = require("unified.git")
+  return git.show_git_diff_against_commit(commit)
+end
+
 return M

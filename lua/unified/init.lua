@@ -41,6 +41,7 @@ function M.is_diff_displayed(buffer)
   return diff_module.is_diff_displayed(buffer) -- Restore original call
 end
 
+---@deprecated, use diff.show instead
 function M.show_diff(commit)
   local buffer = vim.api.nvim_get_current_buf()
   local ft = vim.api.nvim_buf_get_option(buffer, "filetype")
