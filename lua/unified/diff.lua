@@ -64,10 +64,7 @@ function M.display_inline_diff(buffer, hunks)
   -- For detecting multiple consecutive new lines
   local consecutive_added_lines = {}
 
-  for hunk_idx, hunk in ipairs(hunks) do
-    -- if vim.g.unified_debug then -- Removed debug log
-    --   print(string.format("Diff: Processing Hunk %d: old_start=%d, old_count=%d, new_start=%d, new_count=%d", hunk_idx, hunk.old_start, hunk.old_count, hunk.new_start, hunk.new_count))
-    -- end
+  for _, hunk in ipairs(hunks) do
     local line_idx = hunk.new_start - 1 -- Adjust for 0-indexed lines
     local old_idx = 0
     local new_idx = 0
