@@ -19,7 +19,11 @@ function M.setup(show_diff)
     show_diff()
   end, debounce_delay)
 
-  vim.api.nvim_create_autocmd({ "TextChanged", "InsertLeave" }, {
+  vim.api.nvim_create_autocmd({
+    "TextChanged",
+    "InsertLeave",
+    "FileChangedShell",
+  }, {
     group = group_name,
     callback = function()
       if diff.is_diff_displayed(buffer) then
