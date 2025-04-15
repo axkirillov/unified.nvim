@@ -41,37 +41,6 @@ function M.is_diff_displayed(buffer)
   return diff_module.is_diff_displayed(buffer) -- Restore original call
 end
 
--- Set up auto-refresh for current buffer
-function M.setup_auto_refresh(buffer)
-  buffer = buffer or vim.api.nvim_get_current_buf()
-
-  -- Only set up if auto-refresh is enabled
-  if not config.values.auto_refresh then
-    return
-  end
-
-  -- Remove existing autocommand group if it exists
-  if state.auto_refresh_augroup then
-    vim.api.nvim_del_augroup_by_id(state.auto_refresh_augroup)
-  end
-
-  -- Create a unique autocommand group for this buffer
-  state.auto_refresh_augroup = vim.api.nvim_create_augroup("UnifiedDiffAutoRefresh", { clear = true })
-
-  -- Set up autocommand to refresh diff on text change
-  vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
-    group = state.auto_refresh_augroup,
-    buffer = buffer,
-    callback = function()
-      -- Only refresh if diff is currently displayed
-      if diff_module.is_diff_displayed(buffer) then -- Restore original call
-        -- Use the stored commit base for refresh
-        M.show_diff()
-      end
-    end,
-  })
-end
-
 -- Show diff (always use git diff)
 function M.show_diff(commit)
   local buffer = vim.api.nvim_get_current_buf() -- Get current buffer
