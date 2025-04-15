@@ -41,15 +41,12 @@ function M.is_diff_displayed(buffer)
   return diff_module.is_diff_displayed(buffer) -- Restore original call
 end
 
--- Show diff (always use git diff)
 function M.show_diff(commit)
-  local buffer = vim.api.nvim_get_current_buf() -- Get current buffer
-  local ft = vim.api.nvim_buf_get_option(buffer, "filetype") -- Get filetype
+  local buffer = vim.api.nvim_get_current_buf()
+  local ft = vim.api.nvim_buf_get_option(buffer, "filetype")
 
-  -- Prevent diffing the file tree buffer
   if ft == "unified_tree" then
-    -- vim.api.nvim_echo({ { "Skipping diff for file tree buffer", "Comment" } }, false, {}) -- Optional debug
-    return false -- Indicate diff was not shown
+    return false
   end
 
   local result
