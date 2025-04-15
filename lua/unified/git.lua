@@ -1,15 +1,8 @@
 local M = {}
 local config = require("unified.config")
-local diff_module -- Lazy load in display_inline_diff if needed, but git.lua needs it for show_git_diff_against_commit
 
 -- Check if file is in a git repository
 function M.is_git_repo(file_path)
-  -- Lazily require diff_module here if needed, or ensure it's loaded before calling functions that need it.
-  -- For now, assume diff_module is loaded by the caller context (e.g., init.lua)
-  if not diff_module then
-    diff_module = require("unified.diff")
-  end
-
   -- Get directory from file path
   local dir = file_path
   if vim.fn.isdirectory(file_path) ~= 1 then
@@ -92,11 +85,7 @@ end
 
 -- Show diff of the current buffer compared to a specific git commit with improved highlighting
 function M.show_git_diff_against_commit(commit)
-  -- Ensure diff_module is loaded
-  if not diff_module then
-    diff_module = require("unified.diff")
-  end
-
+  local diff_module = require("unified.diff")
   local buffer = vim.api.nvim_get_current_buf()
   local current_content = table.concat(vim.api.nvim_buf_get_lines(buffer, 0, -1, false), "\n")
   local file_path = vim.api.nvim_buf_get_name(buffer)
@@ -118,7 +107,6 @@ function M.show_git_diff_against_commit(commit)
 
   -- If file isn't in git at that commit, treat it as empty for diffing new files
   if not git_content then
-    -- vim.api.nvim_echo({ { "File not found in git at commit " .. commit .. ". Diffing against empty.", "Comment" } }, false, {}) -- Optional: Inform user
     git_content = "" -- Treat as empty content
     -- Do not return false here, proceed to diff against empty content
   end
@@ -163,7 +151,6 @@ function M.show_git_diff_against_commit(commit)
   vim.fn.delete(temp_git)
 
   if diff_output ~= "" then
-    -- print("DEBUG [unified.git]: Raw diff_output for buffer " .. buffer .. ":\n" .. diff_output) -- <<< REMOVED LOG
     -- Remove the git diff header lines that might confuse our parser
     diff_output = diff_output:gsub("diff %-%-git a/%S+ b/%S+\n", "") -- Match --no-index header
     diff_output = diff_output:gsub("index %S+%.%.%S+ %S+\n", "")
@@ -171,7 +158,6 @@ function M.show_git_diff_against_commit(commit)
     diff_output = diff_output:gsub("%+%+%+" .. " %S+\n", "") -- Split the string to avoid escaping issues
 
     local hunks = diff_module.parse_diff(diff_output)
-    -- print("DEBUG [unified.git]: Parsed hunks for buffer " .. buffer .. ": " .. vim.inspect(hunks)) -- <<< REMOVED LOG
     local result = diff_module.display_inline_diff(buffer, hunks) -- Use diff_module
     return result
   else

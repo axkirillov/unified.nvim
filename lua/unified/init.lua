@@ -4,7 +4,7 @@ local diff_module = require("unified.diff") -- Restore require
 local git = require("unified.git") -- Restore require
 local state = require("unified.state")
 local file_tree = require("unified.file_tree") -- Restore require
-local commit = require("unified.commit")
+local commit_module = require("unified.commit")
 
 -- Setup function to be called by the user
 function M.setup(opts)
@@ -25,7 +25,7 @@ M.show_git_diff_against_commit = git.show_git_diff_against_commit -- Restore ass
 M.show_file_tree = file_tree.show_file_tree -- Restore assignment
 
 -- Expose commit functions
-M.handle_commit_command = commit.handle_commit_command
+M.handle_commit_command = commit_module.handle_commit_command
 
 -- No longer need to set functions on commit module
 
@@ -86,18 +86,11 @@ function M.show_diff(commit)
   local result
 
   if commit then
-    -- Store the commit reference globally
     state.set_commit_base(commit)
-    result = git.show_git_diff_against_commit(commit) -- Restore original call
+    result = git.show_git_diff_against_commit(commit)
   else
-    -- Use stored global commit base or default to HEAD
     local base = state.get_commit_base()
-    result = git.show_git_diff_against_commit(base) -- Restore original call
-  end
-
-  -- If diff was successfully displayed, set up auto-refresh
-  if result and config.values.auto_refresh then
-    M.setup_auto_refresh()
+    result = git.show_git_diff_against_commit(base)
   end
 
   return result
@@ -145,6 +138,7 @@ end
 
 -- Helper function to activate diff display
 function M.activate()
+  local auto_refresh = require("unified.auto_refresh")
   local buffer = vim.api.nvim_get_current_buf()
 
   -- Store current window as main window
@@ -163,6 +157,10 @@ function M.activate()
 
   -- Show diff based on the stored commit base (or default to HEAD)
   local result = M.show_diff()
+
+  if result and config.values.auto_refresh then
+    auto_refresh.setup(M.show_diff)
+  end
 
   if not state.opening_from_tree then
     file_tree.show_file_tree()
@@ -184,6 +182,4 @@ function M.toggle_diff()
     M.activate()
   end
 end
--- Comment out the deferred initialization to avoid potential load cycle
-
 return M

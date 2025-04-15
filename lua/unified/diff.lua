@@ -1,7 +1,6 @@
 local M = {}
 
 local config = require("unified.config")
-local git -- Lazy load to avoid circular dependency with git.lua needing diff.lua
 local window = require("unified.window")
 
 -- Parse diff and return a structured representation
@@ -42,24 +41,11 @@ function M.parse_diff(diff_text)
   return hunks
 end
 
--- Display unified diff inline in the buffer with improved handling for historical diffs
 function M.display_inline_diff(buffer, hunks)
-  -- if vim.g.unified_debug then -- Removed debug log
-  --   print("Diff: display_inline_diff called for buffer: " .. buffer)
-  --   print("Diff: Input hunks: " .. vim.inspect(hunks))
-  -- end -- Removed stray end
-  -- Lazily require git module here
-  if not git then
-    git = require("unified.git")
-  end
+  local git = require("unified.git")
 
-  -- Use namespace from config
   local ns_id = config.ns_id
 
-  -- if vim.g.unified_debug then -- Removed debug log
-  --   print("Diff: Clearing namespace " .. ns_id .. " and signs for buffer " .. buffer)
-  -- end
-  -- Clear existing extmarks
   vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
 
   -- Clear existing signs
@@ -328,9 +314,6 @@ function M.display_inline_diff(buffer, hunks)
     end
   end
 
-  -- if vim.g.unified_debug then -- Removed debug log
-  --   print("Diff: display_inline_diff finished. Final mark_count: " .. mark_count)
-  -- end
   return mark_count > 0
 end
 
