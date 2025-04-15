@@ -128,7 +128,7 @@ function M.activate()
   local result = M.show_diff()
 
   if result and config.values.auto_refresh then
-    auto_refresh.setup(M.show_diff)
+    auto_refresh.setup()
   end
 
   if not state.opening_from_tree then

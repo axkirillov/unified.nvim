@@ -5,8 +5,8 @@ local default = {
   augroup_name = "UnifiedDiffAutoRefresh",
 }
 
----@param show_diff function
-function M.setup(show_diff)
+function M.setup()
+  local unified = require("unified")
   local diff = require("unified.diff")
   local async = require("unified.utils.async")
   local group_name = default.augroup_name
@@ -16,7 +16,7 @@ function M.setup(show_diff)
   vim.api.nvim_create_augroup(group_name, { clear = true })
 
   local debounced_show_diff = async.debounce(function()
-    show_diff()
+    unified.show_diff()
   end, debounce_delay)
 
   vim.api.nvim_create_autocmd({
