@@ -49,7 +49,6 @@ function M.is_git_repo(file_path)
 end
 
 M.get_git_file_content = cache_util.create_cached_function(function(file_path, commit)
-  -- Default to HEAD if commit is not specified
   commit = commit or "HEAD"
 
   local relative_path = vim.fn.system(
@@ -60,12 +59,10 @@ M.get_git_file_content = cache_util.create_cached_function(function(file_path, c
     )
   )
 
-  -- If file isn't tracked, return nil
   if relative_path == "" then
     return nil
   end
 
-  -- Try to get file from the specified commit
   local cmd = string.format(
     "cd %s && git show %s:%s 2>/dev/null",
     vim.fn.shellescape(vim.fn.fnamemodify(file_path, ":h")),
@@ -75,7 +72,6 @@ M.get_git_file_content = cache_util.create_cached_function(function(file_path, c
 
   local content = vim.fn.system(cmd)
 
-  -- Check if command succeeded
   if vim.v.shell_error ~= 0 then
     return nil
   end
