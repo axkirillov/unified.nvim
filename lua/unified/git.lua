@@ -1,5 +1,6 @@
 local M = {}
 local config = require("unified.config")
+local cache_util = require("unified.utils.cache")
 
 -- Check if file is in a git repository
 function M.is_git_repo(file_path)
@@ -47,8 +48,7 @@ function M.is_git_repo(file_path)
   return is_git_repo
 end
 
--- Get file content from a specific git commit (defaults to HEAD)
-function M.get_git_file_content(file_path, commit)
+M.get_git_file_content = cache_util.create_cached_function(function(file_path, commit)
   -- Default to HEAD if commit is not specified
   commit = commit or "HEAD"
 
@@ -81,7 +81,7 @@ function M.get_git_file_content(file_path, commit)
   end
 
   return content
-end
+end)
 
 -- Show diff of the current buffer compared to a specific git commit with improved highlighting
 function M.show_git_diff_against_commit(commit)
