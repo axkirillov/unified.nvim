@@ -1,6 +1,6 @@
 local M = {}
 local config = require("unified.config")
-local diff_module = require("unified.diff") -- Restore require
+local diff = require("unified.diff")
 local git = require("unified.git") -- Restore require
 local state = require("unified.state")
 local file_tree = require("unified.file_tree") -- Restore require
@@ -15,7 +15,7 @@ function M.setup(opts)
 end
 
 -- Use parse_diff function from diff module
-M.parse_diff = diff_module.parse_diff -- Restore assignment
+M.parse_diff = diff.parse_diff
 
 -- Expose git functions directly for testing or specific use cases
 M.show_git_diff = git.show_git_diff -- Restore assignment
@@ -38,7 +38,7 @@ function M.is_diff_displayed(buffer)
 
   -- Also check the buffer as a fallback (for compatibility with older code)
   buffer = buffer or vim.api.nvim_get_current_buf()
-  return diff_module.is_diff_displayed(buffer) -- Restore original call
+  return diff.is_diff_displayed(buffer)
 end
 
 ---@deprecated, use diff.show instead
@@ -122,8 +122,8 @@ function M.activate()
     return
   end
 
-  -- Show diff based on the stored commit base (or default to HEAD)
-  local result = M.show_diff()
+  local commit_base = state.get_commit_base() -- Get commit from state
+  local result = diff.show(commit_base) -- Pass commit to diff.show
 
   if result and config.values.auto_refresh then
     auto_refresh.setup()
@@ -141,7 +141,6 @@ function M.activate()
   end
 end
 
--- Toggle diff display based on global state
 function M.toggle_diff()
   if state.is_active then
     M.deactivate()
