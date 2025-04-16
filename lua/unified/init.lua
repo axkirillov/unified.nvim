@@ -122,8 +122,8 @@ function M.activate()
     return
   end
 
-  local commit_base = state.get_commit_base() -- Get commit from state
-  local result = diff.show(commit_base) -- Pass commit to diff.show
+  local commit_base = state.get_commit_base()
+  local result = diff.show(commit_base)
 
   if result and config.values.auto_refresh then
     auto_refresh.setup()
