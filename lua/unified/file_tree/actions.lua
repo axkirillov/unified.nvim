@@ -124,24 +124,12 @@ function M.refresh()
     return
   end
 
-  local root_path = tree_state.root_path
   local diff_only = tree_state.diff_only
   local commit_ref = tree_state.commit_ref
 
-  if root_path then
-    -- Need to call the main function to recreate buffer and tree logic
-    -- This requires access to the function that will be in init.lua
-    local unified_file_tree_module = package.loaded["unified.file_tree"]
-    if unified_file_tree_module and unified_file_tree_module.create_file_tree_buffer then
-      -- Create a new buffer/tree instance
-      local new_buf = unified_file_tree_module.create_file_tree_buffer(root_path, diff_only, commit_ref)
-      if new_buf and tree_state.window and vim.api.nvim_win_is_valid(tree_state.window) then
-        -- Replace the buffer in the existing window
-        vim.api.nvim_win_set_buf(tree_state.window, new_buf)
-        -- The create function should update tree_state.buffer internally
-      end
-    end
-  end
+  local file_tree = require("unified.file_tree")
+  local new_buf = file_tree.create_file_tree_buffer(tree_state.root_path, diff_only, commit_ref)
+  vim.api.nvim_win_set_buf(tree_state.window, new_buf)
 end
 
 -- Show help dialog
