@@ -48,9 +48,31 @@ function M.is_git_repo(file_path)
   return is_git_repo
 end
 
-M.get_git_file_content = cache_util.memoize(function(file_path, commit)
-  commit = commit or "HEAD"
+function M.resolve_commit_hash(file_path, commit_ref)
+  local dir = vim.fn.fnamemodify(file_path, ":h")
+  local cmd = string.format(
+    "cd %s && git rev-parse --verify %s 2>/dev/null",
+    vim.fn.shellescape(dir),
+    vim.fn.shellescape(commit_ref)
+  )
+  local result = vim.fn.system(cmd)
+  local hash = vim.trim(result)
 
+  if vim.v.shell_error ~= 0 or hash == "" then
+    if vim.g.unified_debug then
+      print("Failed to resolve commit reference: " .. commit_ref .. " in " .. dir)
+    end
+    return nil
+  end
+
+  if vim.g.unified_debug then
+    print("Resolved commit reference: " .. commit_ref .. " to " .. hash)
+  end
+
+  return hash
+end
+
+M.get_git_file_content = cache_util.memoize(function(file_path, commit)
   local relative_path = vim.fn.system(
     string.format(
       "cd %s && git ls-files --full-name %s | tr -d '\n'",
@@ -98,8 +120,13 @@ function M.show_git_diff_against_commit(commit)
     return false
   end
 
-  -- Get content from git at specified commit
-  local git_content = M.get_git_file_content(file_path, commit)
+  local commit_hash = M.resolve_commit_hash(file_path, commit)
+  if not commit_hash then
+    vim.api.nvim_echo({ { "Invalid commit reference: " .. commit, "ErrorMsg" } }, false, {})
+    return false
+  end
+
+  local git_content = M.get_git_file_content(file_path, commit_hash)
 
   -- If file isn't in git at that commit, treat it as empty for diffing new files
   if not git_content then
@@ -169,7 +196,14 @@ end
 
 -- Show diff of the current buffer compared to git HEAD
 function M.show_git_diff()
-  return M.show_git_diff_against_commit("HEAD")
+  local buffer = vim.api.nvim_get_current_buf()
+  local file_path = vim.api.nvim_buf_get_name(buffer)
+  local head_hash = M.resolve_commit_hash(file_path, "HEAD")
+  if not head_hash then
+    vim.api.nvim_echo({ { "Failed to resolve HEAD commit", "ErrorMsg" } }, false, {})
+    return false
+  end
+  return M.show_git_diff_against_commit(head_hash)
 end
 
 return M
