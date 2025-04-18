@@ -6,7 +6,7 @@ local M = {}
 -- Only non-nil results are cached.
 ---@param original_func fun(...):any The function to wrap with caching.
 ---@return fun(...):any -- A new function that caches the results of original_func.
-function M.create_cached_function(original_func)
+function M.memoize(original_func)
   ---@type table<string, any>
   local cache = {}
 

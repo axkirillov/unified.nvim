@@ -48,7 +48,7 @@ function M.is_git_repo(file_path)
   return is_git_repo
 end
 
-M.get_git_file_content = cache_util.create_cached_function(function(file_path, commit)
+M.get_git_file_content = cache_util.memoize(function(file_path, commit)
   commit = commit or "HEAD"
 
   local relative_path = vim.fn.system(
