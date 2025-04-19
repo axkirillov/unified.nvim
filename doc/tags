@@ -9,5 +9,3 @@ unified-requirements	unified.txt	/*unified-requirements*
 unified-troubleshooting	unified.txt	/*unified-troubleshooting*
 unified-usage	unified.txt	/*unified-usage*
 unified.txt	unified.txt	/*unified.txt*
-:UnifiedDiffShow	unified.txt	/*:UnifiedDiffShow*
-:UnifiedDiffToggle	unified.txt	/*:UnifiedDiffToggle*
