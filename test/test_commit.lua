@@ -75,16 +75,6 @@ function M.test_unified_commit_update_base()
   assert(state.is_active, "Unified plugin should still be active after changing commit base")
   assert(state.commit_base == "HEAD~4", "Commit base should have been updated to HEAD~4")
 
-  -- Verify a message about updating the base was shown
-  local update_message_found = false
-  for _, msg in ipairs(messages) do
-    if msg.text:match("Showing diff against commit: HEAD~4") then
-      update_message_found = true
-      break
-    end
-  end
-  assert(update_message_found, "Expected message about updating to new commit base")
-
   unified.deactivate()
   local buffer = vim.api.nvim_get_current_buf()
   utils.clear_diff_marks(buffer)

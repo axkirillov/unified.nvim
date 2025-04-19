@@ -48,8 +48,7 @@ function M.is_git_repo(file_path)
   return is_git_repo
 end
 
-function M.resolve_commit_hash(file_path, commit_ref)
-  local dir = vim.fn.fnamemodify(file_path, ":h")
+function M.resolve_commit_hash(dir, commit_ref)
   local cmd = string.format(
     "cd %s && git rev-parse --verify %s 2>/dev/null",
     vim.fn.shellescape(dir),
@@ -63,10 +62,6 @@ function M.resolve_commit_hash(file_path, commit_ref)
       print("Failed to resolve commit reference: " .. commit_ref .. " in " .. dir)
     end
     return nil
-  end
-
-  if vim.g.unified_debug then
-    print("Resolved commit reference: " .. commit_ref .. " to " .. hash)
   end
 
   return hash
@@ -119,7 +114,8 @@ function M.show_git_diff_against_commit(commit)
     return false
   end
 
-  local commit_hash = M.resolve_commit_hash(file_path, commit)
+  local dir = vim.fn.fnamemodify(file_path, ":h")
+  local commit_hash = M.resolve_commit_hash(dir, commit)
   if not commit_hash then
     vim.api.nvim_echo({ { "Invalid commit reference: " .. commit, "ErrorMsg" } }, false, {})
     return false
@@ -194,10 +190,12 @@ function M.show_git_diff_against_commit(commit)
 end
 
 -- Show diff of the current buffer compared to git HEAD
+-- @deprecated, use show_git_diff_against_commit instead
 function M.show_git_diff()
   local buffer = vim.api.nvim_get_current_buf()
   local file_path = vim.api.nvim_buf_get_name(buffer)
-  local head_hash = M.resolve_commit_hash(file_path, "HEAD")
+  local dir = vim.fn.fnamemodify(file_path, ":h")
+  local head_hash = M.resolve_commit_hash(dir, "HEAD")
   if not head_hash then
     vim.api.nvim_echo({ { "Failed to resolve HEAD commit", "ErrorMsg" } }, false, {})
     return false
