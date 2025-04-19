@@ -21,7 +21,3 @@ require("unified").setup({
     change = "~",
   },
 })
-
--- Example of custom key mappings
-vim.keymap.set("n", "<leader>ud", ":UnifiedDiffToggle<CR>", { silent = true, desc = "Toggle unified diff" })
-vim.keymap.set("n", "<leader>us", ":UnifiedDiffShow<CR>", { silent = true, desc = "Show unified diff" })
