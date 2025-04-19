@@ -44,15 +44,6 @@ end, {
         repo_dir = vim.fn.fnamemodify(file_path, ":h")
       end
 
-      -- Check if we're in a git repo
-      local repo_check = vim.fn.system(
-        string.format("cd %s && git rev-parse --is-inside-work-tree 2>/dev/null", vim.fn.shellescape(repo_dir))
-      )
-
-      if vim.trim(repo_check) ~= "true" then
-        return {}
-      end
-
       -- Provide some common references
       local suggestions = { "HEAD", "HEAD~1", "HEAD~2", "main", "master" }
       local filtered_suggestions = {}
