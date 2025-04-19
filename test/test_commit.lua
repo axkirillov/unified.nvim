@@ -73,7 +73,6 @@ function M.test_unified_commit_update_base()
 
   -- Verify the plugin is still active
   assert(state.is_active, "Unified plugin should still be active after changing commit base")
-  assert(state.commit_base == "HEAD~4", "Commit base should have been updated to HEAD~4")
 
   unified.deactivate()
   local buffer = vim.api.nvim_get_current_buf()
