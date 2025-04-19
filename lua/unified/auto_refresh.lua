@@ -17,7 +17,9 @@ function M.setup()
   local debounced_show_diff = async.debounce(function()
     local state = require("unified.state")
     local commit = state.get_commit_base()
-    diff.show(commit)
+
+    local git = require("unified.git")
+    git.show_git_diff_against_commit(commit)
   end, debounce_delay)
 
   vim.api.nvim_create_autocmd({

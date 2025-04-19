@@ -101,7 +101,6 @@ M.get_git_file_content = cache_util.memoize(function(file_path, commit)
   return content
 end)
 
--- Show diff of the current buffer compared to a specific git commit with improved highlighting
 function M.show_git_diff_against_commit(commit)
   local diff_module = require("unified.diff")
   local buffer = vim.api.nvim_get_current_buf()
