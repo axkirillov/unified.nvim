@@ -28,15 +28,12 @@ function M.handle_commit_command(commit_ref)
 
   -- Check if buffer has a name before showing diff
   if file_path ~= "" then
-    if unified.show_diff then
-      -- Show diff for the commit
-      unified.show_diff(commit_ref)
-    end -- Added missing end
+    local diff = require("unified.diff")
+    diff.show(commit_hash)
   end
 
-  -- Always show file tree with the explicit commit reference, regardless of buffer name
   if unified.show_file_tree then
-    unified.show_file_tree(commit_ref)
+    unified.show_file_tree(commit_hash)
   end
 
   -- Focus the file tree window if it exists and is valid
