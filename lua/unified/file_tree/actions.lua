@@ -98,27 +98,6 @@ function M.expand_node()
   -- Expansion is now automatic via render, this action is no longer needed.
 end
 
--- Collapse node or go to parent
-function M.collapse_node()
-  if not is_file_tree_buffer() then
-    return
-  end
-
-  local line = vim.api.nvim_win_get_cursor(0)[1] - 1
-  local node = tree_state.line_to_node[line]
-
-  if not node then
-    return
-  end
-
-  -- Collapse is no longer needed. Only handle going to parent.
-  if node.parent and node.parent ~= tree_state.current_tree.root then
-    -- If not an expanded directory, or it's a file, try to go to parent
-    M.go_to_parent()
-  end
-end
-
--- Refresh the tree
 function M.refresh()
   if not is_file_tree_buffer() then
     return
