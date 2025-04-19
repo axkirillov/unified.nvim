@@ -15,7 +15,11 @@ vim.api.nvim_create_user_command("Unified", function(opts)
     return
   end
 
-  unified.handle_commit_command(args or "HEAD")
+  if args == "" then
+    args = "HEAD"
+  end
+
+  unified.handle_commit_command(args)
 end, {
   nargs = "*",
   complete = function(ArgLead, CmdLine, _)

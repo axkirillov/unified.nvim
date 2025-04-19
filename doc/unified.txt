@@ -129,6 +129,10 @@ allowing you to easily navigate between files in your repository.
         The specified {commit_ref} is stored and used for subsequent refreshes
         until a new reference is provided or the view is closed.
 
+   *:Unified reset*                                     *:Unified-reset*
+       Removes all unified diff highlights and signs from the current buffer
+       and closes the unified file tree window if it is open.
+
 ==============================================================================
 7. API                                                        *unified-api*
 
