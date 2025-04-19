@@ -41,6 +41,4 @@ end, {
     return {}
   end,
 })
-
--- Initialize the plugin with default settings
 require("unified").setup()
