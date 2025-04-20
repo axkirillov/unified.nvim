@@ -3,18 +3,7 @@ local M = {}
 
 -- Handle the "Unified <ref>" command
 function M.handle_commit_command(commit_ref)
-  local unified = require("unified")
-  local cwd = vim.fn.getcwd()
-
-  local repo_check =
-    vim.fn.system(string.format("cd %s && git rev-parse --is-inside-work-tree 2>/dev/null", vim.fn.shellescape(cwd)))
-
-  if vim.trim(repo_check) ~= "true" then
-    vim.api.nvim_echo({ { "Not in a git repository", "ErrorMsg" } }, false, {})
-    return false
-  end
-
-  local commit_hash = require("unified.git").resolve_commit_hash(cwd, commit_ref)
+  local commit_hash = require("unified.git").resolve_commit_hash(commit_ref)
 
   -- Store a reference to main window if not already active
   local state = require("unified.state")
@@ -25,6 +14,7 @@ function M.handle_commit_command(commit_ref)
   -- Store the commit in global state, even if buffer has no name
   state.set_commit_base(commit_hash)
 
+  local unified = require("unified")
   if unified.show_file_tree then
     unified.show_file_tree(commit_hash)
   end
