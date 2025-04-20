@@ -5,7 +5,6 @@ local M = {}
 function M.handle_commit_command(commit_ref)
   local unified = require("unified")
   local cwd = vim.fn.getcwd()
-  local file_path = vim.api.nvim_buf_get_name(vim.api.nvim_get_current_buf())
 
   local repo_check =
     vim.fn.system(string.format("cd %s && git rev-parse --is-inside-work-tree 2>/dev/null", vim.fn.shellescape(cwd)))
