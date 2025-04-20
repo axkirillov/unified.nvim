@@ -3,7 +3,6 @@ local diff = require("unified.diff")
 local git = require("unified.git") -- Restore require
 local state = require("unified.state")
 local file_tree = require("unified.file_tree") -- Restore require
-local commit_module = require("unified.commit")
 
 function M.setup(opts)
   local config = require("unified.config")
