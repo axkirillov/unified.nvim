@@ -1,4 +1,3 @@
--- Module for handling commit-related functionality in unified.nvim
 local M = {}
 
 -- Handle the "Unified <ref>" command

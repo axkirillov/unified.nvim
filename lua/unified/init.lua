@@ -1,17 +1,15 @@
 local M = {}
-local config = require("unified.config")
 local diff = require("unified.diff")
 local git = require("unified.git") -- Restore require
 local state = require("unified.state")
 local file_tree = require("unified.file_tree") -- Restore require
 local commit_module = require("unified.commit")
 
--- Setup function to be called by the user
 function M.setup(opts)
+  local config = require("unified.config")
+  local command = require("unified.command")
   config.setup(opts)
-
-  -- Use namespace from config
-  M.ns_id = config.ns_id
+  command.setup()
 end
 
 -- Use parse_diff function from diff module
@@ -66,6 +64,7 @@ end
 -- Helper function to deactivate diff display
 function M.deactivate()
   local buffer = vim.api.nvim_get_current_buf()
+  local config = require("unified.config")
   local ns_id = config.ns_id
 
   -- Clear diff display
@@ -107,6 +106,7 @@ end
 function M.activate()
   local auto_refresh = require("unified.auto_refresh")
   local buffer = vim.api.nvim_get_current_buf()
+  local config = require("unified.config")
 
   -- Store current window as main window
   state.main_win = vim.api.nvim_get_current_win()
