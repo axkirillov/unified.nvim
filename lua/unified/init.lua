@@ -22,11 +22,6 @@ M.show_git_diff_against_commit = git.show_git_diff_against_commit -- Restore ass
 -- Expose file tree functions
 M.show_file_tree = file_tree.show_file_tree -- Restore assignment
 
--- Expose commit functions
-M.handle_commit_command = commit_module.handle_commit_command
-
--- No longer need to set functions on commit module
-
 -- Helper function to check if diff is displayed (for compatibility)
 function M.is_diff_displayed(buffer)
   -- Check the global state first
