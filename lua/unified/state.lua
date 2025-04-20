@@ -1,11 +1,11 @@
 -- State management for unified.nvim
 local M = {}
+local m = {
+  commit_base = nil,
+}
 
 -- Global state for the plugin
 M.is_active = false
-
--- Global commit base that persists across buffers
-M.commit_base = "HEAD"
 
 -- Main window reference
 M.main_win = nil
@@ -40,15 +40,13 @@ function M.get_main_window()
   return vim.api.nvim_get_current_win()
 end
 
--- Set the commit base
 function M.set_commit_base(commit)
-  M.commit_base = commit
+  m.commit_base = commit
   vim.api.nvim_exec_autocmds("User", { pattern = "UnifiedBaseCommitUpdated" })
 end
 
--- Get the current commit base
 function M.get_commit_base()
-  return M.commit_base or "HEAD"
+  return m.commit_base
 end
 
 return M
