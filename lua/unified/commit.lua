@@ -26,12 +26,6 @@ function M.handle_commit_command(commit_ref)
   -- Store the commit in global state, even if buffer has no name
   state.set_commit_base(commit_hash)
 
-  -- Check if buffer has a name before showing diff
-  if file_path ~= "" then
-    local diff = require("unified.diff")
-    diff.show(commit_hash)
-  end
-
   if unified.show_file_tree then
     unified.show_file_tree(commit_hash)
   end
