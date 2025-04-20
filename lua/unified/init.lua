@@ -141,11 +141,4 @@ function M.activate()
   end
 end
 
-function M.toggle_diff()
-  if state.is_active then
-    M.deactivate()
-  else
-    M.activate()
-  end
-end
 return M

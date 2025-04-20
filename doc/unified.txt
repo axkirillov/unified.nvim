@@ -146,9 +146,6 @@ allowing you to easily navigate between files in your repository.
     The commit parameter must be provided and can be a commit hash, branch name,
     tag, or any git reference.
 
-*require('unified').toggle_diff()*
-    Function to toggle diff display and file tree explorer on/off.
-
 *require('unified').is_diff_displayed()*
     Function to check if diff is currently displayed in a buffer.
 
