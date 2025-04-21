@@ -45,6 +45,7 @@ function M.set_commit_base(commit)
   vim.api.nvim_exec_autocmds("User", { pattern = "UnifiedBaseCommitUpdated" })
 end
 
+---@return string|nil
 function M.get_commit_base()
   return m.commit_base
 end

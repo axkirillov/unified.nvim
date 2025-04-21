@@ -9,6 +9,7 @@ function M.setup(opts)
   local command = require("unified.command")
   config.setup(opts)
   command.setup()
+  file_tree.setup()
 end
 
 -- Use parse_diff function from diff module

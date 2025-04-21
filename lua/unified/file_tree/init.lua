@@ -1,14 +1,25 @@
--- Main entry point for the File Tree module
-
+local M = {}
 local git = require("unified.git")
-local global_state = require("unified.state") -- Global plugin state
+local global_state = require("unified.state")
 local tree_state_module = require("unified.file_tree.state")
 local tree_state = tree_state_module.tree_state
 local FileTree = require("unified.file_tree.tree")
 local render = require("unified.file_tree.render")
 local actions = require("unified.file_tree.actions")
 
-local M = {}
+function M.setup()
+  vim.api.nvim_create_autocmd("User", {
+    pattern = "UnifiedBaseCommitUpdated",
+    callback = function()
+      local commit_hash = global_state.get_commit_base()
+      if not commit_hash then
+        vim.api.nvim_echo({ { "No commit base set", "WarningMsg" } }, false, {})
+        return
+      end
+      M.show(commit_hash)
+    end,
+  })
+end
 
 function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
   tree_state.root_path = buffer_path
@@ -201,6 +212,7 @@ local function position_cursor_on_first_file(buffer, window)
   end
 end
 
+---@deprecated, use M.show instead
 function M.show_file_tree(path_or_commit, show_all_files)
   local commit_ref = nil
   local file_path = path_or_commit
@@ -286,6 +298,64 @@ function M.show_file_tree(path_or_commit, show_all_files)
   vim.api.nvim_win_set_option(tree_win, "list", false)
   vim.api.nvim_win_set_option(tree_win, "wrap", false) -- Disable line wrapping
   -- vim.api.nvim_win_set_option(tree_win, "fillchars", "vert:│") -- Optional: for visual vertical line
+  -- Store window reference in tree state and global state
+  tree_state.window = tree_win
+  global_state.file_tree_win = tree_win
+  global_state.file_tree_buf = tree_buf -- Keep global state updated too
+
+  auto_select_and_open_first_file(tree_buf, tree_win)
+  return true
+end
+
+--- @param commit_hash string The commit hash to compare against.
+function M.show(commit_hash)
+  local file_path = vim.fn.getcwd()
+  local diff_only = true -- Always show diff only for a specific commit
+
+  -- Check if tree window already exists and is valid
+  if
+    tree_state.window
+    and vim.api.nvim_win_is_valid(tree_state.window)
+    and tree_state.buffer
+    and vim.api.nvim_buf_is_valid(tree_state.buffer)
+  then
+    local new_buf = M.create_file_tree_buffer(file_path, diff_only, commit_hash)
+
+    vim.api.nvim_win_set_buf(tree_state.window, new_buf)
+    -- The create function updates tree_state.buffer, but we also need to update global state
+    global_state.file_tree_buf = new_buf -- Update global state reference
+
+    -- Focus the tree window
+    vim.api.nvim_set_current_win(tree_state.window)
+
+    -- Position cursor on the first file in the updated tree
+    position_cursor_on_first_file(new_buf, tree_state.window)
+
+    return true
+  end
+
+  -- Tree window doesn't exist, create it
+  local tree_buf = M.create_file_tree_buffer(file_path, diff_only, commit_hash)
+  if not tree_buf then
+    return false
+  end -- Exit if buffer creation failed
+
+  -- Create new window for tree
+  local current_win = vim.api.nvim_get_current_win()
+  vim.cmd("topleft 30vsplit") -- Consider making width configurable
+  local tree_win = vim.api.nvim_get_current_win()
+  vim.api.nvim_win_set_buf(tree_win, tree_buf)
+
+  -- Set window options (copying from existing function)
+  vim.api.nvim_win_set_option(tree_win, "number", false)
+  vim.api.nvim_win_set_option(tree_win, "relativenumber", false)
+  vim.api.nvim_win_set_option(tree_win, "signcolumn", "no")
+  vim.api.nvim_win_set_option(tree_win, "cursorline", true)
+  vim.api.nvim_win_set_option(tree_win, "winfixwidth", true)
+  vim.api.nvim_win_set_option(tree_win, "foldenable", false)
+  vim.api.nvim_win_set_option(tree_win, "list", false)
+  vim.api.nvim_win_set_option(tree_win, "wrap", false)
+
   -- Store window reference in tree state and global state
   tree_state.window = tree_win
   global_state.file_tree_win = tree_win

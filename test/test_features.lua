@@ -38,10 +38,11 @@ function M.test_diff_against_commit()
 
   local second_commit = vim.fn.system("git rev-parse HEAD"):gsub("\n", "")
 
-  vim.cmd("edit " .. test_path)
+  vim.cmd("edit! " .. test_path)
   vim.api.nvim_buf_set_lines(0, 0, 1, false, { "modified line 1" }) -- Change line 1
   vim.api.nvim_buf_set_lines(0, 3, 4, false, {}) -- Delete line 4
   vim.api.nvim_buf_set_lines(0, 4, 5, false, { "new line" }) -- Add new line
+  vim.cmd("write")
 
   local result = require("unified").show_git_diff_against_commit(first_commit)
 
@@ -329,6 +330,7 @@ function M.test_historical_commit_highlighting()
   }
 
   vim.api.nvim_buf_set_lines(buffer, 0, -1, false, modified_content)
+  vim.cmd("write")
 
   -- Get namespace for extmarks
   local ns_id = vim.api.nvim_create_namespace("unified_diff")

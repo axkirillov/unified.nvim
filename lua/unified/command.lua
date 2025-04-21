@@ -35,16 +35,12 @@ M.run = function(args)
   end
 
   local commit_hash = require("unified.git").resolve_commit_hash(commit_ref)
-
   local state = require("unified.state")
+  state.set_commit_base(commit_hash)
+
   if not state.is_active then
     state.main_win = vim.api.nvim_get_current_win()
   end
-
-  state.set_commit_base(commit_hash)
-
-  local tree = require("unified.file_tree")
-  tree.show_file_tree(commit_hash)
 
   state.is_active = true
 
