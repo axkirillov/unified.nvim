@@ -18,18 +18,6 @@ M.parse_diff = diff.parse_diff
 M.show_git_diff = git.show_git_diff -- Restore assignment
 M.show_git_diff_against_commit = git.show_git_diff_against_commit -- Restore assignment
 
--- Helper function to check if diff is displayed (for compatibility)
-function M.is_diff_displayed(buffer)
-  -- Check the global state first
-  if state.is_active then
-    return true
-  end
-
-  -- Also check the buffer as a fallback (for compatibility with older code)
-  buffer = buffer or vim.api.nvim_get_current_buf()
-  return diff.is_diff_displayed(buffer)
-end
-
 ---@deprecated, use diff.show instead
 function M.show_diff(commit)
   local buffer = vim.api.nvim_get_current_buf()
