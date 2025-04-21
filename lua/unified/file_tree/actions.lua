@@ -1,72 +1,55 @@
--- Module for handling user actions within the file tree buffer
-
 local tree_state_module = require("unified.file_tree.state")
 local tree_state = tree_state_module.tree_state
-local render = require("unified.file_tree.render")
 local global_state = require("unified.state") -- For accessing main window
 
 local M = {}
 
--- Helper to check if the current buffer is the file tree buffer
 local function is_file_tree_buffer()
   return vim.api.nvim_get_current_buf() == tree_state.buffer
 end
 
--- Helper function to open a file node in the main window and show diff
 local function open_file_node(node)
   if not node or node.is_dir then
-    return -- Only open files
+    return
   end
 
-  local win = global_state.get_main_window() -- Use global state module
-  if win and vim.api.nvim_win_is_valid(win) then
-    -- Switch to the target window and use standard edit
-    local current_win = vim.api.nvim_get_current_win() -- Store current window
-    vim.api.nvim_set_current_win(win) -- Switch to the main/target window
-    vim.cmd("edit " .. vim.fn.fnameescape(node.path)) -- Open the file
-    -- Show diff for the newly opened file using the plugin's potential internal logic
-    -- Use lazy loading via package.loaded to avoid circular dependency
-    local unified_module = package.loaded["unified"]
-    if unified_module then
-      global_state.opening_from_tree = true -- Set flag before calling activate/show_diff
-      -- Check if the main unified view needs activation or just a refresh
-      if not global_state.is_active then
-        if unified_module.activate then
-          unified_module.activate() -- Activate the diff view
-        end
-      else
-        -- If already active, refresh the diff display for the new file
-        if unified_module.show_diff then
-          unified_module.show_diff() -- Will use the current commit_base from global_state
-        end
-      end
-      global_state.opening_from_tree = false -- Reset flag after calling activate/show_diff
-    end
-
-    -- Switch focus back to the original window (file tree)
-    vim.api.nvim_set_current_win(current_win)
-    -- Keep the commented out line if it was there, or remove if not needed
-    -- vim.api.nvim_set_current_win(current_win)
-    -- Show diff for the newly opened file
-    -- Use lazy loading via package.loaded to avoid circular dependency
-    local unified_module = package.loaded["unified"]
-    if not unified_module then
-      return -- Should ideally be loaded by now
-    end
-
-    global_state.opening_from_tree = true -- Set flag before calling activate/show_diff
-    if not global_state.is_active then
-      if unified_module.activate then
-        unified_module.activate() -- Activate the diff view
-      end
-    else
-      -- If already active, refresh the diff display for the new file
-      if unified_module.show_diff then
-        unified_module.show_diff() -- Will use the current commit_base from global_state
-      end
-    end
-    global_state.opening_from_tree = false -- Reset flag after calling activate/show_diff
+  local win = global_state.get_main_window()
+  if not win or not vim.api.nvim_win_is_valid(win) then
+    vim.api.nvim_echo({ { "No main window", "WarningMsg" } }, false, {})
+    return
   end
+
+  local current_win = vim.api.nvim_get_current_win()
+  vim.api.nvim_set_current_win(win)
+
+  vim.defer_fn(function()
+    local target_path = vim.fn.fnameescape(node.path)
+    local target_buf_id = vim.fn.bufadd(target_path)
+    vim.fn.bufload(target_buf_id)
+
+    if not vim.api.nvim_buf_is_valid(target_buf_id) then
+      vim.api.nvim_echo({ { "Failed to load buffer for: " .. node.path, "ErrorMsg" } }, false, {})
+      vim.api.nvim_set_current_win(current_win)
+      return
+    end
+    vim.api.nvim_win_set_buf(win, target_buf_id)
+
+    local diff = require("unified.diff")
+    local commit = global_state.get_commit_base()
+    if not commit then
+      vim.api.nvim_echo({ { "No commit base set", "WarningMsg" } }, false, {})
+      vim.api.nvim_set_current_win(current_win)
+      return
+    end
+
+    diff.show(commit, target_buf_id)
+    local auto_refresh = require("unified.auto_refresh")
+    auto_refresh.setup(target_buf_id)
+
+    if vim.api.nvim_win_is_valid(current_win) then
+      vim.api.nvim_set_current_win(current_win)
+    end
+  end, 1)
 end
 
 -- Open file under cursor (previously toggle_node)

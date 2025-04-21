@@ -301,8 +301,15 @@ function M.is_diff_displayed(buffer)
   return #marks > 0
 end
 
-function M.show(commit)
-  local buffer = vim.api.nvim_get_current_buf()
+---@param commit string
+---@param buffer_id? integer Optional buffer ID to show diff in. Defaults to current buffer.
+function M.show(commit, buffer_id)
+  local buffer = buffer_id or vim.api.nvim_get_current_buf()
+  if not vim.api.nvim_buf_is_valid(buffer) then
+    vim.api.nvim_echo({ { "Invalid buffer provided to diff.show", "ErrorMsg" } }, false, {})
+    return false
+  end
+
   local ft = vim.api.nvim_buf_get_option(buffer, "filetype")
 
   if ft == "unified_tree" then
@@ -310,7 +317,7 @@ function M.show(commit)
   end
 
   local git = require("unified.git")
-  return git.show_git_diff_against_commit(commit)
+  return git.show_git_diff_against_commit(commit, buffer)
 end
 
 return M

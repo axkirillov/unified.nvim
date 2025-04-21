@@ -1,11 +1,9 @@
 .PHONY: tests
 tests:
-	@echo "Running tests..."
 	@./test/run_tests.sh $(TEST_ARGS)
 
 .PHONY: test
 test:
-	@echo "Running single test: $(TEST)"
 	@./test/run_tests.sh --test=$(TEST)
 
 .PHONY: lint

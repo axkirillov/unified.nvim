@@ -5,12 +5,12 @@ local default = {
   augroup_name = "UnifiedDiffAutoRefresh",
 }
 
-function M.setup()
+---@param buffer number
+function M.setup(buffer)
   local diff = require("unified.diff")
   local async = require("unified.utils.async")
   local group_name = default.augroup_name
   local debounce_delay = default.debouce_delay
-  local buffer = vim.api.nvim_get_current_buf()
 
   vim.api.nvim_create_augroup(group_name, { clear = true })
 
@@ -19,7 +19,7 @@ function M.setup()
     local commit = state.get_commit_base()
 
     local git = require("unified.git")
-    git.show_git_diff_against_commit(commit)
+    git.show_git_diff_against_commit(commit, buffer)
   end, debounce_delay)
 
   vim.api.nvim_create_autocmd({

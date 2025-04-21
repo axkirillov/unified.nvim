@@ -44,9 +44,9 @@ function M.test_diff_against_commit()
   vim.api.nvim_buf_set_lines(0, 4, 5, false, { "new line" }) -- Add new line
   vim.cmd("write")
 
-  local result = require("unified").show_git_diff_against_commit(first_commit)
-
   local buffer = vim.api.nvim_get_current_buf()
+  local result = require("unified").show_git_diff_against_commit(first_commit, buffer)
+
   local has_extmarks, _ = utils.check_extmarks_exist(buffer)
 
   assert(result, "show_git_diff_against_commit() should return true")
@@ -54,7 +54,7 @@ function M.test_diff_against_commit()
 
   utils.clear_diff_marks(buffer)
 
-  result = require("unified").show_git_diff_against_commit(second_commit)
+  result = require("unified").show_git_diff_against_commit(second_commit, buffer)
   has_extmarks, _ = utils.check_extmarks_exist(buffer)
 
   assert(result, "show_git_diff_against_commit() should return true for second commit")
@@ -63,9 +63,10 @@ function M.test_diff_against_commit()
   utils.clear_diff_marks(buffer)
 
   vim.cmd("write")
-  vim.cmd("Unified " .. first_commit)
-  has_extmarks = utils.check_extmarks_exist(buffer)
-  assert(has_extmarks, "No diff extmarks were created after running Unified commit command")
+  result = require("unified").show_git_diff_against_commit(first_commit, buffer)
+  assert(result, "show_git_diff_against_commit() should return true after write and direct call")
+  has_extmarks, _ = utils.check_extmarks_exist(buffer)
+  assert(has_extmarks, "No diff extmarks were created after write and direct call")
 
   utils.clear_diff_marks(buffer)
   vim.cmd("bdelete!")
@@ -102,20 +103,21 @@ function M.test_commit_base_persistence()
   local _ = vim.fn.system("git rev-parse HEAD"):gsub("\n", "")
 
   vim.cmd("edit " .. test_path)
+  local buffer = vim.fn.bufnr(test_path)
 
-  local buffer = vim.api.nvim_get_current_buf()
+  print("test_commit_base_persistence: buffer ID before show_diff: " .. tostring(buffer))
 
-  local result = require("unified").show_diff(first_commit)
+  local result = require("unified.git").show_git_diff_against_commit(first_commit, buffer)
   assert(result, "Failed to display diff against first commit")
 
-  local has_extmarks_before_edit, marks_before_edit = utils.check_extmarks_exist(buffer)
+  local has_extmarks_before_edit, _ = utils.check_extmarks_exist(buffer)
   assert(has_extmarks_before_edit, "No diff extmarks were created for first commit")
 
   vim.api.nvim_buf_set_lines(buffer, 0, 1, false, { "MODIFIED line 1" })
 
   vim.cmd("sleep 100m")
 
-  local has_extmarks_after_edit, marks_after_edit = utils.check_extmarks_exist(buffer)
+  local has_extmarks_after_edit, _ = utils.check_extmarks_exist(buffer)
   assert(has_extmarks_after_edit, "No diff extmarks after buffer modification")
 
   local current_file_content = table.concat(vim.api.nvim_buf_get_lines(buffer, 0, -1, false), "\n")
@@ -304,7 +306,7 @@ function M.test_historical_commit_highlighting()
 
   -- Now we'll load the file and make further changes to test diffing against HEAD~4
   vim.cmd("edit " .. test_path)
-  local buffer = vim.api.nvim_get_current_buf()
+  local buffer = vim.fn.bufnr(test_path)
 
   local modified_content = {
     "# Test Project - Updated Title", -- Modified this line
@@ -342,7 +344,7 @@ function M.test_historical_commit_highlighting()
   local base_commit = vim.fn.system("git rev-parse HEAD~4"):gsub("\n", "")
 
   -- Show diff against HEAD~4
-  local result = require("unified").show_diff(base_commit)
+  local result = require("unified.git").show_git_diff_against_commit(base_commit, buffer)
   assert(result, "Failed to display diff against historical commit")
 
   -- Get all extmarks with details to check highlights

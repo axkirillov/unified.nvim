@@ -92,9 +92,18 @@ M.get_git_file_content = cache_util.memoize(function(file_path, commit)
   return content
 end)
 
-function M.show_git_diff_against_commit(commit)
+---@param commit string
+---@param buffer_id integer The buffer ID to operate on.
+function M.show_git_diff_against_commit(commit, buffer_id)
   local diff_module = require("unified.diff")
-  local buffer = vim.api.nvim_get_current_buf()
+  local buffer = buffer_id -- Use the passed buffer ID
+
+  -- Validate buffer ID
+  if not vim.api.nvim_buf_is_valid(buffer) then
+    vim.api.nvim_echo({ { "Invalid buffer ID passed to show_git_diff_against_commit", "ErrorMsg" } }, false, {})
+    return false
+  end
+
   local current_content = table.concat(vim.api.nvim_buf_get_lines(buffer, 0, -1, false), "\n")
   local file_path = vim.api.nvim_buf_get_name(buffer)
 
@@ -171,7 +180,8 @@ function M.show_git_diff_against_commit(commit)
     diff_output = diff_output:gsub("%+%+%+" .. " %S+\n", "") -- Split the string to avoid escaping issues
 
     local hunks = diff_module.parse_diff(diff_output)
-    local result = diff_module.display_inline_diff(buffer, hunks) -- Use diff_module
+    -- Pass the correct buffer ID to display_inline_diff
+    local result = diff_module.display_inline_diff(buffer, hunks)
     return result
   else
     vim.api.nvim_echo({ { "No differences found by diff command", "WarningMsg" } }, false, {})
@@ -192,7 +202,8 @@ function M.show_git_diff()
     vim.api.nvim_echo({ { "Failed to resolve HEAD commit", "ErrorMsg" } }, false, {})
     return false
   end
-  return M.show_git_diff_against_commit(head_hash)
+  -- Pass the current buffer ID when called without one
+  return M.show_git_diff_against_commit(head_hash, vim.api.nvim_get_current_buf())
 end
 
 return M

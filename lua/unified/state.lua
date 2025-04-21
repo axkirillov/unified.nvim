@@ -18,7 +18,6 @@ M.file_tree_buf = nil
 M.auto_refresh_augroup = nil
 
 -- Flag to prevent recursive tree refresh when opening a file from the tree
-M.opening_from_tree = false
 
 -- Get the main content window (to navigate from tree back to content)
 function M.get_main_window()
@@ -37,7 +36,7 @@ function M.get_main_window()
   end
 
   -- Fallback to current window
-  return vim.api.nvim_get_current_win()
+  return nil
 end
 
 function M.set_commit_base(commit)

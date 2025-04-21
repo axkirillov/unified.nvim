@@ -112,11 +112,11 @@ function M.test_multiple_added_lines_with_commit()
   local state = require("unified.state")
   -- Reset the active state since we're calling functions directly
   state.is_active = false
-  local result = unified.show_git_diff_against_commit(first_commit)
+  local buffer = vim.api.nvim_get_current_buf()
+  local result = unified.show_git_diff_against_commit(first_commit, buffer)
   assert(result, "Failed to display diff against first commit")
 
   -- Get buffer and namespace
-  local buffer = vim.api.nvim_get_current_buf()
   local ns_id = vim.api.nvim_create_namespace("unified_diff")
 
   -- Get all extmarks with details

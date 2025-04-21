@@ -254,7 +254,7 @@ function M.test_file_tree_with_commit_command()
   window.main_win = vim.api.nvim_get_current_win()
 
   -- Show the diff against the commit
-  local result = unified.show_diff(target_commit)
+  local result = require("unified.diff").show(target_commit, vim.api.nvim_get_current_buf())
   assert(result, "Show diff should have succeeded")
 
   -- Update the global state for consistency

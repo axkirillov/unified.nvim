@@ -75,7 +75,7 @@ function M.test_diff_command()
   vim.api.nvim_buf_set_lines(0, 3, 3, false, { "new line" }) -- Add new line
 
   -- Call the diff function directly to avoid file tree interference
-  local diff_applied = require("unified.git").show_git_diff_against_commit("HEAD")
+  local diff_applied = require("unified.git").show_git_diff_against_commit("HEAD", vim.api.nvim_get_current_buf())
   assert(diff_applied, "show_git_diff_against_commit should return true when changes exist")
 
   -- Wait for extmarks to appear (polling - might be optional now but safer)

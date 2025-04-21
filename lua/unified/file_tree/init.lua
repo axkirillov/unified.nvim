@@ -341,7 +341,6 @@ function M.show(commit_hash)
   end -- Exit if buffer creation failed
 
   -- Create new window for tree
-  local current_win = vim.api.nvim_get_current_win()
   vim.cmd("topleft 30vsplit") -- Consider making width configurable
   local tree_win = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(tree_win, tree_buf)
