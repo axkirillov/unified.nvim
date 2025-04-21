@@ -111,15 +111,13 @@ allowing you to easily navigate between files in your repository.
 ==============================================================================
 6. COMMANDS                                                *unified-commands*
 
-*:Unified* [{commit_ref}]                                       *:Unified*
-    The main command for the plugin. Behavior depends on arguments and state:
+    *:Unified* [{commit_ref}]                                       *:Unified*
+        The main command for the plugin. Behavior depends on arguments and state:
 
     *:Unified* (no arguments)
-        - If the unified view is **not** currently active: Shows the diff
-          between the current buffer and `HEAD`. Opens the file tree showing
-          files changed since `HEAD`. Equivalent to `:Unified HEAD`.
-        - If the unified view **is** currently active: Closes the view and
-          removes highlights.
+        Shows the diff between the current buffer and `HEAD`. 
+	Opens the file tree showing files changed since `HEAD`. 
+	Equivalent to `:Unified HEAD`.
 
     *:Unified* {commit_ref}
         Shows the diff between the current buffer and the specified git
@@ -129,49 +127,13 @@ allowing you to easily navigate between files in your repository.
         The specified {commit_ref} is stored and used for subsequent refreshes
         until a new reference is provided or the view is closed.
 
-   *:Unified reset*                                     *:Unified-reset*
+    *:Unified* reset                                     *:Unified-reset*
        Removes all unified diff highlights and signs from the current buffer
        and closes the unified file tree window if it is open.
 
 ==============================================================================
 7. API                                                        *unified-api*
 
-*require('unified').show_diff([commit])*
-    Function to show differences between buffer and git HEAD, or a specific commit
-    if the optional [commit] parameter is provided. If a commit is specified, it is
-    stored as the window-local base reference for subsequent refreshes.
-
-*require('unified').show_git_diff_against_commit(commit)*
-    Function to show differences between buffer and a specific git commit.
-    The commit parameter must be provided and can be a commit hash, branch name,
-    tag, or any git reference.
-
-*require('unified').is_diff_displayed()*
-    Function to check if diff is currently displayed in a buffer.
-
-*require('unified').setup_auto_refresh()*
-    Function to set up automatic refresh of diff display on buffer changes.
-
-*require('unified').show_file_tree()*
-    Function to display the file tree explorer for the current buffer.
-    The tree shows the structure of the git repository with indicators for
-    files that have changes.
-
-*require('unified').get_main_window()*
-    Function to get the main content window (used for navigating from the
-    file tree back to the content window).
-
-*require('unified').get_window_commit_base()*
-    Function to get the current window's stored commit base for diffing.
-    Returns the commit reference string or defaults to "HEAD" if not set.
-
-*require('unified').set_window_commit_base(commit)*
-    Function to set the commit base for the current window.
-    This is useful when you want to programmatically set the commit base
-    without immediately showing the diff.
-
-*require('unified').setup(opts)*
-    Function to configure the plugin with optional settings.
 
 ==============================================================================
 8. MAPPINGS                                                *unified-mappings*

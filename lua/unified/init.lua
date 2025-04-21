@@ -18,9 +18,6 @@ M.parse_diff = diff.parse_diff
 M.show_git_diff = git.show_git_diff -- Restore assignment
 M.show_git_diff_against_commit = git.show_git_diff_against_commit -- Restore assignment
 
--- Expose file tree functions
-M.show_file_tree = file_tree.show_file_tree -- Restore assignment
-
 -- Helper function to check if diff is displayed (for compatibility)
 function M.is_diff_displayed(buffer)
   -- Check the global state first
