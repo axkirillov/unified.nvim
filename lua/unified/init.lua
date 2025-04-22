@@ -33,47 +33,6 @@ function M.show_diff(commit)
   return result
 end
 
--- Helper function to deactivate diff display
-function M.deactivate()
-  local buffer = vim.api.nvim_get_current_buf()
-  local config = require("unified.config")
-  local ns_id = config.ns_id
-
-  -- Clear diff display
-  vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
-  vim.fn.sign_unplace("unified_diff", { buffer = buffer })
-
-  -- Remove auto-refresh autocmd if it exists
-  local state = require("unified.state")
-  if state.auto_refresh_augroup then
-    vim.api.nvim_del_augroup_by_id(state.auto_refresh_augroup)
-    state.auto_refresh_augroup = nil
-  end
-
-  -- Close file tree window if it exists and is not the last window
-  if state.file_tree_win and vim.api.nvim_win_is_valid(state.file_tree_win) then
-    -- Check if it's the last window
-    local windows = vim.api.nvim_list_wins()
-    if #windows > 1 then
-      vim.api.nvim_win_close(state.file_tree_win, true)
-    else
-      -- If it's the last window, maybe just clear the buffer instead?
-      -- Or rely on Neovim closing gracefully later. For now, just don't close.
-    end
-    -- Reset state even if window wasn't closed
-    state.file_tree_win = nil
-    state.file_tree_buf = nil
-  end
-
-  -- Clear main window reference
-  state.main_win = nil
-
-  -- Update global state
-  state.is_active = false
-
-  vim.api.nvim_echo({ { "Unified off", "Normal" } }, false, {})
-end
-
 ---@deprecated
 function M.activate()
   local auto_refresh = require("unified.auto_refresh")

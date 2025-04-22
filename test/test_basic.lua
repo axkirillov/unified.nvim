@@ -104,7 +104,7 @@ function M.test_diff_command()
   assert(#marks > 0, "No extmarks found for changes")
 
   -- Deactivate diff directly (since toggle command is broken)
-  require("unified").deactivate()
+  require("unified.command").reset()
   -- Check extmarks are cleared after deactivation
   has_extmarks, marks = utils.check_extmarks_exist(buffer)
   assert(not has_extmarks, "Extmarks were not cleared after deactivation")
@@ -150,8 +150,6 @@ function M.test_diff_parsing()
         hunk.new_count
       )
     )
-    for j, line in ipairs(hunk.lines) do
-    end
   end
 
   -- Clean up
