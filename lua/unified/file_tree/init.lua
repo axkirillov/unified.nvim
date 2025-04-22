@@ -1,8 +1,6 @@
 local M = {}
 local git = require("unified.git")
 local global_state = require("unified.state")
-local tree_state_module = require("unified.file_tree.state")
-local tree_state = tree_state_module.tree_state
 local FileTree = require("unified.file_tree.tree")
 local render = require("unified.file_tree.render")
 local actions = require("unified.file_tree.actions")
@@ -22,6 +20,7 @@ function M.setup()
 end
 
 function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
+  local tree_state = require("unified.file_tree.state")
   tree_state.root_path = buffer_path
   tree_state.diff_only = diff_only
   tree_state.commit_ref = commit_ref_arg
@@ -161,6 +160,7 @@ local function auto_select_and_open_first_file(tree_buf, tree_win)
   local first_node = nil
   local line_count = vim.api.nvim_buf_line_count(tree_buf)
 
+  local tree_state = require("unified.file_tree.state")
   for i = 3, line_count - 1 do
     local node = tree_state.line_to_node[i]
     if node and not node.is_dir then
@@ -195,6 +195,7 @@ local function position_cursor_on_first_file(buffer, window)
 
   local first_file_line = -1
   local line_count = vim.api.nvim_buf_line_count(buffer)
+  local tree_state = require("unified.file_tree.state")
   for i = 3, line_count - 1 do
     local node = tree_state.line_to_node[i]
     if node and not node.is_dir then
@@ -243,6 +244,7 @@ function M.show_file_tree(path_or_commit, show_all_files)
   end
 
   -- Check if tree window already exists and is valid
+  local tree_state = require("unified.file_tree.state")
   if
     tree_state.window
     and vim.api.nvim_win_is_valid(tree_state.window)
@@ -283,7 +285,7 @@ function M.show_file_tree(path_or_commit, show_all_files)
   end -- Exit if buffer creation failed
 
   -- Create new window for tree
-  local current_win = vim.api.nvim_get_current_win()
+  local _ = vim.api.nvim_get_current_win()
   vim.cmd("topleft 30vsplit") -- Consider making width configurable
   local tree_win = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(tree_win, tree_buf)
@@ -313,6 +315,7 @@ function M.show(commit_hash)
   local diff_only = true -- Always show diff only for a specific commit
 
   -- Check if tree window already exists and is valid
+  local tree_state = require("unified.file_tree.state")
   if
     tree_state.window
     and vim.api.nvim_win_is_valid(tree_state.window)

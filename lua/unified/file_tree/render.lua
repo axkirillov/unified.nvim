@@ -1,5 +1,5 @@
 -- Module for rendering the FileTree structure into a Neovim buffer
-local tree_state = require("unified.file_tree.state").tree_state
+local tree_state = require("unified.file_tree.state")
 
 local M = {}
 

@@ -1,9 +1,4 @@
--- Module to manage the state of the file tree UI
-
-local M = {}
-
--- Store information about the current tree
-M.tree_state = {
+local M = {
   current_tree = nil, -- Instance of the FileTree class
   expanded_dirs = {}, -- Map of expanded directory paths (path -> true)
   line_to_node = {}, -- Map of buffer line number (0-based) to Node object
@@ -13,8 +8,7 @@ M.tree_state = {
   diff_only = false, -- Whether the tree is currently showing only diffs
 }
 
--- Function to reset the state, e.g., when closing the tree
-function M.reset_state()
+function M.reset()
   M.tree_state = {
     current_tree = nil,
     expanded_dirs = {},

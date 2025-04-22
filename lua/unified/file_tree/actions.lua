@@ -1,11 +1,8 @@
-local tree_state_module = require("unified.file_tree.state")
-local tree_state = tree_state_module.tree_state
-local global_state = require("unified.state") -- For accessing main window
-
 local M = {}
 
 local function is_file_tree_buffer()
-  return vim.api.nvim_get_current_buf() == tree_state.buffer
+  local state = require("unified.file_tree.state")
+  return vim.api.nvim_get_current_buf() == state.buffer
 end
 
 local function open_file_node(node)
@@ -13,7 +10,8 @@ local function open_file_node(node)
     return
   end
 
-  local win = global_state.get_main_window()
+  local state = require("unified.state")
+  local win = state.get_main_window()
   if not win or not vim.api.nvim_win_is_valid(win) then
     vim.api.nvim_echo({ { "No main window", "WarningMsg" } }, false, {})
     return
@@ -35,7 +33,7 @@ local function open_file_node(node)
     vim.api.nvim_win_set_buf(win, target_buf_id)
 
     local diff = require("unified.diff")
-    local commit = global_state.get_commit_base()
+    local commit = state.get_commit_base()
     if not commit then
       vim.api.nvim_echo({ { "No commit base set", "WarningMsg" } }, false, {})
       vim.api.nvim_set_current_win(current_win)
@@ -59,7 +57,8 @@ function M.toggle_node()
   end
 
   local line = vim.api.nvim_win_get_cursor(0)[1] - 1
-  local node = tree_state.line_to_node[line]
+  local state = require("unified.file_tree.state")
+  local node = state.line_to_node[line]
 
   if not node then
     return
@@ -69,29 +68,18 @@ function M.toggle_node()
   open_file_node(node)
 end
 
--- Expand node
-function M.expand_node()
-  if not is_file_tree_buffer() then
-    return
-  end
-
-  local line = vim.api.nvim_win_get_cursor(0)[1] - 1
-  local node = tree_state.line_to_node[line]
-
-  -- Expansion is now automatic via render, this action is no longer needed.
-end
-
 function M.refresh()
   if not is_file_tree_buffer() then
     return
   end
 
-  local diff_only = tree_state.diff_only
-  local commit_ref = tree_state.commit_ref
+  local state = require("unified.file_tree.state")
+  local diff_only = state.diff_only
+  local commit_ref = state.commit_ref
 
   local file_tree = require("unified.file_tree")
-  local new_buf = file_tree.create_file_tree_buffer(tree_state.root_path, diff_only, commit_ref)
-  vim.api.nvim_win_set_buf(tree_state.window, new_buf)
+  local new_buf = file_tree.create_file_tree_buffer(state.root_path, diff_only, commit_ref)
+  vim.api.nvim_win_set_buf(state.window, new_buf)
 end
 
 -- Show help dialog
@@ -144,7 +132,7 @@ function M.show_help()
   local help_buf = vim.api.nvim_create_buf(false, true)
   vim.api.nvim_buf_set_lines(help_buf, 0, -1, false, help_text)
 
-  local help_win = vim.api.nvim_open_win(help_buf, true, win_opts)
+  local _ = vim.api.nvim_open_win(help_buf, true, win_opts)
 
   -- Set buffer options
   vim.bo[help_buf].modifiable = false
@@ -183,16 +171,17 @@ function M.go_to_parent()
   end
 
   local line = vim.api.nvim_win_get_cursor(0)[1] - 1
-  local node = tree_state.line_to_node[line]
+  local state = require("unified.file_tree.state")
+  local node = state.line_to_node[line]
 
-  if not node or not node.parent or node.parent == tree_state.current_tree.root then
+  if not node or not node.parent or node.parent == state.current_tree.root then
     -- Don't go above the root shown in the tree
     return
   end
 
   -- Find the parent node's line
   local parent_line = nil
-  for l, n in pairs(tree_state.line_to_node) do
+  for l, n in pairs(state.line_to_node) do
     if n == node.parent then
       parent_line = l
       break
@@ -206,12 +195,14 @@ end
 
 -- Close the file tree window
 function M.close_tree()
-  if tree_state.window and vim.api.nvim_win_is_valid(tree_state.window) then
-    vim.api.nvim_win_close(tree_state.window, true)
+  local state = require("unified.file_tree.state")
+  if state.window and vim.api.nvim_win_is_valid(state.window) then
+    vim.api.nvim_win_close(state.window, true)
   end
   -- Reset state after closing
-  tree_state_module.reset_state()
+  state.reset_state()
   -- Also reset the global active state if the main plugin relies on the tree being open
+  local global_state = require("unified.state")
   global_state.is_active = false
   global_state.file_tree_win = nil
   global_state.file_tree_buf = nil
@@ -224,13 +215,14 @@ function M.move_cursor_and_open_file(direction)
   end
 
   local current_line = vim.api.nvim_win_get_cursor(0)[1] - 1 -- 0-based
-  local total_lines = vim.api.nvim_buf_line_count(tree_state.buffer)
+  local state = require("unified.file_tree.state")
+  local total_lines = vim.api.nvim_buf_line_count(state.buffer)
   local next_line = current_line
 
-  for i = 1, total_lines do -- Iterate at most total_lines times
+  for _ = 1, total_lines do -- Iterate at most total_lines times
     next_line = (next_line + direction + total_lines) % total_lines -- Wrap around
 
-    local node = tree_state.line_to_node[next_line]
+    local node = state.line_to_node[next_line]
     if node and not node.is_dir then
       -- Found the next file node
       vim.api.nvim_win_set_cursor(0, { next_line + 1, 0 }) -- Set cursor (1-based)
