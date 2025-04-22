@@ -25,7 +25,8 @@ function M.test_multiple_added_lines()
   vim.api.nvim_buf_set_lines(0, 2, 2, false, { "new line 1", "new line 2", "new line 3" }) -- Add 3 new lines
 
   -- Call the plugin function to show diff
-  local result = require("unified").show_git_diff()
+  -- Call the plugin function to show diff
+  local result = require("unified.git").show_git_diff_against_commit("HEAD", vim.api.nvim_get_current_buf())
   assert(result, "Failed to display diff")
 
   -- Get buffer and namespace
@@ -108,12 +109,11 @@ function M.test_multiple_added_lines_with_commit()
   vim.api.nvim_buf_set_lines(0, 1, 1, false, { "new line 1", "new line 2", "new line 3" }) -- Add 3 new lines after line 1
 
   -- Show diff against the first commit to test against a specific commit
-  local unified = require("unified")
   local state = require("unified.state")
   -- Reset the active state since we're calling functions directly
   state.is_active = false
   local buffer = vim.api.nvim_get_current_buf()
-  local result = unified.show_git_diff_against_commit(first_commit, buffer)
+  local result = require("unified.git").show_git_diff_against_commit(first_commit, buffer)
   assert(result, "Failed to display diff against first commit")
 
   -- Get buffer and namespace

@@ -9,12 +9,12 @@ test:
 .PHONY: lint
 lint:
 	@echo "Linting..."
-	@docker run --rm -v $(CURDIR):/app stylua-nvim --check lua/ plugin/ test/ example/
+	@docker run --rm -v $(CURDIR):/app stylua-nvim --check lua/ test/ example/
 
 .PHONY: format
 format:
 	@echo "Formatting..."
-	@docker run --rm -v $(CURDIR):/app stylua-nvim lua/ plugin/ test/ example/
+	@docker run --rm -v $(CURDIR):/app stylua-nvim lua/ test/ example/
 
 .PHONY: docker-build
 docker-build:

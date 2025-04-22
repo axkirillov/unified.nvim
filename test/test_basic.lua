@@ -27,7 +27,8 @@ function M.test_show_diff_api()
   vim.api.nvim_buf_set_lines(0, 3, 3, false, { "new line" }) -- Add new line
 
   -- Call the plugin function to show diff
-  local result = require("unified").show_git_diff()
+  -- Call the plugin function to show diff
+  local result = require("unified.git").show_git_diff_against_commit("HEAD", vim.api.nvim_get_current_buf())
 
   -- Get buffer to check if extmarks exist
   local buffer = vim.api.nvim_get_current_buf()
@@ -131,7 +132,8 @@ function M.test_diff_parsing()
   local diff_output = vim.fn.system(diff_cmd)
 
   -- Parse the diff
-  local hunks = require("unified").parse_diff(diff_output)
+  -- Parse the diff
+  local hunks = require("unified.diff").parse_diff(diff_output)
 
   -- Verify hunks were correctly parsed
   assert(#hunks > 0, "No hunks were parsed from diff output")
@@ -183,7 +185,8 @@ function M.test_git_diff()
   vim.api.nvim_buf_set_lines(0, 3, 3, false, { "new line" }) -- Add new line
 
   -- Call the plugin function to show git diff
-  local result = require("unified").show_git_diff()
+  -- Call the plugin function to show git diff
+  local result = require("unified.git").show_git_diff_against_commit("HEAD", vim.api.nvim_get_current_buf())
 
   -- Get buffer to check if extmarks exist
   local buffer = vim.api.nvim_get_current_buf()

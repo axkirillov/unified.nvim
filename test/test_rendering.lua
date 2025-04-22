@@ -27,7 +27,8 @@ function M.test_no_plus_signs_in_buffer()
   vim.api.nvim_buf_set_lines(0, 3, 3, false, { "new line" }) -- Add new line
 
   -- Call the plugin function to show diff
-  local result = require("unified").show_git_diff()
+  -- Call the plugin function to show diff
+  local result = require("unified.git").show_git_diff_against_commit("HEAD", vim.api.nvim_get_current_buf())
 
   -- Get buffer and namespace
   local buffer = vim.api.nvim_get_current_buf()
@@ -81,7 +82,8 @@ function M.test_deleted_lines_not_duplicated()
   vim.api.nvim_buf_set_lines(0, 3, 4, false, {}) -- Delete the bullet point line
 
   -- Call the plugin function to show diff
-  local result = require("unified").show_git_diff()
+  -- Call the plugin function to show diff
+  local result = require("unified.git").show_git_diff_against_commit("HEAD", vim.api.nvim_get_current_buf())
   assert(result, "Failed to display diff")
 
   -- Get buffer and namespace
@@ -159,7 +161,8 @@ function M.test_deleted_lines_on_own_line()
   vim.api.nvim_buf_set_lines(0, 4, 5, false, {}) -- Delete the second bullet point
 
   -- Call the plugin function to show diff
-  local result = require("unified").show_git_diff()
+  -- Call the plugin function to show diff
+  local result = require("unified.git").show_git_diff_against_commit("HEAD", vim.api.nvim_get_current_buf())
   assert(result, "Failed to display diff")
 
   -- Get buffer and namespace
@@ -225,7 +228,8 @@ function M.test_deletion_symbols_in_gutter()
   vim.api.nvim_buf_set_lines(0, 2, 3, false, {}) -- Delete the 'axkirillov/unified.nvim' line
 
   -- Call the plugin function to show diff
-  local result = require("unified").show_git_diff()
+  -- Call the plugin function to show diff
+  local result = require("unified.git").show_git_diff_against_commit("HEAD", vim.api.nvim_get_current_buf())
   assert(result, "Failed to display diff")
 
   -- Get buffer and namespace
@@ -310,7 +314,8 @@ function M.test_no_line_numbers_in_deleted_lines()
   vim.api.nvim_buf_set_lines(0, 10, 11, false, {}) -- Delete line 11
 
   -- Call the plugin function to show diff
-  local result = require("unified").show_git_diff()
+  -- Call the plugin function to show diff
+  local result = require("unified.git").show_git_diff_against_commit("HEAD", vim.api.nvim_get_current_buf())
   assert(result, "Failed to display diff")
 
   -- Get buffer and namespace
@@ -436,7 +441,8 @@ function M.test_single_deleted_line_element()
   vim.api.nvim_buf_set_lines(0, 1, 2, false, {}) -- Delete "Line 2"
 
   -- Call the plugin function to show diff
-  local result = require("unified").show_git_diff()
+  -- Call the plugin function to show diff
+  local result = require("unified.git").show_git_diff_against_commit("HEAD", vim.api.nvim_get_current_buf())
   assert(result, "Failed to display diff")
 
   -- Get buffer and namespace

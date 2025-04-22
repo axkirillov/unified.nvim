@@ -1,23 +1,13 @@
 local M = {}
-local diff = require("unified.diff")
-local git = require("unified.git") -- Restore require
-local state = require("unified.state")
-local file_tree = require("unified.file_tree") -- Restore require
 
 function M.setup(opts)
   local config = require("unified.config")
   local command = require("unified.command")
+  local file_tree = require("unified.file_tree")
   config.setup(opts)
   command.setup()
   file_tree.setup()
 end
-
--- Use parse_diff function from diff module
-M.parse_diff = diff.parse_diff
-
--- Expose git functions directly for testing or specific use cases
-M.show_git_diff = git.show_git_diff -- Restore assignment
-M.show_git_diff_against_commit = git.show_git_diff_against_commit -- Restore assignment
 
 ---@deprecated, use diff.show instead
 function M.show_diff(commit)
@@ -30,6 +20,8 @@ function M.show_diff(commit)
 
   local result
 
+  local git = require("unified.git")
+  local state = require("unified.state")
   if commit then
     state.set_commit_base(commit)
     result = git.show_git_diff_against_commit(commit)
@@ -52,6 +44,7 @@ function M.deactivate()
   vim.fn.sign_unplace("unified_diff", { buffer = buffer })
 
   -- Remove auto-refresh autocmd if it exists
+  local state = require("unified.state")
   if state.auto_refresh_augroup then
     vim.api.nvim_del_augroup_by_id(state.auto_refresh_augroup)
     state.auto_refresh_augroup = nil
@@ -66,7 +59,6 @@ function M.deactivate()
     else
       -- If it's the last window, maybe just clear the buffer instead?
       -- Or rely on Neovim closing gracefully later. For now, just don't close.
-      print("DEBUG: Skipping close of last window (file tree)")
     end
     -- Reset state even if window wasn't closed
     state.file_tree_win = nil
@@ -79,16 +71,17 @@ function M.deactivate()
   -- Update global state
   state.is_active = false
 
-  vim.api.nvim_echo({ { "Unified diff deactivated", "Normal" } }, false, {})
+  vim.api.nvim_echo({ { "Unified off", "Normal" } }, false, {})
 end
 
--- Helper function to activate diff display
+---@deprecated
 function M.activate()
   local auto_refresh = require("unified.auto_refresh")
   local buffer = vim.api.nvim_get_current_buf()
   local config = require("unified.config")
 
   -- Store current window as main window
+  local state = require("unified.state")
   state.main_win = vim.api.nvim_get_current_win()
 
   -- Get buffer name
@@ -97,12 +90,14 @@ function M.activate()
   -- Check if buffer has a name
   if filename == "" then
     -- It's an empty buffer with no name, just show file tree without diff
+    local file_tree = require("unified.file_tree")
     file_tree.show_file_tree(vim.fn.getcwd()) -- Restore original call
     vim.api.nvim_echo({ { "Showing file tree for current directory", "Normal" } }, false, {})
     return
   end
 
   local commit_base = state.get_commit_base()
+  local diff = require("unified.diff")
   local result = diff.show(commit_base)
 
   if result and config.values.auto_refresh then
@@ -110,6 +105,7 @@ function M.activate()
   end
 
   if not state.opening_from_tree then
+    local file_tree = require("unified.file_tree")
     file_tree.show_file_tree()
   end
   -- Update global state only if diff was successful

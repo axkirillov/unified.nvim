@@ -45,7 +45,7 @@ function M.test_diff_against_commit()
   vim.cmd("write")
 
   local buffer = vim.api.nvim_get_current_buf()
-  local result = require("unified").show_git_diff_against_commit(first_commit, buffer)
+  local result = require("unified.git").show_git_diff_against_commit(first_commit, buffer)
 
   local has_extmarks, _ = utils.check_extmarks_exist(buffer)
 
@@ -54,7 +54,7 @@ function M.test_diff_against_commit()
 
   utils.clear_diff_marks(buffer)
 
-  result = require("unified").show_git_diff_against_commit(second_commit, buffer)
+  result = require("unified.git").show_git_diff_against_commit(second_commit, buffer)
   has_extmarks, _ = utils.check_extmarks_exist(buffer)
 
   assert(result, "show_git_diff_against_commit() should return true for second commit")
@@ -63,7 +63,7 @@ function M.test_diff_against_commit()
   utils.clear_diff_marks(buffer)
 
   vim.cmd("write")
-  result = require("unified").show_git_diff_against_commit(first_commit, buffer)
+  result = require("unified.git").show_git_diff_against_commit(first_commit, buffer)
   assert(result, "show_git_diff_against_commit() should return true after write and direct call")
   has_extmarks, _ = utils.check_extmarks_exist(buffer)
   assert(has_extmarks, "No diff extmarks were created after write and direct call")
