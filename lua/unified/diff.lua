@@ -123,56 +123,46 @@ function M.display_inline_diff(buffer, hunks)
         -- Added or modified line
         local hl_group = "UnifiedDiffAdd"
 
-        -- Skip if line is out of range (safety check)
-        if line_idx >= buf_line_count then
-          goto continue
-        end
+        -- Process only if line is within range and not already marked
+        if line_idx < buf_line_count and not marked_lines[line_idx] then
+          -- Check if this is part of consecutive added lines
+          local consecutive_count = consecutive_added_lines[line_idx - new_idx + old_idx] or 0
 
-        -- Skip if this line has already been marked
-        if marked_lines[line_idx] then
-          goto continue
-        end
+          -- Use a single extmark with both sign and line highlighting
+          local extmark_opts = {
+            sign_text = config.values.line_symbols.add .. " ", -- Add sign in gutter
+            sign_hl_group = config.values.highlights.add,
+            line_hl_group = hl_group,
+          }
+          local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, line_idx, 0, extmark_opts)
+          if mark_id > 0 then
+            mark_count = mark_count + 1
+            sign_count = sign_count + 1
+            marked_lines[line_idx] = true
 
-        -- Check if this is part of consecutive added lines
-        local consecutive_count = consecutive_added_lines[line_idx - new_idx + old_idx] or 0
+            -- If part of consecutive additions, highlight subsequent lines
+            if consecutive_count > 1 then
+              for i = 1, consecutive_count - 1 do
+                local next_line_idx = line_idx + i
 
-        -- Use a single extmark with both sign and line highlighting
-        local extmark_opts = {
-          sign_text = config.values.line_symbols.add .. " ", -- Add sign in gutter
-          sign_hl_group = config.values.highlights.add,
-          line_hl_group = hl_group,
-        }
-        local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, line_idx, 0, extmark_opts)
-        if mark_id > 0 then
-          mark_count = mark_count + 1
-          sign_count = sign_count + 1
-          marked_lines[line_idx] = true
-        end
-
-        -- If part of consecutive additions, highlight subsequent lines
-        if consecutive_count > 1 then
-          for i = 1, consecutive_count - 1 do
-            local next_line_idx = line_idx + i
-
-            -- Safety checks
-            if next_line_idx >= buf_line_count or marked_lines[next_line_idx] then
-              goto continue_consecutive
+                -- Process only if next line is within range and not already marked
+                if next_line_idx < buf_line_count and not marked_lines[next_line_idx] then
+                  -- Use a single extmark with both sign and line highlighting for consecutive lines
+                  local consec_extmark_opts = {
+                    sign_text = config.values.line_symbols.add .. " ", -- Add sign in gutter
+                    sign_hl_group = config.values.highlights.add,
+                    line_hl_group = hl_group,
+                  }
+                  local consec_mark_id =
+                    vim.api.nvim_buf_set_extmark(buffer, ns_id, next_line_idx, 0, consec_extmark_opts)
+                  if consec_mark_id > 0 then
+                    mark_count = mark_count + 1
+                    sign_count = sign_count + 1
+                    marked_lines[next_line_idx] = true
+                  end
+                end
+              end
             end
-
-            -- Use a single extmark with both sign and line highlighting for consecutive lines
-            local consec_extmark_opts = {
-              sign_text = config.values.line_symbols.add .. " ", -- Add sign in gutter
-              sign_hl_group = config.values.highlights.add,
-              line_hl_group = hl_group,
-            }
-            local consec_mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, next_line_idx, 0, consec_extmark_opts)
-            if consec_mark_id > 0 then
-              mark_count = mark_count + 1
-              sign_count = sign_count + 1
-              marked_lines[next_line_idx] = true
-            end
-
-            ::continue_consecutive::
           end
         end
 
@@ -191,102 +181,21 @@ function M.display_inline_diff(buffer, hunks)
           attach_line = buf_line_count - 1
         end
 
-        -- Skip if line is out of range
-        if attach_line < 0 or attach_line >= buf_line_count then
-          goto continue
-        end
-
-        -- Add virtual line for deleted content
-        local virt_line_opts = {
-          virt_lines = { { { line_text, hl_group } } },
-          virt_lines_above = true,
-        }
-        local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, attach_line, 0, virt_line_opts)
-        if mark_id > 0 then
-          mark_count = mark_count + 1
+        -- Process only if attachment line is within range
+        if attach_line >= 0 and attach_line < buf_line_count then
+          -- Add virtual line for deleted content
+          local virt_line_opts = {
+            virt_lines = { { { line_text, hl_group } } },
+            virt_lines_above = true,
+          }
+          local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, attach_line, 0, virt_line_opts)
+          if mark_id > 0 then
+            mark_count = mark_count + 1
+          end
         end
 
         old_idx = old_idx + 1
       end
-
-      ::continue::
-    end
-  end
-
-  -- Second pass: process any lines that weren't caught in the first pass
-  local commit_base = window.get_window_commit_base() -- Use window module
-  local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
-  local buffer_name = vim.api.nvim_buf_get_name(buffer)
-  local git_content = ""
-
-  if buffer_name ~= "" and git.is_git_repo(buffer_name) then -- Use git module
-    git_content = git.get_git_file_content(buffer_name, commit_base) or "" -- Use git module
-  end
-
-  local git_lines = {}
-  if git_content ~= "" then
-    git_lines = vim.split(git_content, "\n")
-  end
-
-  local is_historical_diff = false
-  if commit_base ~= "HEAD" then
-    local base_num = tonumber(commit_base:match("HEAD~(%d+)")) or 0
-    is_historical_diff = base_num >= 4
-  end
-
-  if is_historical_diff then
-    for i = 0, #buffer_lines - 1 do
-      if not marked_lines[i] then
-        local line = buffer_lines[i + 1]
-        if line:match("^%s*5%.%s.*[Rr]estored") or line:match("^%s*5%.%s.*feature") then
-          local id = i + 1
-          vim.fn.sign_place(id, "unified_diff", "unified_diff_add", buffer, { lnum = i + 1, priority = 10 })
-          local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, i, 0, { line_hl_group = "UnifiedDiffAdd" })
-          if mark_id > 0 then
-            mark_count = mark_count + 1
-            marked_lines[i] = true
-          end
-        end
-      end
-    end
-  end
-
-  for i = 0, #buffer_lines - 1 do
-    if not marked_lines[i] then
-      local line = buffer_lines[i + 1]
-      if line:match("^%s*$") then
-        goto continue_line
-      end
-
-      local is_new_line = true
-      if #git_lines > 0 then
-        for _, git_line in ipairs(git_lines) do
-          if git_line == line then
-            is_new_line = false
-            break
-          end
-        end
-      end
-
-      if is_new_line then
-        if i >= buf_line_count then
-          goto continue_line
-        end
-        local should_highlight = true
-        if should_highlight then
-          local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, i, 0, {
-            sign_text = config.values.line_symbols.add .. " ",
-            sign_hl_group = config.values.highlights.add,
-            line_hl_group = "UnifiedDiffAdd",
-          })
-          if mark_id > 0 then
-            mark_count = mark_count + 1
-            sign_count = sign_count + 1
-            marked_lines[i] = true
-          end
-        end
-      end
-      ::continue_line::
     end
   end
 
