@@ -34,12 +34,6 @@ local function open_file_node(node)
 
     local diff = require("unified.diff")
     local commit = state.get_commit_base()
-    if not commit then
-      vim.api.nvim_echo({ { "No commit base set", "WarningMsg" } }, false, {})
-      vim.api.nvim_set_current_win(current_win)
-      return
-    end
-
     diff.show(commit, target_buf_id)
     local auto_refresh = require("unified.auto_refresh")
     auto_refresh.setup(target_buf_id)

@@ -44,8 +44,11 @@ function M.set_commit_base(commit)
   vim.api.nvim_exec_autocmds("User", { pattern = "UnifiedBaseCommitUpdated" })
 end
 
----@return string|nil
+---@return string
 function M.get_commit_base()
+  if m.commit_base == nil then
+    error("Commit base is not set")
+  end
   return m.commit_base
 end
 

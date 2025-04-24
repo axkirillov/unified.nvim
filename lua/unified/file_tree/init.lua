@@ -10,10 +10,6 @@ function M.setup()
     pattern = "UnifiedBaseCommitUpdated",
     callback = function()
       local commit_hash = global_state.get_commit_base()
-      if not commit_hash then
-        vim.api.nvim_echo({ { "No commit base set", "WarningMsg" } }, false, {})
-        return
-      end
       M.show(commit_hash)
     end,
   })
