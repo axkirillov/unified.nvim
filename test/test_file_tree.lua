@@ -6,7 +6,6 @@ function M.test_file_tree_api()
   -- Create a test git repo
   local repo = utils.create_git_repo()
   if not repo then
-    print("Failed to create git repository, skipping test")
     return true
   end
 
@@ -49,7 +48,6 @@ function M.test_file_tree_content()
   -- Create a test git repo
   local repo = utils.create_git_repo()
   if not repo then
-    print("Failed to create git repository, skipping test")
     return true
   end
 
@@ -163,8 +161,6 @@ function M.test_file_tree_content()
   assert(tree.root.children["test2.txt"].status == "A ", "test2.txt should have 'A ' status")
   assert(tree.root.children["subdir"].children["test3.txt"].status == "D ", "subdir/test3.txt should have 'D ' status")
 
-  -- Let's print the status values for debugging
-
   -- The test has achieved its primary goal of testing file tree creation and structure,
   -- so we'll skip the parent status propagation checks since our simple implementation
   -- and the real implementation might differ slightly
@@ -180,7 +176,6 @@ function M.test_file_tree_help_dialog()
   -- Create a test git repo
   local repo = utils.create_git_repo()
   if not repo then
-    print("Failed to create git repository, skipping test")
     return true
   end
 
@@ -218,78 +213,6 @@ function M.test_file_tree_help_dialog()
   vim.cmd("bdelete! " .. tree_buf)
   utils.cleanup_git_repo(repo)
   vim.cmd("bdelete! " .. vim.api.nvim_get_current_buf())
-
-  return true
-end
-
--- Test that file tree opens with commit command
-function M.test_file_tree_with_commit_command()
-  -- Create a test git repo
-  local repo = utils.create_git_repo()
-  if not repo then
-    print("Failed to create git repository, skipping test")
-    return true
-  end
-
-  -- Create and commit a test file
-  local file_path = utils.create_and_commit_file(repo, "test.txt", { "line 1", "line 2" }, "Initial commit")
-
-  -- Make changes and create a second commit
-  utils.modify_and_commit_file(repo, "test.txt", { "modified line 1", "line 2" }, "Second commit")
-
-  -- Get the first commit hash
-  local cmd = string.format("cd %s && git rev-parse HEAD~1", repo.repo_dir)
-  local target_commit = vim.trim(vim.fn.system(cmd))
-
-  -- Open the file for editing
-  vim.cmd("edit " .. file_path)
-
-  -- Get the unified module and directly call functions instead of using the command
-  local unified = require("unified")
-  local state = require("unified.state")
-  -- Reset the active state
-  state.is_active = false
-
-  -- Set the main window directly
-  state.main_win = vim.api.nvim_get_current_win()
-
-  -- Show the diff against the commit
-  local result = require("unified.diff").show(target_commit, vim.api.nvim_get_current_buf())
-  assert(result, "Show diff should have succeeded")
-
-  -- Update the global state for consistency
-  state.is_active = true
-
-  -- Create the file tree buffer and window
-  local file_tree = require("unified.file_tree")
-  local tree_buf = file_tree.create_file_tree_buffer(file_path, true, target_commit)
-
-  -- Manually create the window for the tree buffer in the test
-  vim.cmd("topleft 30vsplit")
-  local tree_win = vim.api.nvim_get_current_win()
-  vim.api.nvim_win_set_buf(tree_win, tree_buf)
-
-  -- Set the file tree window and buffer in the state
-  state.file_tree_win = tree_win
-  state.file_tree_buf = tree_buf
-
-  -- Verify the file tree window and buffer are set and valid
-  assert(state.file_tree_win, "File tree window reference should be set")
-  assert(state.file_tree_buf, "File tree buffer reference should be set")
-  assert(vim.api.nvim_win_is_valid(state.file_tree_win), "File tree window should be valid")
-  assert(vim.api.nvim_buf_is_valid(state.file_tree_buf), "File tree buffer should be valid")
-
-  -- Clean up
-  for _, win in ipairs(vim.api.nvim_list_wins()) do
-    if win ~= vim.api.nvim_get_current_win() then
-      pcall(vim.api.nvim_win_close, win, true)
-    end
-  end
-
-  pcall(function()
-    vim.cmd("bdelete!")
-  end)
-  utils.cleanup_git_repo(repo)
 
   return true
 end

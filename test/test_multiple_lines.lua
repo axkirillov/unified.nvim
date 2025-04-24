@@ -50,8 +50,6 @@ function M.test_multiple_added_lines()
   -- Get buffer lines for debugging
   local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
 
-  -- Debug: Print all buffer lines and whether they're highlighted
-
   -- Check that all three new lines are highlighted
   assert(highlighted_lines[3], "First new line (new line 1) not highlighted")
   assert(highlighted_lines[4], "Second new line (new line 2) not highlighted")
@@ -147,8 +145,6 @@ function M.test_multiple_added_lines_with_commit()
 
   -- Get buffer lines for debugging
   local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
-
-  -- Debug: Print all buffer lines and whether they're highlighted
 
   -- Make sure at least new lines are highlighted (main feature being tested)
   assert(highlighted_lines[2] or highlighted_lines[1], "First new line should be highlighted")

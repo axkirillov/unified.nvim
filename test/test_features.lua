@@ -105,8 +105,6 @@ function M.test_commit_base_persistence()
   vim.cmd("edit " .. test_path)
   local buffer = vim.fn.bufnr(test_path)
 
-  print("test_commit_base_persistence: buffer ID before show_diff: " .. tostring(buffer))
-
   local result = require("unified.git").show_git_diff_against_commit(first_commit, buffer)
   assert(result, "Failed to display diff against first commit")
 
@@ -370,9 +368,7 @@ function M.test_historical_commit_highlighting()
     end
   end
 
-  -- Print all highlighted lines for debugging
-  for line_num, highlight in pairs(highlighted_lines) do
-  end
+  -- No print statements needed in tests
 
   -- Verify specific cases to catch the issue described
 

@@ -43,8 +43,7 @@ function M.test_no_plus_signs_in_buffer()
     if details.virt_text and details.virt_text_pos == "overlay" then
       for _, vtext in ipairs(details.virt_text) do
         local text = vtext[1]
-        -- This assertion should fail because we are using "overlay" for added lines
-        assert(not text:match("^%+"), "Found + sign in overlay virtual text: " .. text)
+        assert(not text:match("^%+"), "Found + sign in overlay virtual text: " .. text) -- This assertion should fail because we are using "overlay" for added lines
       end
     end
   end
@@ -103,7 +102,6 @@ function M.test_deleted_lines_not_duplicated()
     end
   end
 
-  -- If we find the deleted line in the buffer content AND as virtual text, that's the bug
   local extmarks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, { details = true })
   local line_appears_as_virt_text = false
 
@@ -179,8 +177,7 @@ function M.test_deleted_lines_on_own_line()
     local details = mark[4]
 
     if details.virt_text and details.virt_text_pos == "eol" then
-      -- Found virtual text at end of line, this would be the bug
-      found_eol_deleted_text = true
+      found_eol_deleted_text = true -- Found virtual text at end of line, this would be the bug
       break
     end
   end
@@ -325,21 +322,9 @@ function M.test_no_line_numbers_in_deleted_lines()
   -- Get all buffer lines
   local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
   local buffer_line_count = #buffer_lines
-  for i, line in ipairs(buffer_lines) do
-  end
 
   -- Get all extmarks with details
   local extmarks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, { details = true })
-  for _, mark in ipairs(extmarks) do
-    local id, row, col, details = unpack(mark)
-    if details.virt_lines then
-      for i, vline in ipairs(details.virt_lines) do
-        for j, vtext in ipairs(vline) do
-          local text, hl = unpack(vtext)
-        end
-      end
-    end
-  end
 
   -- Check if any virtual text contains line numbers or dash + number patterns
   -- These patterns would indicate the issue where we're seeing "-  11" type formatting
@@ -454,8 +439,6 @@ function M.test_single_deleted_line_element()
     string.format("cd %s && git diff %s", vim.fn.shellescape(repo.repo_dir), vim.fn.shellescape(test_file))
   local diff_output = vim.fn.system(diff_cmd)
 
-  -- Print the diff for debugging
-
   -- Count lines starting with "-" (excluding the diff header lines)
   local deleted_lines_count = 0
   for line in diff_output:gmatch("[^\r\n]+") do
@@ -500,8 +483,6 @@ function M.test_single_deleted_line_element()
 
   -- We've changed our approach to use virtual lines only without signs,
   -- so this test is no longer valid and we'll skip it
-  print("Skipping combined extmark test since we now use virtual lines without signs")
-
   -- Clean up
   utils.clear_diff_marks(buffer)
   vim.cmd("bdelete!")

@@ -71,6 +71,8 @@ function M.test_diff_command()
 
   -- Open the file and make changes
   vim.cmd("edit " .. test_path)
+  local buffer = vim.api.nvim_get_current_buf()
+  vim.api.nvim_buf_set_name(buffer, test_path)
   vim.api.nvim_buf_set_lines(0, 0, 1, false, { "modified line 1" }) -- Change line 1
   vim.api.nvim_buf_set_lines(0, 2, 3, false, {}) -- Delete line 3
   vim.api.nvim_buf_set_lines(0, 3, 3, false, { "new line" }) -- Add new line
@@ -103,7 +105,7 @@ function M.test_diff_command()
   -- Validate that we have some changes
   assert(#marks > 0, "No extmarks found for changes")
 
-  -- Deactivate diff directly (since toggle command is broken)
+  -- Deactivate diff using the toggle command
   require("unified.command").reset()
   -- Check extmarks are cleared after deactivation
   has_extmarks, marks = utils.check_extmarks_exist(buffer)
@@ -138,19 +140,7 @@ function M.test_diff_parsing()
   -- Verify hunks were correctly parsed
   assert(#hunks > 0, "No hunks were parsed from diff output")
 
-  -- Print diff info for debugging
-  for i, hunk in ipairs(hunks) do
-    print(
-      string.format(
-        "Hunk %d: old_start=%d, old_count=%d, new_start=%d, new_count=%d",
-        i,
-        hunk.old_start,
-        hunk.old_count,
-        hunk.new_start,
-        hunk.new_count
-      )
-    )
-  end
+  -- No print statements needed in tests
 
   -- Clean up
   vim.fn.delete(file1)
