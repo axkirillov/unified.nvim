@@ -8,16 +8,14 @@ local M = {
   diff_only = false, -- Whether the tree is currently showing only diffs
 }
 
-function M.reset()
-  M.tree_state = {
-    current_tree = nil,
-    expanded_dirs = {},
-    line_to_node = {},
-    buffer = nil,
-    window = nil,
-    root_path = nil,
-    diff_only = false,
-  }
+function M.reset_state()
+  M.current_tree = nil
+  M.expanded_dirs = {}
+  M.line_to_node = {}
+  M.buffer = nil
+  M.window = nil
+  M.root_path = nil
+  M.diff_only = false
 end
 
 return M

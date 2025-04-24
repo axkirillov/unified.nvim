@@ -217,6 +217,7 @@ function M.test_file_tree_help_dialog()
   -- Clean up
   vim.cmd("bdelete! " .. tree_buf)
   utils.cleanup_git_repo(repo)
+  vim.cmd("bdelete! " .. vim.api.nvim_get_current_buf())
 
   return true
 end
@@ -245,31 +246,38 @@ function M.test_file_tree_with_commit_command()
 
   -- Get the unified module and directly call functions instead of using the command
   local unified = require("unified")
+  local state = require("unified.state")
   -- Reset the active state
-  unified.is_active = false
+  state.is_active = false
 
-  local window = require("unified.window")
-
-  -- Set the window values directly
-  window.main_win = vim.api.nvim_get_current_win()
+  -- Set the main window directly
+  state.main_win = vim.api.nvim_get_current_win()
 
   -- Show the diff against the commit
   local result = require("unified.diff").show(target_commit, vim.api.nvim_get_current_buf())
   assert(result, "Show diff should have succeeded")
 
   -- Update the global state for consistency
-  unified.is_active = true
+  state.is_active = true
 
-  -- Use the mocked file tree function
-  window.file_tree_win = vim.api.nvim_get_current_win()
-  window.file_tree_buf = vim.api.nvim_get_current_buf()
+  -- Create the file tree buffer and window
+  local file_tree = require("unified.file_tree")
+  local tree_buf = file_tree.create_file_tree_buffer(file_path, true, target_commit)
 
-  -- Verify the file tree window and buffer are set
-  local window_module = require("unified.window")
-  assert(window_module.file_tree_win, "File tree window reference should be set")
-  assert(window_module.file_tree_buf, "File tree buffer reference should be set")
-  assert(vim.api.nvim_win_is_valid(window_module.file_tree_win), "File tree window should be valid")
-  assert(vim.api.nvim_buf_is_valid(window_module.file_tree_buf), "File tree buffer should be valid")
+  -- Manually create the window for the tree buffer in the test
+  vim.cmd("topleft 30vsplit")
+  local tree_win = vim.api.nvim_get_current_win()
+  vim.api.nvim_win_set_buf(tree_win, tree_buf)
+
+  -- Set the file tree window and buffer in the state
+  state.file_tree_win = tree_win
+  state.file_tree_buf = tree_buf
+
+  -- Verify the file tree window and buffer are set and valid
+  assert(state.file_tree_win, "File tree window reference should be set")
+  assert(state.file_tree_buf, "File tree buffer reference should be set")
+  assert(vim.api.nvim_win_is_valid(state.file_tree_win), "File tree window should be valid")
+  assert(vim.api.nvim_buf_is_valid(state.file_tree_buf), "File tree buffer should be valid")
 
   -- Clean up
   for _, win in ipairs(vim.api.nvim_list_wins()) do

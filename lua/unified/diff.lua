@@ -1,7 +1,6 @@
 local M = {}
 
 local config = require("unified.config")
-local window = require("unified.window")
 
 -- Parse diff and return a structured representation
 function M.parse_diff(diff_text)
