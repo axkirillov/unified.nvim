@@ -7,9 +7,7 @@ A Neovim plugin for displaying inline unified diffs directly in your buffer.
 The primary command is `:Unified`. Its behavior depends on whether arguments are provided and the current state of the diff view:
 
 *   `:Unified <commit_ref>`: Shows a diff view comparing the current buffer(s) against the specified `<commit_ref>`. It also opens a file tree showing files changed in that commit range. Autocompletion for `<commit_ref>` is available.
-*   `:Unified` (no arguments):
-    *   If the unified view is **not** currently active, it shows the diff against `HEAD` (equivalent to `:Unified HEAD`).
-    *   If the unified view **is** currently active, it closes the view and removes highlights.
+*   `:Unified` with no arguments shows the diff against `HEAD` (equivalent to `:Unified HEAD`).
 
 Opening any file from the file tree will display its specific diff.
 ## Installation
