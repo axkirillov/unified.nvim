@@ -87,22 +87,24 @@ Configuration with default values: >
 4. Run `:Unified` again to close the diff view and file tree.
 5. Run `:Unified <commit_ref>` to show the diff against a specific commit.
 
-File Tree:
-When you run `:Unified` to show a diff, a file tree explorer will also open
-in a split window. The file tree shows the structure of the git repository
-and indicates which files have changes:
+File Tree Interaction:
+When you run `:Unified <commit_ref>`, a file tree explorer opens in a split
+window. This tree shows files changed relative to the specified commit.
 
-- Files/directories with a "+" sign have additions or modifications
-- Files/directories with a "-" sign have deletions
+Status Indicators:
+- `M`: Modified
+- `A`: Added
+- `D`: Deleted
+- `R`: Renamed
+- `C`: Copied
+- `?`: Untracked (if showing untracked files is enabled)
 
-The file tree supports keyboard navigation:
-- Press j/k to navigate up and down
-- Press R to refresh the tree view
-- Press q to close the tree view
-- Press ? to show help
-
-When you select a file in the tree, it will open in the main editor window,
-allowing you to easily navigate between files in your repository.
+Default Keymaps (in the file tree window):
+- `j`/`k`: Move the cursor down/up. Automatically opens the file under the
+  cursor in the main window, displaying its diff.
+- `q`: Close the file tree window.
+- `R`: Refresh the file tree contents.
+- `?`: Show a help dialog (if implemented).
 
 ==============================================================================
 6. COMMANDS                                                *unified-commands*
@@ -128,13 +130,18 @@ allowing you to easily navigate between files in your repository.
        and closes the unified file tree window if it is open.
 
 ==============================================================================
-7. API                                                        *unified-api*
-
-
-==============================================================================
 8. MAPPINGS                                                *unified-mappings*
 
-The plugin does not define any mappings by default. You can create your own: >
+The plugin defines the following default mappings specifically within the
+file tree window (`unified_tree` filetype):
+
+- `j`: Move cursor down and open file.
+- `k`: Move cursor up and open file.
+- `q`: Close the file tree window.
+- `R`: Refresh the file tree.
+- `?`: Show help.
+
+You can define your own global mappings to trigger the main commands: >
     vim.keymap.set('n', '<leader>ud', ':Unified<CR>',
                   { silent = true, desc = "Unified: Toggle view / Show HEAD diff" })
     -- Example for showing diff against a specific branch (e.g., main)

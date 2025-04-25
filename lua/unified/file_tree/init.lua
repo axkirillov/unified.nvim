@@ -117,15 +117,8 @@ function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
     "<Cmd>lua require('unified.file_tree.actions').move_cursor_and_open_file(-1)<CR>",
     { noremap = true, silent = true }
   )
-  -- Remove h/l mappings as expand/collapse is automatic/removed
-  -- Remove <CR> and <C-j> mappings as j/k now handle opening files
-  vim.api.nvim_buf_set_keymap(
-    buf,
-    "n",
-    "-",
-    "<Cmd>lua require('unified.file_tree.actions').go_to_parent()<CR>",
-    { noremap = true, silent = true }
-  )
+  -- j/k mappings handle both cursor movement and opening files.
+  -- Other navigation/action mappings:
   vim.api.nvim_buf_set_keymap(
     buf,
     "n",
