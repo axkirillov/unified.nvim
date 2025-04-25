@@ -37,16 +37,30 @@ function M.test_no_plus_signs_in_buffer()
   -- Get all extmarks to check for overlay content
   local extmarks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, { details = true })
 
-  -- Check that no extmark in added lines has "overlay" virt_text_pos with + symbols
+  -- Check that extmarks for added lines use sign_text and not virt_text
+  local found_added_line_sign = false
+  local found_added_line_virt_text = false
+  local config = require("unified.config") -- Need config for symbol
+  local expected_sign_text = config.values.line_symbols.add .. " "
+
   for _, mark in ipairs(extmarks) do
     local details = mark[4]
-    if details.virt_text and details.virt_text_pos == "overlay" then
-      for _, vtext in ipairs(details.virt_text) do
-        local text = vtext[1]
-        assert(not text:match("^%+"), "Found + sign in overlay virtual text: " .. text) -- This assertion should fail because we are using "overlay" for added lines
+    -- Check if the extmark has the 'UnifiedDiffAdd' highlight group (indicating an added line)
+    if details.line_hl_group == "UnifiedDiffAdd" then
+      -- Check if it has the correct sign_text
+      if details.sign_text == expected_sign_text then
+        found_added_line_sign = true
+      end
+      -- Check if it incorrectly has virt_text
+      if details.virt_text then
+        found_added_line_virt_text = true
+        break -- No need to check further if we found incorrect virt_text
       end
     end
   end
+
+  assert(found_added_line_sign, "Did not find expected sign_text ('" .. expected_sign_text .. "') for added lines")
+  assert(not found_added_line_virt_text, "Found unexpected virt_text associated with added lines")
 
   -- Clean up
   utils.clear_diff_marks(buffer)
@@ -255,9 +269,9 @@ function M.test_deletion_symbols_in_gutter()
     end
   end
 
-  -- This should fail with the current implementation because we're including the
-  -- minus symbol in the virtual line content rather than placing it in a sign column
-  assert(not minus_sign_in_content, "Deletion symbol '-' appears in buffer text instead of gutter")
+  -- This assertion should PASS with the current implementation because the '-' symbol
+  -- is correctly omitted from the virtual line content.
+  assert(not minus_sign_in_content, "Deletion symbol '-' appears in virtual line content instead of being omitted")
 
   -- Check if we have combined extmarks with both virt_lines and sign_text
   local extmarks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, { details = true })
