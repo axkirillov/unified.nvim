@@ -17,6 +17,17 @@ CONTENTS                                                 *unified-contents*
     9. Troubleshooting ......................... |unified-troubleshooting|
 
 ==============================================================================
+7. API                                                        *unified-api*
+
+Currently, there is no official public Lua API for users to interact with.
+The plugin's internal modules are subject to change.
+
+==============================================================================
+8. MAPPINGS                                                *unified-mappings*
+    8. Mappings ................................ |unified-mappings|
+    9. Troubleshooting ......................... |unified-troubleshooting|
+
+==============================================================================
 1. INTRODUCTION                                         *unified-introduction*
 
 unified.nvim is a plugin for Neovim that displays unified diffs inline in your
@@ -28,6 +39,7 @@ reference commit (e.g., HEAD).
 
 - Neovim >= 0.5.0
 - `diff` command available in your PATH
+- A Nerd Font installed and configured in your terminal/GUI for file icons.
 
 ==============================================================================
 3. INSTALLATION                                        *unified-installation*
@@ -90,6 +102,7 @@ Configuration with default values: >
 File Tree Interaction:
 When you run `:Unified <commit_ref>`, a file tree explorer opens in a split
 window. This tree shows files changed relative to the specified commit.
+*Note:* A Nerd Font is required to display file/folder icons correctly.
 
 Status Indicators:
 - `M`: Modified
@@ -98,6 +111,12 @@ Status Indicators:
 - `R`: Renamed
 - `C`: Copied
 - `?`: Untracked (if showing untracked files is enabled)
+
+Path Shortening:
+To fit longer paths within the file tree window, paths are automatically
+shortened. The beginning part of the path might be replaced with '...' if it
+exceeds the available width, prioritizing the display of the filename and its
+immediate parent directories.
 
 Default Keymaps (in the file tree window):
 - `j`/`k`: Move the cursor down/up. Automatically opens the file under the
@@ -128,26 +147,6 @@ Default Keymaps (in the file tree window):
     *:Unified* reset                                     *:Unified-reset*
        Removes all unified diff highlights and signs from the current buffer
        and closes the unified file tree window if it is open.
-
-==============================================================================
-8. MAPPINGS                                                *unified-mappings*
-
-The plugin defines the following default mappings specifically within the
-file tree window (`unified_tree` filetype):
-
-- `j`: Move cursor down and open file.
-- `k`: Move cursor up and open file.
-- `q`: Close the file tree window.
-- `R`: Refresh the file tree.
-- `?`: Show help.
-
-You can define your own global mappings to trigger the main commands: >
-    vim.keymap.set('n', '<leader>ud', ':Unified<CR>',
-                  { silent = true, desc = "Unified: Toggle view / Show HEAD diff" })
-    -- Example for showing diff against a specific branch (e.g., main)
-    vim.keymap.set('n', '<leader>um', ':Unified main<CR>',
-                  { silent = true, desc = "Unified: Show diff against main" })
-<<
 
 ==============================================================================
 9. TROUBLESHOOTING                                  *unified-troubleshooting*
