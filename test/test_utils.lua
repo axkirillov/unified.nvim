@@ -200,11 +200,37 @@ function M.modify_and_commit_file(repo, filename, content, commit_message)
   return file_path
 end
 
--- Helper to check if extmarks exist
-function M.check_extmarks_exist(buffer, namespace)
-  local ns_id = vim.api.nvim_create_namespace(namespace or "unified_diff")
-  local marks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, {})
-  return #marks > 0, marks
+local function wait_until(fn, timeout)
+  timeout = timeout or 1000
+  local start = vim.loop.hrtime()
+  while vim.loop.hrtime() - start < timeout * 1e6 do
+    if fn() then
+      return true
+    end
+    vim.wait(20, function() end, 1, false)
+  end
+  return fn()
+end
+
+function M.check_extmarks_exist(buffer, namespace, timeout)
+  local ns = vim.api.nvim_create_namespace(namespace or "unified_diff")
+  local marks = {}
+  local found = wait_until(function()
+    marks = vim.api.nvim_buf_get_extmarks(buffer, ns, 0, -1, {})
+    return #marks > 0
+  end, timeout)
+  return found, marks
+end
+
+function M.get_extmarks(buffer, opts)
+  opts = opts or {}
+  local ns = vim.api.nvim_create_namespace(opts.namespace or "unified_diff")
+  local ext = {}
+  wait_until(function()
+    ext = vim.api.nvim_buf_get_extmarks(buffer, ns, 0, -1, opts.details == false and {} or { details = true })
+    return #ext > 0
+  end, opts.timeout or 1000)
+  return ext
 end
 
 -- Helper to check if signs exist

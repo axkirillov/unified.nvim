@@ -18,9 +18,7 @@ local function test_commit_file_tree()
     return false
   end
 
-  -- Test case 1: Show file tree with HEAD
-  state.commit_base = "HEAD"
-  local success = file_tree.show_file_tree("HEAD", false)
+  local success = file_tree.show("HEAD")
   assert(success, "Failed to show file tree with HEAD")
 
   -- Verify tree window exists
@@ -32,9 +30,7 @@ local function test_commit_file_tree()
   -- Verify buffer exists and is valid
   assert(state.file_tree_buf and vim.api.nvim_buf_is_valid(state.file_tree_buf), "File tree buffer not valid for HEAD")
 
-  -- Test case 2: Show file tree with HEAD~1
-  state.commit_base = "HEAD~1"
-  success = file_tree.show_file_tree("HEAD~1", false)
+  success = file_tree.show("HEAD~1")
   assert(success, "Failed to show file tree with HEAD~1")
 
   -- Verify tree window still exists and is valid
@@ -54,10 +50,7 @@ local function test_commit_file_tree()
     vim.api.nvim_win_close(state.file_tree_win, true)
   end
 
-  -- Reset state
-  state.file_tree_win = nil
-  state.file_tree_buf = nil
-  state.commit_base = nil
+  state.reset_file_tree_state()
 
   print("All file tree commit tests passed!")
   return true

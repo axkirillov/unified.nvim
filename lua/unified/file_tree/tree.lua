@@ -1,7 +1,7 @@
 -- FileTree implementation
 local Node = require("unified.file_tree.node")
-local git = require("unified.git")
 
+local job = require("unified.utils.job")
 local FileTree = {}
 FileTree.__index = FileTree
 
@@ -120,82 +120,77 @@ function FileTree:scan_directory(dir)
   self.root:sort()
 end
 
--- Update status of files from git
-function FileTree:update_git_status(root_dir, diff_only, commit_ref)
+function FileTree:update_git_status(root_dir, diff_only, commit_ref, callback)
   local changed_files = {}
   local has_changes = false
 
-  -- Choose the appropriate command based on the commit_ref
-  local cmd
-  if commit_ref and commit_ref ~= "HEAD" then
-    -- If a specific commit_ref is provided, compare it with the working tree
-    cmd =
-      string.format("cd %s && git diff --name-status %s", vim.fn.shellescape(root_dir), vim.fn.shellescape(commit_ref))
+  local cmd_args
+  if commit_ref then
+    cmd_args = { "git", "diff", "--name-status", commit_ref }
   else
-    -- If no commit_ref or HEAD is provided, use standard git status
-    cmd = string.format("cd %s && git status --porcelain --untracked-files=all", vim.fn.shellescape(root_dir))
+    cmd_args = { "git", "status", "--porcelain", "--untracked-files=all" }
   end
-  local result = vim.fn.system(cmd)
-  local shell_error = vim.v.shell_error
-  if shell_error == 0 then
-    -- Process the command output to get changed files and their statuses
-    for line in result:gmatch("[^\r\n]+") do
-      local status, file
 
-      if commit_ref and commit_ref ~= "HEAD" then
-        -- git diff --name-status output format: A/M/D<TAB>file
-        status = line:sub(1, 1) .. " " -- First letter is the status (A/M/D)
-        file = line:match("^[AMD]%s+(.*)") -- Get file name after status and whitespace
-      else
-        -- git status --porcelain output format: XY path
-        status = line:sub(1, 2)
-        file = line:sub(4)
-        -- Handle renamed files (R status)
-        if status:match("^R") then
-          -- Format is "R  old_path -> new_path"
-          local parts = vim.split(file, " -> ")
-          if #parts == 2 then
-            file = parts[2] -- Use the new path for the tree
-            -- We might want to represent the rename differently, but for now, just mark the new path
-            status = "R " -- Use 'R' status
+  job.run(cmd_args, { cwd = root_dir }, function(result, code, err)
+    if code == 0 then
+      for line in (result or ""):gmatch("[^\r\n]+") do
+        local status, file
+
+        if commit_ref and commit_ref ~= "HEAD" then
+          status = line:sub(1, 1) .. " "
+          file = line:match("^[AMD]%s+(.*)")
+        else
+          status = line:sub(1, 2)
+          file = line:sub(4)
+          if status:match("^R") then
+            local parts = vim.split(file, " -> ")
+            if #parts == 2 then
+              file = parts[2]
+              status = "R "
+            end
           end
         end
-      end
 
-      if file then -- Ensure we got a file name
-        local path = root_dir .. "/" .. file
-        -- Store the status for this file
-        changed_files[path] = status:gsub("%s", " ")
-        has_changes = true
-      end
-    end
-  end
-
-  if diff_only then
-    -- Clear existing tree structure before adding changed/commit files
-    self.root.children = {}
-    self.root.ordered_children = {}
-
-    -- Only add files that have changes or are from the commit
-    if has_changes then
-      for path, status in pairs(changed_files) do
-        self:add_file(path, status)
+        if file then
+          local path = root_dir .. "/" .. file
+          changed_files[path] = status:gsub("%s", " ")
+          has_changes = true
+        end
       end
     else
-      -- If still no changes, the tree remains empty (except root)
-      return -- Explicitly return if tree should be empty
+      vim.api.nvim_echo({ { "Error getting git status: " .. (err or "Unknown error"), "ErrorMsg" } }, false, {})
+      has_changes = false
+      changed_files = {}
     end
-  else
-    -- Not diff_only: Scan the entire directory structure first
-    self:scan_directory(root_dir)
-    -- Then apply the statuses we found to the existing tree nodes
-    self:apply_statuses(self.root, changed_files)
-  end
 
-  -- Propagate status up to parent directories
-  self:update_parent_statuses(self.root)
-  -- Ensure the tree is sorted after updates
-  self.root:sort() -- Ensure the tree is sorted after updates
+    vim.schedule(function()
+      if diff_only then
+        self.root.children = {}
+        self.root.ordered_children = {}
+
+        if has_changes then
+          for path, status in pairs(changed_files) do
+            self:add_file(path, status)
+          end
+        else
+          if callback then
+            callback()
+          end
+          return
+        end
+      else
+        self:scan_directory(root_dir)
+        self:apply_statuses(self.root, changed_files)
+      end
+
+      self:update_parent_statuses(self.root)
+      self.root:sort()
+
+      if callback then
+        callback()
+      end
+    end)
+  end)
 end
 
 -- Apply stored statuses to the tree nodes

@@ -33,8 +33,7 @@ function M.test_multiple_added_lines()
   local buffer = vim.api.nvim_get_current_buf()
   local ns_id = vim.api.nvim_create_namespace("unified_diff")
 
-  -- Get all extmarks with details to check highlights
-  local extmarks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, { details = true })
+  local extmarks = utils.get_extmarks(buffer, { namespace = "unified_diff", details = true })
   -- Track which lines are highlighted (1-indexed for easier comparison with buffer lines)
   local highlighted_lines = {}
   -- Process all extmarks to find which lines have highlighting
@@ -117,8 +116,7 @@ function M.test_multiple_added_lines_with_commit()
   -- Get buffer and namespace
   local ns_id = vim.api.nvim_create_namespace("unified_diff")
 
-  -- Get all extmarks with details
-  local extmarks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, { details = true })
+  local extmarks = utils.get_extmarks(buffer, { namespace = "unified_diff", details = true })
 
   -- Track which lines are highlighted
   local highlighted_lines = {}

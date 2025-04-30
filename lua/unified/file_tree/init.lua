@@ -70,17 +70,6 @@ function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
   -- Create file tree instance
   local tree = FileTree.new(root_dir)
 
-  -- Populate the tree based on mode (diff_only or full scan) and git status
-  if is_git_repo then
-    -- Pass the determined commit_ref to update_git_status
-    tree:update_git_status(root_dir, diff_only, commit_ref)
-  elseif not diff_only then
-    -- Not a git repo, just scan the directory if not in diff_only mode
-    tree:scan_directory(root_dir)
-  end
-  -- If diff_only is true but not a git repo, the tree remains empty (as intended)
-
-  -- Create buffer for file tree
   local buf = vim.api.nvim_create_buf(false, true)
 
   -- Create a unique buffer name
@@ -98,8 +87,20 @@ function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
   vim.bo[buf].bufhidden = "hide" -- Use hide instead of wipe
   vim.bo[buf].filetype = "unified_tree"
 
-  -- Render file tree to buffer (this also updates tree_state)
   render.render_tree(tree, buf)
+
+  if is_git_repo then
+    tree:update_git_status(root_dir, diff_only, commit_ref, function()
+      vim.schedule(function()
+        if vim.api.nvim_buf_is_valid(buf) then
+          render.render_tree(tree, buf)
+        end
+      end)
+    end)
+  elseif not diff_only then
+    tree:scan_directory(root_dir)
+    render.render_tree(tree, buf)
+  end
 
   -- Set up keymaps for the buffer
   -- Pass options directly to avoid potential issues with shared table

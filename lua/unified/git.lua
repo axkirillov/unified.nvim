@@ -1,6 +1,7 @@
 local M = {}
 local config = require("unified.config")
 local cache_util = require("unified.utils.cache")
+local job = require("unified.utils.job")
 
 -- Check if file is in a git repository
 function M.is_git_repo(file_path)
@@ -11,17 +12,15 @@ function M.is_git_repo(file_path)
   end
 
   -- Use git rev-parse to check if we're in a git repo
-  local cmd = string.format("cd %s && git rev-parse --is-inside-work-tree 2>/dev/null", vim.fn.shellescape(dir))
-  local result = vim.fn.system(cmd)
-  local is_git_repo = vim.trim(result) == "true"
+  local out, code = job.await({ "git", "rev-parse", "--is-inside-work-tree" }, { cwd = dir, ignore_stderr = true })
+  local is_git_repo = code == 0 and vim.trim(out) == "true"
 
   if vim.g.unified_debug then
     print("Git repo check for: " .. dir)
-    print("Git result: '" .. vim.trim(result) .. "'")
+    print("Git result: '" .. vim.trim(out or "") .. "', code: " .. tostring(code))
     print("Is git repo: " .. tostring(is_git_repo))
   end
 
-  -- Double check by looking for .git directory
   if not is_git_repo then
     -- Try to find .git directory by traversing up
     local check_dir = dir
@@ -48,48 +47,64 @@ function M.is_git_repo(file_path)
   return is_git_repo
 end
 
-function M.resolve_commit_hash(commit_ref)
-  local cmd = string.format("git rev-parse --verify %s 2>/dev/null", vim.fn.shellescape(commit_ref))
-  local result = vim.fn.system(cmd)
-  local hash = vim.trim(result)
-
-  if vim.v.shell_error ~= 0 or hash == "" then
-    if vim.g.unified_debug then
-      print("Failed to resolve commit reference: " .. commit_ref .. " in " .. dir)
+---@param commit_ref string The commit reference (e.g., 'HEAD', branch name, tag, hash).
+---@param cwd string The working directory for the git command.
+---@param cb function|nil An optional callback function `cb(hash)` called with the resolved hash (string) or nil on failure.
+function M.resolve_commit_hash(commit_ref, cwd, cb)
+  local cmd = { "git", "rev-parse", "--verify", commit_ref }
+  job.run(cmd, { cwd = cwd, ignore_stderr = true }, function(out, code)
+    local hash = nil
+    if code == 0 then
+      hash = vim.trim(out or "")
+      if hash == "" then
+        hash = nil
+      end
     end
-    return nil
-  end
 
-  return hash
+    if vim.g.unified_debug and not hash then
+      print("Failed to resolve commit reference: " .. commit_ref .. " in " .. cwd .. " (code: " .. code .. ")")
+    end
+
+    if cb then
+      vim.schedule(function()
+        cb(hash)
+      end)
+    end
+  end)
 end
 
 M.get_git_file_content = cache_util.memoize(function(file_path, commit)
-  local relative_path = vim.fn.system(
-    string.format(
-      "cd %s && git ls-files --full-name %s | tr -d '\n'",
-      vim.fn.shellescape(vim.fn.fnamemodify(file_path, ":h")),
-      vim.fn.shellescape(vim.fn.fnamemodify(file_path, ":t"))
-    )
+  local file_dir = vim.fn.fnamemodify(file_path, ":h")
+  local root_out, root_code = job.await({ "git", "rev-parse", "--show-toplevel" }, { cwd = file_dir })
+
+  if root_code ~= 0 then
+    vim.api.nvim_err_writeln("Failed to find git root for: " .. file_path)
+    return nil
+  end
+  local git_root = vim.trim(root_out)
+
+  local rel_path_out, rel_path_code = job.await(
+    { "git", "ls-files", "--full-name", "--", file_path },
+    { cwd = git_root }
   )
 
-  if relative_path == "" then
+  if rel_path_code ~= 0 or not rel_path_out or vim.trim(rel_path_out) == "" then
+    vim.api.nvim_err_writeln("Failed to get relative path for: " .. file_path .. " in root: " .. git_root)
+    return nil
+  end
+  local relative_path = vim.trim(rel_path_out)
+
+  local content_out, content_code = job.await(
+    { "git", "show", commit .. ":" .. relative_path },
+    { cwd = git_root, ignore_stderr = true }
+  )
+
+  if content_code ~= 0 then
+    vim.api.nvim_err_writeln("Failed to get content for: " .. relative_path .. " at commit: " .. commit)
     return nil
   end
 
-  local cmd = string.format(
-    "cd %s && git show %s:%s 2>/dev/null",
-    vim.fn.shellescape(vim.fn.fnamemodify(file_path, ":h")),
-    vim.fn.shellescape(commit),
-    vim.fn.shellescape(relative_path)
-  )
-
-  local content = vim.fn.system(cmd)
-
-  if vim.v.shell_error ~= 0 then
-    return nil
-  end
-
-  return content
+  return content_out
 end)
 
 ---@param commit string
@@ -119,79 +134,82 @@ function M.show_git_diff_against_commit(commit, buffer_id)
     return false
   end
 
-  local commit_hash = M.resolve_commit_hash(commit)
-  if not commit_hash then
-    vim.api.nvim_echo({ { "Invalid commit reference: " .. commit, "ErrorMsg" } }, false, {})
-    return false
-  end
-
-  local git_content = M.get_git_file_content(file_path, commit_hash)
-
-  -- If file isn't in git at that commit, treat it as empty for diffing new files
-  if not git_content then
-    git_content = "" -- Treat as empty content
-    -- Do not return false here, proceed to diff against empty content
-  end
-
-  -- Check if there are any changes at all
-  if current_content == git_content then
-    vim.api.nvim_echo(
-      { { "No changes detected between buffer and git version at " .. commit, "WarningMsg" } },
-      false,
-      {}
-    )
-    -- Clear existing diff marks if no changes
-    local ns_id = config.ns_id
-    vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
-    vim.fn.sign_unplace("unified_diff", { buffer = buffer })
-    return false
-  end
-
-  -- Create temporary files for diffing
-  local temp_current = vim.fn.tempname()
-  local temp_git = vim.fn.tempname()
-
-  -- Write current buffer content to temp file
-  vim.fn.writefile(vim.split(current_content, "\n"), temp_current)
-  vim.fn.writefile(vim.split(git_content, "\n"), temp_git)
-
-  -- We'll use git diff instead of plain diff for better accuracy
   local dir = vim.fn.fnamemodify(file_path, ":h")
+  M.resolve_commit_hash(commit, dir, function(commit_hash)
+    vim.schedule(function()
+      if not commit_hash then
+        vim.api.nvim_echo({ { "Invalid commit reference: " .. commit .. " in " .. dir, "ErrorMsg" } }, false, {})
+        return
+      end
 
-  -- Use git diff with unified format for better visualization
-  local diff_cmd = string.format(
-    "cd %s && git diff --no-index --unified=3 --text --no-color --word-diff=none %s %s",
-    vim.fn.shellescape(dir),
-    vim.fn.shellescape(temp_git),
-    vim.fn.shellescape(temp_current)
-  )
+      local git_content = M.get_git_file_content(file_path, commit_hash)
 
-  local diff_output = vim.fn.system(diff_cmd)
+      if not git_content then
+        vim.api.nvim_echo(
+          { { "File not present in commit " .. commit_hash .. " or failed to retrieve content.", "WarningMsg" } },
+          false,
+          {}
+        )
+        return
+      end
 
-  -- Clean up temp files
-  vim.fn.delete(temp_current)
-  vim.fn.delete(temp_git)
+      if current_content == git_content then
+        vim.api.nvim_echo(
+          { { "No changes detected between buffer and git version at " .. commit, "WarningMsg" } },
+          false,
+          {}
+        )
+        local ns_id = config.ns_id
+        vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
+        vim.fn.sign_unplace("unified_diff", { buffer = buffer })
+        return
+      end
 
-  if diff_output ~= "" then
-    -- Remove the git diff header lines that might confuse our parser
-    diff_output = diff_output:gsub("diff %-%-git a/%S+ b/%S+\n", "") -- Match --no-index header
-    diff_output = diff_output:gsub("index %S+%.%.%S+ %S+\n", "")
-    diff_output = diff_output:gsub("%-%-%" .. "- %S+\n", "") -- Split the string to avoid escaping issues
-    diff_output = diff_output:gsub("%+%+%+" .. " %S+\n", "") -- Split the string to avoid escaping issues
+      local temp_current = vim.fn.tempname()
+      local temp_git = vim.fn.tempname()
 
-    local hunks = diff_module.parse_diff(diff_output)
-    -- Pass the correct buffer ID to display_inline_diff
-    local result = diff_module.display_inline_diff(buffer, hunks)
-    return result
-  else
-    vim.api.nvim_echo({ { "No differences found by diff command", "WarningMsg" } }, false, {})
-    -- Clear existing diff marks if no changes found by diff command
-    local ns_id = config.ns_id
-    vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
-    vim.fn.sign_unplace("unified_diff", { buffer = buffer })
-  end
+      vim.fn.writefile(vim.split(current_content, "\n"), temp_current)
+      vim.fn.writefile(vim.split(git_content, "\n"), temp_git)
 
-  return false
+      job.run({
+        "git",
+        "diff",
+        "--no-index",
+        "--unified=3",
+        "--text",
+        "--no-color",
+        "--word-diff=none",
+        temp_git,
+        temp_current,
+      }, { cwd = dir }, function(diff_output, code, err)
+        vim.fn.delete(temp_current)
+        vim.fn.delete(temp_git)
+
+        vim.schedule(function()
+          if (code == 0 or code == 1) and diff_output and diff_output ~= "" then
+            diff_output = diff_output:gsub("diff %-%-git a/%S+ b/%S+\n", "")
+            diff_output = diff_output:gsub("index %S+%.%.%S+ %S+\n", "")
+            diff_output = diff_output:gsub("%-%-%" .. "- %S+\n", "")
+            diff_output = diff_output:gsub("%+%+%+" .. " %S+\n", "")
+
+            local hunks = diff_module.parse_diff(diff_output)
+            diff_module.display_inline_diff(buffer, hunks)
+          elseif code ~= 0 and code ~= 1 then
+            vim.api.nvim_echo({ { "Error running git diff: " .. (err or "Unknown error"), "ErrorMsg" } }, false, {})
+            local ns_id = config.ns_id
+            vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
+            vim.fn.sign_unplace("unified_diff", { buffer = buffer })
+          else
+            vim.api.nvim_echo({ { "No differences found by diff command", "WarningMsg" } }, false, {})
+            local ns_id = config.ns_id
+            vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
+            vim.fn.sign_unplace("unified_diff", { buffer = buffer })
+          end
+        end)
+      end)
+    end)
+  end)
+  return true
 end
 
 return M

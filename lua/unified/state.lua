@@ -21,21 +21,23 @@ M.auto_refresh_augroup = nil
 
 -- Get the main content window (to navigate from tree back to content)
 function M.get_main_window()
-  -- If we have stored a main window and it's valid, use it
-  if M.main_win and vim.api.nvim_win_is_valid(M.main_win) then
+  if
+    M.main_win
+    and vim.api.nvim_win_is_valid(M.main_win)
+    and (not M.file_tree_win or not vim.api.nvim_win_is_valid(M.file_tree_win) or M.main_win ~= M.file_tree_win)
+  then
     return M.main_win
   end
 
-  -- Otherwise find the first window that's not our tree window
+  local valid_file_tree_win = M.file_tree_win and vim.api.nvim_win_is_valid(M.file_tree_win)
   for _, win in ipairs(vim.api.nvim_list_wins()) do
-    if not M.file_tree_win or win ~= M.file_tree_win then
-      -- Store this as our main window
+    if not valid_file_tree_win or win ~= M.file_tree_win then
       M.main_win = win
       return win
     end
   end
 
-  -- Fallback to current window
+  vim.api.nvim_err_writeln("Unified: Could not find a suitable main window.")
   return nil
 end
 

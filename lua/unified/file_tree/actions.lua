@@ -11,13 +11,15 @@ local function open_file_node(node)
   end
 
   local state = require("unified.state")
+  local current_win = vim.api.nvim_get_current_win()
   local win = state.get_main_window()
-  if not win or not vim.api.nvim_win_is_valid(win) then
-    vim.api.nvim_echo({ { "No main window", "WarningMsg" } }, false, {})
-    return
+
+  if not win or not vim.api.nvim_win_is_valid(win) or win == current_win then
+    vim.cmd("rightbelow vsplit")
+    win = vim.api.nvim_get_current_win()
+    state.main_win = win
   end
 
-  local current_win = vim.api.nvim_get_current_win()
   vim.api.nvim_set_current_win(win)
 
   vim.defer_fn(function()

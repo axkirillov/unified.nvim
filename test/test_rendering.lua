@@ -34,8 +34,7 @@ function M.test_no_plus_signs_in_buffer()
   local buffer = vim.api.nvim_get_current_buf()
   local ns_id = vim.api.nvim_create_namespace("unified_diff")
 
-  -- Get all extmarks to check for overlay content
-  local extmarks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, { details = true })
+  local extmarks = utils.get_extmarks(buffer, { namespace = "unified_diff", details = true })
 
   -- Check that extmarks for added lines use sign_text and not virt_text
   local found_added_line_sign = false
@@ -337,8 +336,7 @@ function M.test_no_line_numbers_in_deleted_lines()
   local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
   local buffer_line_count = #buffer_lines
 
-  -- Get all extmarks with details
-  local extmarks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, { details = true })
+  local extmarks = utils.get_extmarks(buffer, { namespace = "unified_diff", details = true })
 
   -- Check if any virtual text contains line numbers or dash + number patterns
   -- These patterns would indicate the issue where we're seeing "-  11" type formatting

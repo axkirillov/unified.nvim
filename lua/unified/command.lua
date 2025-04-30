@@ -33,17 +33,27 @@ M.run = function(args)
     commit_ref = "HEAD"
   end
 
-  local commit_hash = require("unified.git").resolve_commit_hash(commit_ref)
+  local git = require("unified.git")
   local state = require("unified.state")
-  state.set_commit_base(commit_hash)
+  local file_tree = require("unified.file_tree")
+  local cwd = vim.fn.getcwd()
 
-  if not state.is_active then
-    state.main_win = vim.api.nvim_get_current_win()
-  end
+  git.resolve_commit_hash(commit_ref, cwd, function(hash)
+    if not hash then
+      vim.api.nvim_echo({ { 'Error: could not resolve "' .. commit_ref .. '"', "ErrorMsg" } }, false, {})
+      return
+    end
 
-  state.is_active = true
+    state.set_commit_base(hash)
+    if not state.is_active then
+      state.main_win = vim.api.nvim_get_current_win()
+    end
+    state.is_active = true
 
-  return true
+    file_tree.show(hash)
+  end)
+
+  return nil
 end
 
 function M.reset()

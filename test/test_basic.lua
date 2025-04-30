@@ -30,14 +30,12 @@ function M.test_show_diff_api()
   -- Call the plugin function to show diff
   local result = require("unified.git").show_git_diff_against_commit("HEAD", vim.api.nvim_get_current_buf())
 
-  -- Get buffer to check if extmarks exist
   local buffer = vim.api.nvim_get_current_buf()
-  local has_extmarks = utils.check_extmarks_exist(buffer)
+  local extmarks = utils.get_extmarks(buffer, { namespace = "unified_diff", details = true })
   local has_signs = utils.check_signs_exist(buffer)
 
-  -- Check that extmarks were created
   assert(result, "show_git_diff() should return true")
-  assert(has_extmarks, "No diff extmarks were created")
+  assert(#extmarks > 0, "No diff extmarks were created")
   assert(has_signs, "No diff signs were placed")
 
   -- Clear diff
@@ -176,14 +174,12 @@ function M.test_git_diff()
   -- Call the plugin function to show git diff
   local result = require("unified.git").show_git_diff_against_commit("HEAD", vim.api.nvim_get_current_buf())
 
-  -- Get buffer to check if extmarks exist
   local buffer = vim.api.nvim_get_current_buf()
-  local has_extmarks = utils.check_extmarks_exist(buffer)
+  local extmarks = utils.get_extmarks(buffer, { namespace = "unified_diff", details = true })
   local has_signs = utils.check_signs_exist(buffer)
 
-  -- Check that extmarks were created
   assert(result, "show_git_diff() should return true")
-  assert(has_extmarks, "No diff extmarks were created")
+  assert(#extmarks > 0, "No diff extmarks were created")
   assert(has_signs, "No diff signs were placed")
 
   -- Clear diff
