@@ -88,9 +88,8 @@ M.get_git_file_content = cache_util.memoize(function(file_path, commit)
     { cwd = git_root }
   )
 
-  if rel_path_code ~= 0 or not rel_path_out or vim.trim(rel_path_out) == "" then
-    vim.api.nvim_err_writeln("Failed to get relative path for: " .. file_path .. " in root: " .. git_root)
-    return nil
+  if rel_path_code ~= 0 or vim.trim(rel_path_out) == "" then
+    return ""
   end
   local relative_path = vim.trim(rel_path_out)
 
@@ -144,12 +143,12 @@ function M.show_git_diff_against_commit(commit, buffer_id)
 
       local git_content = M.get_git_file_content(file_path, commit_hash)
 
-      if not git_content then
-        vim.api.nvim_echo(
-          { { "File not present in commit " .. commit_hash .. " or failed to retrieve content.", "WarningMsg" } },
-          false,
-          {}
-        )
+      if git_content == "" then
+        -- fall through – let the diff section compare "" vs current content
+      elseif not git_content then
+        vim.api.nvim_echo({
+          { "Failed to retrieve content from commit " .. commit_hash, "WarningMsg" },
+        }, false, {})
         return
       end
 

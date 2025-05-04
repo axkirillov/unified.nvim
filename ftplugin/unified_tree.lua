@@ -22,7 +22,6 @@ end
 set_keymap("n", "q", ":q<CR>")
 
 -- Refresh the tree
-set_keymap("n", "R", ":lua require('unified.file_tree').refresh()<CR>")
 
 
 -- Help dialog

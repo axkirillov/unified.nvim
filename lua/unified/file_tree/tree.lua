@@ -124,73 +124,144 @@ function FileTree:update_git_status(root_dir, diff_only, commit_ref, callback)
   local changed_files = {}
   local has_changes = false
 
-  local cmd_args
-  if commit_ref then
-    cmd_args = { "git", "diff", "--name-status", commit_ref }
-  else
-    cmd_args = { "git", "status", "--porcelain", "--untracked-files=all" }
+  local function process_status_output(output_lines)
+    for line in (output_lines or ""):gmatch("[^\r\n]+") do
+      local status = line:sub(1, 2)
+      local file = line:sub(4)
+      if status:match("^R") then
+        local parts = vim.split(file, " -> ")
+        if #parts == 2 then
+          file = parts[2]
+        end
+      end
+      if status:match("^C") then
+        local parts = vim.split(file, " -> ")
+        if #parts == 2 then
+          file = parts[2]
+        end
+      end
+
+      if file then
+        local path = root_dir .. "/" .. file
+        status = (status:gsub("%s", " ") .. " "):sub(1, 2)
+        changed_files[path] = status
+        has_changes = true
+      end
+    end
   end
 
-  job.run(cmd_args, { cwd = root_dir }, function(result, code, err)
-    if code == 0 then
-      for line in (result or ""):gmatch("[^\r\n]+") do
-        local status, file
+  if commit_ref then
+    job.run(
+      { "git", "diff", "--name-status", commit_ref },
+      { cwd = root_dir },
+      function(diff_result, diff_code, diff_err)
+        if diff_code == 0 then
+          for line in (diff_result or ""):gmatch("[^\r\n]+") do
+            local status_char = line:sub(1, 1)
+            local file_part = line:match("^[AMDR]%s+(.*)") -- Handle RENAME (R) status from diff too
 
-        if commit_ref and commit_ref ~= "HEAD" then
-          status = line:sub(1, 1) .. " "
-          file = line:match("^[AMD]%s+(.*)")
-        else
-          status = line:sub(1, 2)
-          file = line:sub(4)
-          if status:match("^R") then
-            local parts = vim.split(file, " -> ")
-            if #parts == 2 then
-              file = parts[2]
-              status = "R "
+            if file_part then
+              local file = file_part
+              if status_char == "R" then
+                local parts = vim.split(file_part, "\t")
+                if #parts == 2 then
+                  file = parts[2] -- Use the new name
+                end
+              end
+              local path = root_dir .. "/" .. file
+              changed_files[path] = (status_char .. " "):sub(1, 2)
+              has_changes = true
             end
           end
-        end
-
-        if file then
-          local path = root_dir .. "/" .. file
-          changed_files[path] = status:gsub("%s", " ")
-          has_changes = true
-        end
-      end
-    else
-      vim.api.nvim_echo({ { "Error getting git status: " .. (err or "Unknown error"), "ErrorMsg" } }, false, {})
-      has_changes = false
-      changed_files = {}
-    end
-
-    vim.schedule(function()
-      if diff_only then
-        self.root.children = {}
-        self.root.ordered_children = {}
-
-        if has_changes then
-          for path, status in pairs(changed_files) do
-            self:add_file(path, status)
-          end
         else
-          if callback then
-            callback()
-          end
+          vim.api.nvim_echo({ { "Error getting git diff: " .. (diff_err or "Unknown error"), "ErrorMsg" } }, false, {})
+          vim.schedule(function()
+            if callback then
+              callback(false)
+            end -- Indicate failure
+          end)
           return
         end
+
+        local status_result, status_code, status_err = job.await(
+          { "git", "status", "--porcelain", "--untracked-files=all" },
+          { cwd = root_dir }
+        )
+
+        if status_code == 0 then
+          process_status_output(status_result)
+        else
+          vim.api.nvim_echo(
+            { { "Warning: Error getting git status: " .. (status_err or "Unknown error"), "WarningMsg" } },
+            false,
+            {}
+          )
+        end
+
+        vim.schedule(function()
+          if diff_only then
+            self.root.children = {}
+            self.root.ordered_children = {}
+            if has_changes then
+              for path, status in pairs(changed_files) do
+                self:add_file(path, status)
+              end
+            else
+              if callback then
+                callback(true)
+              end
+              return
+            end
+          else
+            self:scan_directory(root_dir)
+            self:apply_statuses(self.root, changed_files)
+          end
+
+          self:update_parent_statuses(self.root)
+          self.root:sort()
+          if callback then
+            callback(true)
+          end
+        end)
+      end
+    )
+  else
+    job.run({ "git", "status", "--porcelain", "--untracked-files=all" }, { cwd = root_dir }, function(result, code, err)
+      if code == 0 then
+        process_status_output(result)
       else
-        self:scan_directory(root_dir)
-        self:apply_statuses(self.root, changed_files)
+        vim.api.nvim_echo({ { "Error getting git status: " .. (err or "Unknown error"), "ErrorMsg" } }, false, {})
+        has_changes = false
+        changed_files = {}
       end
 
-      self:update_parent_statuses(self.root)
-      self.root:sort()
+      vim.schedule(function()
+        if diff_only then
+          self.root.children = {}
+          self.root.ordered_children = {}
+          if has_changes then
+            for path, status in pairs(changed_files) do
+              self:add_file(path, status)
+            end
+          else
+            if callback then
+              callback(true)
+            end
+            return
+          end
+        else
+          self:scan_directory(root_dir)
+          self:apply_statuses(self.root, changed_files)
+        end
 
-      if callback then
-        callback()
-      end
+        self:update_parent_statuses(self.root)
+        self.root:sort()
+        if callback then
+          callback(true)
+        end
+      end)
     end)
-  end)
+  end
 end
 
 -- Apply stored statuses to the tree nodes
