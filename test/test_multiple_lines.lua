@@ -29,9 +29,8 @@ function M.test_multiple_added_lines()
   local result = require("unified.git").show_git_diff_against_commit("HEAD", vim.api.nvim_get_current_buf())
   assert(result, "Failed to display diff")
 
-  -- Get buffer and namespace
   local buffer = vim.api.nvim_get_current_buf()
-  local ns_id = vim.api.nvim_create_namespace("unified_diff")
+  vim.api.nvim_create_namespace("unified_diff")
 
   local extmarks = utils.get_extmarks(buffer, { namespace = "unified_diff", details = true })
   -- Track which lines are highlighted (1-indexed for easier comparison with buffer lines)
@@ -45,9 +44,6 @@ function M.test_multiple_added_lines()
       highlighted_lines[row] = true
     end
   end
-
-  -- Get buffer lines for debugging
-  local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
 
   -- Check that all three new lines are highlighted
   assert(highlighted_lines[3], "First new line (new line 1) not highlighted")
@@ -105,15 +101,11 @@ function M.test_multiple_added_lines_with_commit()
   vim.cmd("edit " .. test_path)
   vim.api.nvim_buf_set_lines(0, 1, 1, false, { "new line 1", "new line 2", "new line 3" }) -- Add 3 new lines after line 1
 
-  -- Show diff against the first commit to test against a specific commit
-  local state = require("unified.state")
-  -- Reset the active state since we're calling functions directly
   local buffer = vim.api.nvim_get_current_buf()
   local result = require("unified.git").show_git_diff_against_commit(first_commit, buffer)
   assert(result, "Failed to display diff against first commit")
 
-  -- Get buffer and namespace
-  local ns_id = vim.api.nvim_create_namespace("unified_diff")
+  vim.api.nvim_create_namespace("unified_diff")
 
   local extmarks = utils.get_extmarks(buffer, { namespace = "unified_diff", details = true })
 
@@ -139,9 +131,6 @@ function M.test_multiple_added_lines_with_commit()
       highlighted_lines[row] = true
     end
   end
-
-  -- Get buffer lines for debugging
-  local buffer_lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
 
   -- Make sure at least new lines are highlighted (main feature being tested)
   assert(highlighted_lines[2] or highlighted_lines[1], "First new line should be highlighted")
