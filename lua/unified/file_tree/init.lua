@@ -89,18 +89,25 @@ function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
 
   render.render_tree(tree, buf)
 
-  if is_git_repo then
-    tree:update_git_status(root_dir, diff_only, commit_ref, function()
-      vim.schedule(function()
-        if vim.api.nvim_buf_is_valid(buf) then
-          render.render_tree(tree, buf)
-        end
-      end)
+  tree:update_git_status(root_dir, diff_only, commit_ref, function()
+    vim.schedule(function()
+      if not vim.api.nvim_buf_is_valid(buf) then
+        return
+      end
+
+      render.render_tree(tree, buf)
+
+      local win = tree_state.window or global_state.file_tree_win
+      if not win then
+        return
+      end
+      if not vim.api.nvim_win_is_valid(win) then
+        return
+      end
+      vim.api.nvim_set_current_win(win)
+      actions.move_cursor_and_open_file(1)
     end)
-  elseif not diff_only then
-    tree:scan_directory(root_dir)
-    render.render_tree(tree, buf)
-  end
+  end)
 
   -- Set up keymaps for the buffer
   -- Pass options directly to avoid potential issues with shared table
