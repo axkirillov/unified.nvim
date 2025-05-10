@@ -4,9 +4,6 @@ local m = {
   commit_base = nil,
 }
 
--- Global state for the plugin
-M.is_active = false
-
 -- Main window reference
 M.main_win = nil
 

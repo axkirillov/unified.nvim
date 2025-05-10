@@ -45,10 +45,7 @@ M.run = function(args)
     end
 
     state.set_commit_base(hash)
-    if not state.is_active then
-      state.main_win = vim.api.nvim_get_current_win()
-    end
-    state.is_active = true
+    state.main_win = vim.api.nvim_get_current_win()
 
     file_tree.show(hash)
   end)
@@ -84,7 +81,6 @@ function M.reset()
   state.file_tree_win = nil
   state.file_tree_buf = nil
   state.main_win = nil
-  state.is_active = false
 
   vim.api.nvim_echo({ { "Unified off", "Normal" } }, false, {})
 end

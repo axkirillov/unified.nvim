@@ -230,7 +230,6 @@ function M.close_tree()
   state.reset_state()
   -- Also reset the global active state if the main plugin relies on the tree being open
   local global_state = require("unified.state")
-  global_state.is_active = false
   global_state.file_tree_win = nil
   global_state.file_tree_buf = nil
 end -- End of M.close_tree

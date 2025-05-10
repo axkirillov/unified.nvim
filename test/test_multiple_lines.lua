@@ -108,7 +108,6 @@ function M.test_multiple_added_lines_with_commit()
   -- Show diff against the first commit to test against a specific commit
   local state = require("unified.state")
   -- Reset the active state since we're calling functions directly
-  state.is_active = false
   local buffer = vim.api.nvim_get_current_buf()
   local result = require("unified.git").show_git_diff_against_commit(first_commit, buffer)
   assert(result, "Failed to display diff against first commit")
