@@ -69,13 +69,48 @@ function M.refresh()
     return
   end
 
-  local state = require("unified.file_tree.state")
-  local diff_only = state.diff_only
-  local commit_ref = state.commit_ref
+  local tree_state = require("unified.file_tree.state")
+  local root_path = tree_state.root_path
+  local diff_only = tree_state.diff_only
+  local commit_ref = tree_state.commit_ref
+  local buf = tree_state.buffer
+  local win = tree_state.window
 
-  local file_tree = require("unified.file_tree")
-  local new_buf = file_tree.create_file_tree_buffer(state.root_path, diff_only, commit_ref)
-  vim.api.nvim_win_set_buf(state.window, new_buf)
+  local FileTree = require("unified.file_tree.tree")
+  local render = require("unified.file_tree.render")
+  local actions = require("unified.file_tree.actions")
+
+  local tree = FileTree.new(root_path)
+
+  local function after_render()
+    if not vim.api.nvim_buf_is_valid(buf) or not vim.api.nvim_win_is_valid(win) then
+      return
+    end
+
+    local first_line, first_node
+    for l = 3, vim.api.nvim_buf_line_count(buf) - 1 do
+      local n = tree_state.line_to_node[l]
+      if n and not n.is_dir then
+        first_line, first_node = l, n
+        break
+      end
+    end
+
+    if first_node then
+      vim.api.nvim_win_set_cursor(win, { first_line + 1, 0 })
+      actions.open_file_node(first_node)
+    end
+  end
+
+  local function finish(ok)
+    if not ok then
+      return
+    end
+    render.render_tree(tree, buf)
+    vim.schedule(after_render)
+  end
+
+  tree:update_git_status(root_path, diff_only, commit_ref, finish)
 end
 
 -- Show help dialog
