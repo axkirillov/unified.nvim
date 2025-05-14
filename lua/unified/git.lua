@@ -3,6 +3,10 @@ local config = require("unified.config")
 local cache_util = require("unified.utils.cache")
 local job = require("unified.utils.job")
 
+local function file_exists(path)
+  return vim.fn.filereadable(path) == 1 or vim.fn.isdirectory(path) == 1
+end
+
 -- Check if file is in a git repository
 function M.is_git_repo(file_path)
   -- Get directory from file path
@@ -83,15 +87,23 @@ M.get_git_file_content = cache_util.memoize(function(file_path, commit)
   end
   local git_root = vim.trim(root_out)
 
-  local rel_path_out, rel_path_code = job.await(
-    { "git", "ls-files", "--full-name", "--", file_path },
-    { cwd = git_root }
-  )
+  local relative_path
 
-  if rel_path_code ~= 0 or vim.trim(rel_path_out) == "" then
-    return ""
+  if file_path:sub(1, #git_root) == git_root then
+    relative_path = file_path:sub(#git_root + 2)
   end
-  local relative_path = vim.trim(rel_path_out)
+
+  if not relative_path or relative_path == "" then
+    local rel_path_out, rel_path_code = job.await(
+      { "git", "ls-files", "--full-name", "--", file_path },
+      { cwd = git_root }
+    )
+    if rel_path_code == 0 and vim.trim(rel_path_out) ~= "" then
+      relative_path = vim.trim(rel_path_out)
+    else
+      return ""
+    end
+  end
 
   local content_out, content_code = job.await(
     { "git", "show", commit .. ":" .. relative_path },
@@ -150,6 +162,13 @@ function M.show_git_diff_against_commit(commit, buffer_id)
           { "Failed to retrieve content from commit " .. commit_hash, "WarningMsg" },
         }, false, {})
         return
+      end
+
+      -- Deleted in working tree but exists in the commit → render full file
+      if (not file_exists(file_path)) and git_content and git_content ~= "" then
+        local diff_module = require("unified.diff")
+        diff_module.display_deleted_file(buffer, git_content)
+        return true
       end
 
       if current_content == git_content then

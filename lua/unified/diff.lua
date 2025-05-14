@@ -40,6 +40,37 @@ function M.parse_diff(diff_text)
   return hunks
 end
 
+function M.display_deleted_file(buffer, blob_text)
+  local ns_id = config.ns_id
+  vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
+  vim.fn.sign_unplace("unified_diff", { buffer = buffer })
+
+  local lines = vim.split(blob_text, "\n", { plain = true })
+  local was_modifiable = vim.bo[buffer].modifiable
+  local was_readonly = vim.bo[buffer].readonly
+
+  if not was_modifiable then
+    vim.bo[buffer].modifiable = true
+  end
+  if was_readonly then
+    vim.bo[buffer].readonly = false
+  end
+
+  vim.api.nvim_buf_set_lines(buffer, 0, -1, false, lines)
+
+  vim.bo[buffer].modified = false
+  vim.bo[buffer].modifiable = false
+  vim.bo[buffer].readonly = true
+
+  for i = 0, #lines - 1 do
+    vim.api.nvim_buf_set_extmark(buffer, ns_id, i, 0, {
+      line_hl_group = "UnifiedDiffDelete",
+    })
+  end
+
+  vim.bo[buffer].readonly = true
+end
+
 function M.display_inline_diff(buffer, hunks)
   local git = require("unified.git")
 
@@ -64,7 +95,7 @@ function M.display_inline_diff(buffer, hunks)
   local consecutive_added_lines = {}
 
   for _, hunk in ipairs(hunks) do
-    local line_idx = hunk.new_start - 1 -- Adjust for 0-indexed lines
+    local line_idx = math.max(hunk.new_start - 1, 0)
     local old_idx = 0
     local new_idx = 0
 
@@ -168,24 +199,20 @@ function M.display_inline_diff(buffer, hunks)
         line_idx = line_idx + 1
         new_idx = new_idx + 1
       elseif first_char == "-" then
-        -- Deleted line
         local line_text = line:sub(2)
         local hl_group = "UnifiedDiffDelete"
 
-        -- Determine the best position to show the deleted line
-        local attach_line = line_idx
+        local attach_line = math.max(line_idx, 0)
+        local show_above = attach_line > 0
 
-        -- If we're at the end of the buffer, attach to the previous line
         if line_idx >= buf_line_count then
           attach_line = buf_line_count - 1
         end
 
-        -- Process only if attachment line is within range
-        if attach_line >= 0 and attach_line < buf_line_count then
-          -- Add virtual line for deleted content
+        if attach_line < buf_line_count then
           local virt_line_opts = {
             virt_lines = { { { line_text, hl_group } } },
-            virt_lines_above = true,
+            virt_lines_above = show_above,
           }
           local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, attach_line, 0, virt_line_opts)
           if mark_id > 0 then
