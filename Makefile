@@ -7,12 +7,12 @@ test:
 	@./test/run_tests.sh --test=$(TEST)
 
 .PHONY: lint
-lint:
+lint: docker-build
 	@echo "Linting..."
 	@docker run --rm -v $(CURDIR):/app stylua-nvim --check lua/ test/ example/
 
 .PHONY: format
-format:
+format: docker-build
 	@echo "Formatting..."
 	@docker run --rm -v $(CURDIR):/app stylua-nvim lua/ test/ example/
 

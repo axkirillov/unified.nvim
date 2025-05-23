@@ -111,7 +111,10 @@ M.get_git_file_content = cache_util.memoize(function(file_path, commit)
   )
 
   if content_code ~= 0 then
-    vim.api.nvim_err_writeln("Failed to get content for: " .. relative_path .. " at commit: " .. commit)
+    if content_code == 128 then
+      return false
+    end
+    vim.api.nvim_err_writeln("Git error (" .. content_code .. ") retrieving " .. relative_path .. " at " .. commit)
     return nil
   end
 
@@ -153,78 +156,142 @@ function M.show_git_diff_against_commit(commit, buffer_id)
         return
       end
 
-      local git_content = M.get_git_file_content(file_path, commit_hash)
+      local function run_and_process_diff(current_buffer_id, diff_cwd, diff_command_args, temp_files_to_delete)
+        job.run(diff_command_args, { cwd = diff_cwd }, function(diff_output, job_code, job_err)
+          if temp_files_to_delete then
+            for _, f_path in ipairs(temp_files_to_delete) do
+              vim.fn.delete(f_path)
+            end
+          end
 
-      if git_content == "" then
-        -- fall through – let the diff section compare "" vs current content
-      elseif not git_content then
+          vim.schedule(function()
+            -- Re-require diff_module and config inside async callback if needed, or ensure they are upvalues
+            -- For now, assuming they are available from the outer scope of M.show_git_diff_against_commit
+            if (job_code == 0 or job_code == 1) and diff_output and diff_output ~= "" then
+              -- Standard diff header cleanup
+              diff_output = diff_output:gsub("diff %-%-git a/%S+ b/%S+\n", "")
+              diff_output = diff_output:gsub("index %S+%.%.%S+ %S+\n", "")
+              diff_output = diff_output:gsub("%-%-%" .. "- %S+\n", "")
+              diff_output = diff_output:gsub("%+%+%+" .. " %S+\n", "")
+
+              local hunks = diff_module.parse_diff(diff_output)
+              diff_module.display_inline_diff(current_buffer_id, hunks)
+            elseif job_code ~= 0 and job_code ~= 1 then
+              vim.api.nvim_echo(
+                { { "Error running git diff: " .. (job_err or "Unknown error"), "ErrorMsg" } },
+                false,
+                {}
+              )
+              local ns_id = config.ns_id
+              vim.api.nvim_buf_clear_namespace(current_buffer_id, ns_id, 0, -1)
+              vim.fn.sign_unplace("unified_diff", { buffer = current_buffer_id })
+            else -- No diff output or other non-error case
+              vim.api.nvim_echo(
+                { { "No differences found or diff command yielded no output.", "WarningMsg" } },
+                false,
+                {}
+              )
+              local ns_id = config.ns_id
+              vim.api.nvim_buf_clear_namespace(current_buffer_id, ns_id, 0, -1)
+              vim.fn.sign_unplace("unified_diff", { buffer = current_buffer_id })
+            end
+          end)
+        end)
+      end
+
+      local git_content_result = M.get_git_file_content(file_path, commit_hash)
+      local diff_args
+      local temp_files_to_delete = {}
+
+      if git_content_result == false then -- File was new (marker from get_git_file_content)
+        -- Deleted in working tree but get_git_file_content said it's new? This case should not happen.
+        -- If file_exists(file_path) is false, it means it's deleted.
+        -- But get_git_file_content returning `false` means it was not in the commit.
+        -- So this is a new file that is currently empty or has content.
+        if not file_exists(file_path) then -- New file, that is also currently deleted (e.g. staged for add, then deleted)
+          -- This is an edge case: file was new relative to commit, and is *also* deleted now.
+          -- Diffing /dev/null against a non-existent file_path might error.
+          -- Treat as "no changes" or "empty file" for display?
+          -- For now, let's assume if it's new and doesn't exist, it's like an empty new file.
+          -- The original logic for "Deleted in working tree but exists in commit" handles full file display.
+          -- This is "New in working tree (relative to commit) but now deleted".
+          -- Displaying nothing or "no changes" seems appropriate.
+          vim.api.nvim_echo(
+            { { "File is new relative to commit and also currently deleted.", "WarningMsg" } },
+            false,
+            {}
+          )
+          local ns_id = config.ns_id
+          vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
+          vim.fn.sign_unplace("unified_diff", { buffer = buffer })
+          return
+        end
+
+        diff_args = {
+          "git",
+          "diff",
+          "--no-index",
+          "--unified=3",
+          "--text",
+          "--no-color",
+          "--word-diff=none",
+          "/dev/null",
+          file_path,
+        }
+        -- No temp files to create or delete for this branch
+        run_and_process_diff(buffer, dir, diff_args, nil)
+      elseif git_content_result == nil then -- Error from get_git_file_content (not code 128)
         vim.api.nvim_echo({
-          { "Failed to retrieve content from commit " .. commit_hash, "WarningMsg" },
+          {
+            "Failed to retrieve content for "
+              .. vim.fn.fnamemodify(file_path, ":t")
+              .. " from commit "
+              .. commit_hash:sub(1, 7),
+            "WarningMsg",
+          },
         }, false, {})
         return
+      else -- git_content_result is a string (actual content from commit, or "" if it was empty)
+        -- Handle case: Deleted in working tree but existed in the commit
+        if (not file_exists(file_path)) and git_content_result ~= "" then
+          -- diff_module is already required at the top of parent function
+          diff_module.display_deleted_file(buffer, git_content_result)
+          return -- display_deleted_file handles it. Original code returned true, but we are in scheduled func.
+        end
+
+        if current_content == git_content_result then
+          vim.api.nvim_echo(
+            { { "No changes detected between buffer and git version at " .. commit_hash:sub(1, 7), "WarningMsg" } },
+            false,
+            {}
+          )
+          local ns_id = config.ns_id
+          vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
+          vim.fn.sign_unplace("unified_diff", { buffer = buffer })
+          return
+        end
+
+        local temp_current = vim.fn.tempname()
+        local temp_git = vim.fn.tempname()
+        vim.fn.writefile(vim.split(current_content, "\n"), temp_current)
+        vim.fn.writefile(vim.split(git_content_result, "\n"), temp_git) -- git_content_result is string here
+
+        table.insert(temp_files_to_delete, temp_current)
+        table.insert(temp_files_to_delete, temp_git)
+
+        diff_args = {
+          "git",
+          "diff",
+          "--no-index",
+          "--unified=3",
+          "--text",
+          "--no-color",
+          "--word-diff=none",
+          temp_git,
+          temp_current,
+        }
+        run_and_process_diff(buffer, dir, diff_args, temp_files_to_delete)
       end
-
-      -- Deleted in working tree but exists in the commit → render full file
-      if (not file_exists(file_path)) and git_content and git_content ~= "" then
-        local diff_module = require("unified.diff")
-        diff_module.display_deleted_file(buffer, git_content)
-        return true
-      end
-
-      if current_content == git_content then
-        vim.api.nvim_echo(
-          { { "No changes detected between buffer and git version at " .. commit, "WarningMsg" } },
-          false,
-          {}
-        )
-        local ns_id = config.ns_id
-        vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
-        vim.fn.sign_unplace("unified_diff", { buffer = buffer })
-        return
-      end
-
-      local temp_current = vim.fn.tempname()
-      local temp_git = vim.fn.tempname()
-
-      vim.fn.writefile(vim.split(current_content, "\n"), temp_current)
-      vim.fn.writefile(vim.split(git_content, "\n"), temp_git)
-
-      job.run({
-        "git",
-        "diff",
-        "--no-index",
-        "--unified=3",
-        "--text",
-        "--no-color",
-        "--word-diff=none",
-        temp_git,
-        temp_current,
-      }, { cwd = dir }, function(diff_output, code, err)
-        vim.fn.delete(temp_current)
-        vim.fn.delete(temp_git)
-
-        vim.schedule(function()
-          if (code == 0 or code == 1) and diff_output and diff_output ~= "" then
-            diff_output = diff_output:gsub("diff %-%-git a/%S+ b/%S+\n", "")
-            diff_output = diff_output:gsub("index %S+%.%.%S+ %S+\n", "")
-            diff_output = diff_output:gsub("%-%-%" .. "- %S+\n", "")
-            diff_output = diff_output:gsub("%+%+%+" .. " %S+\n", "")
-
-            local hunks = diff_module.parse_diff(diff_output)
-            diff_module.display_inline_diff(buffer, hunks)
-          elseif code ~= 0 and code ~= 1 then
-            vim.api.nvim_echo({ { "Error running git diff: " .. (err or "Unknown error"), "ErrorMsg" } }, false, {})
-            local ns_id = config.ns_id
-            vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
-            vim.fn.sign_unplace("unified_diff", { buffer = buffer })
-          else
-            vim.api.nvim_echo({ { "No differences found by diff command", "WarningMsg" } }, false, {})
-            local ns_id = config.ns_id
-            vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
-            vim.fn.sign_unplace("unified_diff", { buffer = buffer })
-          end
-        end)
-      end)
     end)
   end)
   return true

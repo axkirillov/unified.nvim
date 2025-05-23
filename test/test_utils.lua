@@ -200,6 +200,35 @@ function M.modify_and_commit_file(repo, filename, content, commit_message)
   return file_path
 end
 
+function M.get_current_commit_hash(repo_dir_path)
+  if not repo_dir_path then
+    vim.api.nvim_err_writeln("Error: repo_dir_path not provided to get_current_commit_hash")
+    return nil
+  end
+
+  local original_cwd = vim.fn.getcwd()
+  vim.api.nvim_set_current_dir(repo_dir_path)
+
+  local hash_out = vim.fn.system({ "git", "rev-parse", "HEAD" })
+  local hash_code = vim.v.shell_error
+
+  vim.api.nvim_set_current_dir(original_cwd)
+
+  if hash_code == 0 and hash_out and vim.trim(hash_out) ~= "" then
+    return vim.trim(hash_out)
+  else
+    vim.api.nvim_err_writeln(
+      "Error getting current commit hash in "
+        .. repo_dir_path
+        .. ". Code: "
+        .. tostring(hash_code)
+        .. ", Output: "
+        .. vim.inspect(hash_out)
+    )
+    return nil
+  end
+end
+
 local function wait_until(fn, timeout)
   timeout = timeout or 1000
   local start = vim.loop.hrtime()

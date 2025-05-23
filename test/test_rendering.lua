@@ -1,12 +1,10 @@
 -- Test file for unified.nvim rendering features
 local M = {}
 
--- Import test utilities
-local utils = require("test.test_utils")
-
 -- Test that + signs don't appear in the buffer text (only in gutter)
 function M.test_no_plus_signs_in_buffer()
   -- Create temporary git repository
+  local utils = require("test.test_utils")
   local repo = utils.create_git_repo()
   if not repo then
     return true
@@ -74,6 +72,7 @@ end
 -- Test that deleted lines don't show up both as virtual text and as original text
 function M.test_deleted_lines_not_duplicated()
   -- Create temporary git repository
+  local utils = require("test.test_utils")
   local repo = utils.create_git_repo()
   if not repo then
     return true
@@ -151,6 +150,7 @@ end
 -- Test that deleted lines appear on their own line, not appended to the previous line
 function M.test_deleted_lines_on_own_line()
   -- Create temporary git repository
+  local utils = require("test.test_utils")
   local repo = utils.create_git_repo()
   if not repo then
     return true
@@ -214,6 +214,7 @@ end
 -- Test that deletion symbols appear in the gutter, not in the buffer text
 function M.test_deletion_symbols_in_gutter()
   -- Create temporary git repository
+  local utils = require("test.test_utils")
   local repo = utils.create_git_repo()
   if not repo then
     return true
@@ -303,6 +304,7 @@ end
 -- Test that deleted lines DON'T show line numbers or duplicate indicators
 function M.test_no_line_numbers_in_deleted_lines()
   -- Create temporary git repository
+  local utils = require("test.test_utils")
   local repo = utils.create_git_repo()
   if not repo then
     return true
@@ -418,6 +420,7 @@ end
 -- Test that each deleted line only has one UI element (not both sign and virtual line)
 function M.test_single_deleted_line_element()
   -- Create temporary git repository
+  local utils = require("test.test_utils")
   local repo = utils.create_git_repo()
   if not repo then
     return true
@@ -500,6 +503,62 @@ function M.test_single_deleted_line_element()
   vim.cmd("bdelete!")
 
   -- Clean up git repo
+  utils.cleanup_git_repo(repo)
+
+  return true
+end
+
+function M.test_new_file_shows_all_lines_added()
+  package.loaded["test.test_utils"] = nil
+  local utils = require("test.test_utils")
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  utils.create_and_commit_file(repo, "README.md", { "Initial content for HEAD" }, "Initial commit")
+  local initial_commit_hash = utils.get_current_commit_hash(repo.repo_dir)
+
+  local new_file_name = "newly_added_file.txt"
+  local new_file_content = {
+    "This is line 1 of a new file.",
+    "This is line 2, also new.",
+    "And this is line 3.",
+  }
+  local new_file_path = repo.repo_dir .. "/" .. new_file_name
+  local file = io.open(new_file_path, "w")
+  if not file then
+    utils.cleanup_git_repo(repo)
+    assert(false, "Failed to create new file for test: " .. new_file_path)
+    return
+  end
+  file:write(table.concat(new_file_content, "\n") .. "\n")
+  file:close()
+
+  vim.cmd("edit " .. new_file_path)
+  local buffer = vim.api.nvim_get_current_buf()
+
+  local unified_git = require("unified.git")
+  local success = unified_git.show_git_diff_against_commit(initial_commit_hash, buffer)
+  assert(success, "show_git_diff_against_commit failed for new file")
+
+  local extmarks = utils.get_extmarks(buffer, { namespace = "unified_diff", details = true })
+
+  local added_lines_count = 0
+  for _, mark in ipairs(extmarks) do
+    local details = mark[4]
+    if details.line_hl_group == "UnifiedDiffAdd" then
+      added_lines_count = added_lines_count + 1
+    end
+  end
+
+  assert(
+    added_lines_count == #new_file_content,
+    "Expected all " .. #new_file_content .. " lines to be marked as added, but got " .. added_lines_count
+  )
+
+  utils.clear_diff_marks(buffer)
+  vim.cmd("bdelete! " .. new_file_path)
   utils.cleanup_git_repo(repo)
 
   return true
