@@ -2,6 +2,8 @@
 
 A Neovim plugin for displaying inline unified diffs directly in your buffer.
 
+<img width="1840" alt="image" src="https://github.com/user-attachments/assets/7655659e-c8af-40c5-ad70-59f67a2b16d9" />
+
 ## Features
 
 * **Inline Diffs**: View git diffs directly in your buffer, without needing a separate window.
