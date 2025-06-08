@@ -116,14 +116,14 @@ Default Keymaps (in the file tree window):
 ==============================================================================
 6. COMMANDS                                                *unified-commands*
 
-*:Unified* [{commit_ref}]
+:Unified [{commit_ref}]
 The main command for the plugin. Behavior depends on arguments and state:
 
-*:Unified* (no arguments)
+:Unified (no arguments)
     Shows the diff between the current buffer and `HEAD`. Opens the file
     tree showing files changed since `HEAD`. Equivalent to `:Unified HEAD`.
 
-*:Unified* {commit_ref}
+:Unified {commit_ref}
     Shows the diff between the current buffer and the specified git
     reference ({commit_ref}). Opens the file tree showing files changed
     since {commit_ref}. {commit_ref} can be a commit hash, branch name,
@@ -131,7 +131,7 @@ The main command for the plugin. Behavior depends on arguments and state:
     {commit_ref} is stored and used for subsequent refreshes until a new
     reference is provided or the view is closed.
 
-*:Unified* reset
+:Unified reset
     Removes all unified diff highlights and signs from the current buffer
     and closes the unified file tree window if it is open.
 
