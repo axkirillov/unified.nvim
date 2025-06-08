@@ -165,10 +165,19 @@ function M.show_git_diff_against_commit(commit, buffer_id)
           end
 
           vim.schedule(function()
-            -- Re-require diff_module and config inside async callback if needed, or ensure they are upvalues
-            -- For now, assuming they are available from the outer scope of M.show_git_diff_against_commit
-            if (job_code == 0 or job_code == 1) and diff_output and diff_output ~= "" then
-              -- Standard diff header cleanup
+            if diff_output and diff_output:match("^Binary files") then
+              vim.api.nvim_echo({ { "Binary files differ", "WarningMsg" } }, false, {})
+              local ns_id = config.ns_id
+              vim.api.nvim_buf_clear_namespace(current_buffer_id, ns_id, 0, -1)
+              vim.fn.sign_unplace("unified_diff", { buffer = current_buffer_id })
+              vim.api.nvim_buf_set_extmark(
+                current_buffer_id,
+                ns_id,
+                0,
+                0,
+                { line_hl_group = "DiffChange", end_row = -1 }
+              )
+            elseif (job_code == 0 or job_code == 1) and diff_output and diff_output ~= "" then
               diff_output = diff_output:gsub("diff %-%-git a/%S+ b/%S+\n", "")
               diff_output = diff_output:gsub("index %S+%.%.%S+ %S+\n", "")
               diff_output = diff_output:gsub("%-%-%" .. "- %S+\n", "")
@@ -176,24 +185,17 @@ function M.show_git_diff_against_commit(commit, buffer_id)
 
               local hunks = diff_module.parse_diff(diff_output)
               diff_module.display_inline_diff(current_buffer_id, hunks)
-            elseif job_code ~= 0 and job_code ~= 1 then
-              vim.api.nvim_echo(
-                { { "Error running git diff: " .. (job_err or "Unknown error"), "ErrorMsg" } },
-                false,
-                {}
-              )
+            else
               local ns_id = config.ns_id
               vim.api.nvim_buf_clear_namespace(current_buffer_id, ns_id, 0, -1)
               vim.fn.sign_unplace("unified_diff", { buffer = current_buffer_id })
-            else -- No diff output or other non-error case
-              vim.api.nvim_echo(
-                { { "No differences found or diff command yielded no output.", "WarningMsg" } },
-                false,
-                {}
-              )
-              local ns_id = config.ns_id
-              vim.api.nvim_buf_clear_namespace(current_buffer_id, ns_id, 0, -1)
-              vim.fn.sign_unplace("unified_diff", { buffer = current_buffer_id })
+              if job_code > 1 then
+                vim.api.nvim_echo(
+                  { { "Error running git diff: " .. (job_err or "Unknown error"), "ErrorMsg" } },
+                  false,
+                  {}
+                )
+              end
             end
           end)
         end)
@@ -273,8 +275,19 @@ function M.show_git_diff_against_commit(commit, buffer_id)
 
         local temp_current = vim.fn.tempname()
         local temp_git = vim.fn.tempname()
-        vim.fn.writefile(vim.split(current_content, "\n"), temp_current)
-        vim.fn.writefile(vim.split(git_content_result, "\n"), temp_git) -- git_content_result is string here
+
+        local file_git = io.open(temp_git, "wb")
+        if file_git then
+          file_git:write(git_content_result)
+          file_git:close()
+        else
+          vim.api.nvim_err_writeln("Could not open temp file for git content.")
+          return
+        end
+
+        vim.api.nvim_buf_call(buffer, function()
+          vim.cmd("silent noautocmd write! " .. vim.fn.fnameescape(temp_current))
+        end)
 
         table.insert(temp_files_to_delete, temp_current)
         table.insert(temp_files_to_delete, temp_git)
@@ -284,9 +297,6 @@ function M.show_git_diff_against_commit(commit, buffer_id)
           "diff",
           "--no-index",
           "--unified=3",
-          "--text",
-          "--no-color",
-          "--word-diff=none",
           temp_git,
           temp_current,
         }
