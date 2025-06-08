@@ -27,11 +27,9 @@ You can install `unified.nvim` using your favorite plugin manager.
 ```lua
 {
   'axkirillov/unified.nvim',
-  config = function()
-    require('unified').setup({
-      -- your configuration comes here
-    })
-  end
+  opts = {
+    -- your configuration comes here
+  }
 }
 ```
 
