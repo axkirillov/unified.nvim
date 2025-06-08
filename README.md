@@ -1,3 +1,7 @@
+<a href="https://dotfyle.com/plugins/axkirillov/unified.nvim">
+	<img src="https://dotfyle.com/plugins/axkirillov/unified.nvim/shield?style=flat" />
+</a>
+
 # unified.nvim
 
 A Neovim plugin for displaying inline unified diffs directly in your buffer.
