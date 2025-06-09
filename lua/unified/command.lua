@@ -57,9 +57,12 @@ function M.reset()
   local buffer = vim.api.nvim_get_current_buf()
   local config = require("unified.config")
   local ns_id = config.ns_id
+  local hunk_store = require("unified.hunk_store")
 
   vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
   vim.fn.sign_unplace("unified_diff", { buffer = buffer })
+
+  hunk_store.clear(buffer)
 
   local state = require("unified.state")
   if state.auto_refresh_augroup then

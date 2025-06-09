@@ -138,13 +138,30 @@ The main command for the plugin. Behavior depends on arguments and state:
 ==============================================================================
 7. API                                                        *unified-api*
 
-Currently, there is no official public Lua API for users to interact with.
-The plugin's internal modules are subject to change.
+The plugin exposes a few functions for integration and scripting.
+
+`require('unified').setup(opts)`
+  Sets up the plugin with the given options. See |unified-configuration|.
+
+`require('unified.command').run(args)`
+  Programmatically runs the main `:Unified` command. `args` is a string
+  containing the command-line arguments (e.g., "HEAD~1", "reset").
+
+`require('unified.navigation').next_hunk()`
+  Jumps to the next hunk in the current buffer.
+
+`require('unified.navigation').previous_hunk()`
+  Jumps to the previous hunk in the current buffer.
 
 ==============================================================================
 8. MAPPINGS                                                *unified-mappings*
 
-There are no default mappings outside of the file tree window.
+`unified.nvim` does not create any global mappings by default.
+
+You should set your own mappings. Foe example, for hunk navigation:
+    >
+    vim.keymap.set("n", "]h", require("unified.navigation").next_hunk)
+    vim.keymap.set("n", "[h", require("unified.navigation").previous_hunk)
 
 ==============================================================================
 9. TROUBLESHOOTING                                  *unified-troubleshooting*

@@ -1,6 +1,7 @@
 local M = {}
 
 local config = require("unified.config")
+local hunk_store = require("unified.hunk_store")
 
 -- Parse diff and return a structured representation
 function M.parse_diff(diff_text)
@@ -72,14 +73,14 @@ function M.display_deleted_file(buffer, blob_text)
 end
 
 function M.display_inline_diff(buffer, hunks)
-  local git = require("unified.git")
-
   local ns_id = config.ns_id
 
   vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
 
   -- Clear existing signs
   vim.fn.sign_unplace("unified_diff", { buffer = buffer })
+
+  local new_hunk_lines = {}
 
   -- Track if we placed any marks
   local mark_count = 0
@@ -93,6 +94,8 @@ function M.display_inline_diff(buffer, hunks)
 
   -- For detecting multiple consecutive new lines
   local consecutive_added_lines = {}
+
+  local in_changed_block = false
 
   for _, hunk in ipairs(hunks) do
     local line_idx = math.max(hunk.new_start - 1, 0)
@@ -141,9 +144,20 @@ function M.display_inline_diff(buffer, hunks)
     line_idx = hunk.new_start - 1
     old_idx = 0
     new_idx = 0
+    in_changed_block = false
 
     for _, line in ipairs(hunk.lines) do
       local first_char = line:sub(1, 1)
+
+      if first_char == "+" or first_char == "-" then
+        if not in_changed_block then
+          table.insert(new_hunk_lines, line_idx + 1)
+          in_changed_block = true
+        end
+      else
+        in_changed_block = false
+      end
+
       if first_char == " " then
         -- Context line
         line_idx = line_idx + 1
@@ -225,6 +239,18 @@ function M.display_inline_diff(buffer, hunks)
     end
   end
 
+  if #new_hunk_lines > 0 then
+    table.sort(new_hunk_lines)
+    local unique_lines = { new_hunk_lines[1] }
+    for i = 2, #new_hunk_lines do
+      if new_hunk_lines[i] > unique_lines[#unique_lines] then
+        table.insert(unique_lines, new_hunk_lines[i])
+      end
+    end
+    hunk_store.set(buffer, unique_lines)
+  else
+    hunk_store.clear(buffer)
+  end
   return mark_count > 0
 end
 
