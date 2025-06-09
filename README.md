@@ -97,6 +97,15 @@ The file tree displays the Git status of each file:
   - `C`: Copied
   - `?`: Untracked
 
+### Navigating Hunks
+
+To navigate between hunks, you'll need to set your own keymaps:
+
+```lua
+vim.keymap.set('n', ']h', function() require('unified.hunks').next_hunk() end)
+vim.keymap.set('n', '[h', function() require('unified.hunks').prev_hunk() end)
+```
+
 ## Commands
 
   * `:Unified`: Toggles the diff view. If closed, it shows the diff against `HEAD`. If open, it closes the view.
