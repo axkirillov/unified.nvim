@@ -102,8 +102,8 @@ The file tree displays the Git status of each file:
 To navigate between hunks, you'll need to set your own keymaps:
 
 ```lua
-vim.keymap.set('n', ']h', function() require('unified.hunks').next_hunk() end)
-vim.keymap.set('n', '[h', function() require('unified.hunks').prev_hunk() end)
+vim.keymap.set('n', ']h', function() require('unified.navigation').next_hunk() end)
+vim.keymap.set('n', '[h', function() require('unified.navigation').previous_hunk() end)
 ```
 
 ## Commands
