@@ -1,28 +1,50 @@
--- Keybindings for unified_tree filetype
-
--- Set buffer options
 vim.bo.modifiable = false
 vim.bo.buftype = "nofile"
 vim.bo.swapfile = false
 vim.bo.bufhidden = "wipe"
 vim.bo.syntax = "unified_tree"
+
 vim.wo.cursorline = true
 vim.wo.statusline = "File Explorer"
+vim.wo.number = false
+vim.wo.relativenumber = false
+vim.wo.signcolumn = "no"
+vim.wo.winfixwidth = true
+vim.wo.foldenable = false
+vim.wo.list = false
+vim.wo.wrap = false
 
--- Set mappings
-local function set_keymap(mode, lhs, rhs, opts)
-  local options = { noremap = true, silent = true }
-  if opts then
-    options = vim.tbl_extend("force", options, opts)
-  end
-  vim.api.nvim_buf_set_keymap(0, mode, lhs, rhs, options)
-end
+vim.keymap.set("n", "j",
+  function()
+    require('unified.file_tree.actions').move_cursor_and_open_file(1)
+  end,
+  { noremap = true, silent = true, buffer = true }
+)
 
--- Close the tree
-set_keymap("n", "q", ":q<CR>")
+vim.keymap.set("n", "k",
+  function()
+    require('unified.file_tree.actions').move_cursor_and_open_file(-1)
+  end,
+  { noremap = true, silent = true, buffer = true }
+)
 
--- Refresh the tree
+vim.keymap.set("n", "R",
+  function()
+    require('unified.file_tree.actions').refresh()
+  end,
+  { noremap = true, silent = true, buffer = true }
+)
 
+vim.keymap.set("n", "q",
+  function()
+    require('unified.file_tree.actions').close_tree()
+  end,
+  { noremap = true, silent = true, buffer = true }
+)
 
--- Help dialog
-set_keymap("n", "?", ":lua require('unified.file_tree').show_help()<CR>")
+vim.keymap.set("n", "?",
+  function()
+    require('unified.file_tree.actions').show_help()
+  end,
+  { noremap = true, silent = true, buffer = true }
+)

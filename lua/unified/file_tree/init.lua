@@ -21,7 +21,6 @@ function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
   tree_state.diff_only = diff_only
   tree_state.commit_ref = commit_ref_arg
 
-  -- Determine the directory to use as the root for scanning/git commands
   local dir
   local path_exists = vim.fn.filereadable(buffer_path) == 1 or vim.fn.isdirectory(buffer_path) == 1
   if path_exists then
@@ -29,11 +28,10 @@ function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
   else
     dir = vim.fn.fnamemodify(buffer_path, ":h")
     if vim.fn.isdirectory(dir) ~= 1 then
-      dir = vim.fn.getcwd() -- Fallback to CWD
+      dir = vim.fn.getcwd()
     end
   end
 
-  -- Check if path is in a git repo and find the git root
   local is_git_repo = git.is_git_repo(dir)
   local root_dir = dir
   if is_git_repo then
@@ -42,7 +40,6 @@ function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
     if vim.v.shell_error == 0 and git_root ~= "" and vim.fn.isdirectory(git_root .. "/.git") == 1 then
       root_dir = git_root
     else
-      -- Fallback if git root detection fails but is_git_repo was true
       local check_dir = dir
       local max_depth = 10
       for _ = 1, max_depth do
@@ -59,32 +56,28 @@ function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
     end
   end
 
-  -- Final sanity check for root_dir existence
   if vim.fn.isdirectory(root_dir) ~= 1 then
     root_dir = vim.fn.getcwd()
   end
 
-  -- Determine the commit reference to use
-  local commit_ref = commit_ref_arg -- Use argument first
+  local commit_ref = commit_ref_arg
 
-  -- Create file tree instance
   local tree = FileTree.new(root_dir)
 
   local buf = vim.api.nvim_create_buf(false, true)
 
-  -- Create a unique buffer name
   local buffer_name = "Unified: File Tree"
   if commit_ref then
     buffer_name = buffer_name .. " (" .. commit_ref .. ")"
   elseif diff_only then
     buffer_name = buffer_name .. " (Diff)"
   end
-  -- Try to set the name, ignoring errors
+
   pcall(vim.api.nvim_buf_set_name, buf, buffer_name)
 
   vim.bo[buf].buftype = "nofile"
   vim.bo[buf].swapfile = false
-  vim.bo[buf].bufhidden = "hide" -- Use hide instead of wipe
+  vim.bo[buf].bufhidden = "hide"
   vim.bo[buf].filetype = "unified_tree"
 
   render.render_tree(tree, buf)
@@ -108,46 +101,6 @@ function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
       actions.move_cursor_and_open_file(1)
     end)
   end)
-
-  -- Set up keymaps for the buffer
-  -- Pass options directly to avoid potential issues with shared table
-  vim.api.nvim_buf_set_keymap(
-    buf,
-    "n",
-    "j",
-    "<Cmd>lua require('unified.file_tree.actions').move_cursor_and_open_file(1)<CR>",
-    { noremap = true, silent = true }
-  )
-  vim.api.nvim_buf_set_keymap(
-    buf,
-    "n",
-    "k",
-    "<Cmd>lua require('unified.file_tree.actions').move_cursor_and_open_file(-1)<CR>",
-    { noremap = true, silent = true }
-  )
-  -- j/k mappings handle both cursor movement and opening files.
-  -- Other navigation/action mappings:
-  vim.api.nvim_buf_set_keymap(
-    buf,
-    "n",
-    "R",
-    "<Cmd>lua require('unified.file_tree.actions').refresh()<CR>",
-    { noremap = true, silent = true }
-  )
-  vim.api.nvim_buf_set_keymap(
-    buf,
-    "n",
-    "q",
-    "<Cmd>lua require('unified.file_tree.actions').close_tree()<CR>",
-    { noremap = true, silent = true }
-  )
-  vim.api.nvim_buf_set_keymap(
-    buf,
-    "n",
-    "?",
-    "<Cmd>lua require('unified.file_tree.actions').show_help()<CR>",
-    { noremap = true, silent = true }
-  )
 
   return buf
 end
@@ -248,16 +201,6 @@ function M.show(commit_hash)
   vim.cmd("topleft 30vsplit") -- Consider making width configurable
   local tree_win = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(tree_win, tree_buf)
-
-  -- Set window options (copying from existing function)
-  vim.api.nvim_win_set_option(tree_win, "number", false)
-  vim.api.nvim_win_set_option(tree_win, "relativenumber", false)
-  vim.api.nvim_win_set_option(tree_win, "signcolumn", "no")
-  vim.api.nvim_win_set_option(tree_win, "cursorline", true)
-  vim.api.nvim_win_set_option(tree_win, "winfixwidth", true)
-  vim.api.nvim_win_set_option(tree_win, "foldenable", false)
-  vim.api.nvim_win_set_option(tree_win, "list", false)
-  vim.api.nvim_win_set_option(tree_win, "wrap", false)
 
   -- Store window reference in tree state and global state
   tree_state.window = tree_win
