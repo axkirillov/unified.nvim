@@ -281,4 +281,21 @@ function M.show(commit, buffer_id)
   return git.show_git_diff_against_commit(commit, buffer)
 end
 
+function M.show_current(commit)
+  if not commit then
+    local state = require("unified.state")
+    local ok
+    ok, commit = pcall(state.get_commit_base)
+    commit = ok and commit or "HEAD"
+  end
+
+  local buf = vim.api.nvim_get_current_buf()
+  local ft = vim.api.nvim_buf_get_option(buf, "filetype")
+  if ft == "unified_tree" then
+    return false
+  end
+
+  return M.show(commit, buf)
+end
+
 return M

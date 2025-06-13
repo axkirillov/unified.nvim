@@ -153,6 +153,10 @@ The plugin exposes a few functions for integration and scripting.
 `require('unified.navigation').previous_hunk()`
   Jumps to the previous hunk in the current buffer.
 
+`require('unified.diff').show_current({commit})`
+    Show / refresh the unified diff for the **current buffer only**.
+    If {commit} is provided, it is used as the reference. Otherwise, it
+    uses the commit reference chosen by `:Unified` (or `HEAD` if none).
 ==============================================================================
 8. MAPPINGS                                                *unified-mappings*
 
