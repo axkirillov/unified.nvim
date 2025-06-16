@@ -1,7 +1,7 @@
 local M = {}
 
 local default = {
-  debouce_delay = 300,
+  debounce_delay = 300,
   augroup_name = "UnifiedDiffAutoRefresh",
 }
 
@@ -10,7 +10,7 @@ function M.setup(buffer)
   local diff = require("unified.diff")
   local async = require("unified.utils.async")
   local group_name = default.augroup_name
-  local debounce_delay = default.debouce_delay
+  local debounce_delay = default.debounce_delay
 
   vim.api.nvim_create_augroup(group_name, { clear = true })
 

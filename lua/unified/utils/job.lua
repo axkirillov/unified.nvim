@@ -17,21 +17,28 @@ local function _spawn(cmd, opts, on_exit)
   end)
 end
 
---- Non-blocking run ----------------------------------------------------------
 ---@param cmd  (string|string[] ) command
 ---@param opts table|nil           { cwd = <dir>, env = {...}, ... }
 ---@param cb   fun(stdout, code, stderr)|nil
 function Job.run(cmd, opts, cb)
   if vim.system then -- 0.10+
     return _spawn(cmd, opts, cb or function() end)
-  else -- fallback (blocks)
-    local base_cmd = type(cmd) == "table" and table.concat(cmd, " ") or cmd
-    local final_cmd = base_cmd
-    -- Prepend 'cd' if cwd is specified for the fallback
-    if opts and opts.cwd then
-      final_cmd = ("cd %s && %s"):format(vim.fn.shellescape(opts.cwd), base_cmd)
+  else
+    local exec_cmd = type(cmd) == "table" and table.concat(vim.tbl_map(vim.fn.shellescape, cmd), " ") or cmd
+
+    local final_cmd = exec_cmd
+    if opts then
+      if opts.env then
+        local env_parts = {}
+        for k, v in pairs(opts.env) do
+          table.insert(env_parts, ("%s=%s"):format(k, vim.fn.shellescape(v)))
+        end
+        final_cmd = ("env %s %s"):format(table.concat(env_parts, " "), final_cmd)
+      end
+      if opts.cwd then
+        final_cmd = ("cd %s && %s"):format(vim.fn.shellescape(opts.cwd), final_cmd)
+      end
     end
-    -- Execute the potentially modified command
     local out = vim.fn.system(final_cmd)
     local code = vim.v.shell_error
     if cb then
@@ -42,7 +49,6 @@ function Job.run(cmd, opts, cb)
 end
 
 --- Await helper (sugar for synchronous code paths that expect a return) ------
---- Await helper (sugar for synchronous code paths that expect a return) ------
 --- Must be called from within a coroutine for async behavior.
 --- Falls back to blocking vim.fn.system if called outside a coroutine.
 ---@param cmd  (string|string[] ) command
@@ -52,8 +58,8 @@ end
 ---@return string|nil stderr       stderr if available, nil otherwise
 function Job.await(cmd, opts)
   if not vim.system then -- pre-0.10, nothing to await
-    local joined = type(cmd) == "table" and table.concat(cmd, " ") or cmd
-    local out = vim.fn.system(joined)
+    local exec_cmd = type(cmd) == "table" and table.concat(vim.tbl_map(vim.fn.shellescape, cmd), " ") or cmd
+    local out = vim.fn.system(exec_cmd)
     local code = vim.v.shell_error
     return out, code, "" -- Return empty stderr for consistency
   end
@@ -61,8 +67,8 @@ function Job.await(cmd, opts)
   local caller_co = coroutine.running()
   -- If we're not inside a coroutine, run the command synchronously (blocking)
   if not caller_co then
-    local joined = type(cmd) == "table" and table.concat(cmd, " ") or cmd
-    local out = vim.fn.system(joined) -- Use vim.fn.system directly
+    local exec_cmd = type(cmd) == "table" and table.concat(vim.tbl_map(vim.fn.shellescape, cmd), " ") or cmd
+    local out = vim.fn.system(exec_cmd)
     local code = vim.v.shell_error
     return out, code, "" -- keep the same return shape
   end
@@ -74,9 +80,7 @@ function Job.await(cmd, opts)
     results.code = c
     results.stderr = e
     -- It's crucial to resume via vim.schedule to ensure it happens on the main thread
-    vim.schedule(function()
-      coroutine.resume(caller_co, results)
-    end)
+    coroutine.resume(caller_co, results)
   end)
 
   -- Yield the calling coroutine, waiting for the callback to resume it
