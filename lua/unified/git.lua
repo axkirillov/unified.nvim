@@ -189,7 +189,8 @@ function M.show_git_diff_against_commit(commit, buffer_id)
               local ns_id = config.ns_id
               vim.api.nvim_buf_clear_namespace(current_buffer_id, ns_id, 0, -1)
               vim.fn.sign_unplace("unified_diff", { buffer = current_buffer_id })
-              diff_module.clear_hunks(current_buffer_id)
+              local hunk_store = require("unified.hunk_store")
+              hunk_store.clear(current_buffer_id)
               if job_code > 1 then
                 vim.api.nvim_echo(
                   { { "Error running git diff: " .. (job_err or "Unknown error"), "ErrorMsg" } },
