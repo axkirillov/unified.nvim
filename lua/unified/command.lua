@@ -86,8 +86,6 @@ function M.reset()
   state.file_tree_buf = nil
   state.main_win = nil
   state.set_active(false)
-
-  vim.api.nvim_echo({ { "Unified off", "Normal" } }, false, {})
 end
 
 return M
