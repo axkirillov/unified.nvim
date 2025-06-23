@@ -2,6 +2,7 @@
 local M = {}
 local m = {
   commit_base = nil,
+  active = false,
 }
 
 -- Main window reference
@@ -49,6 +50,13 @@ function M.get_commit_base()
     error("Commit base is not set")
   end
   return m.commit_base
+end
+
+function M.set_active(val)
+  m.active = not not val
+end
+function M.is_active()
+  return m.active
 end
 
 return M

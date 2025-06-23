@@ -82,7 +82,7 @@ require('unified').setup({
 1. Open a file in Neovim.
 2. Make some changes to the file.
 3. Run the command `:Unified` to display the diff against HEAD and the file tree.
-4. Run `:Unified` again to close the diff view and file tree.
+4. Use `:Unified reset` to close the view.
 5. Run `:Unified <commit_ref>` to show the diff against a specific commit.
 
 File Tree Interaction:
@@ -146,6 +146,11 @@ The plugin exposes a few functions for integration and scripting.
 `require('unified.command').run(args)`
   Programmatically runs the main `:Unified` command. `args` is a string
   containing the command-line arguments (e.g., "HEAD~1", "reset").
+
+`require('unified').toggle()`
+  Toggles the unified diff view for the current buffer. If the view is
+  active, it will be closed. Otherwise, it will be opened, showing the
+  diff against the last used commit reference (or `HEAD` by default).
 
 `require('unified.navigation').next_hunk()`
   Jumps to the next hunk in the current buffer.
