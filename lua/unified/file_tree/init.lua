@@ -4,6 +4,7 @@ local global_state = require("unified.state")
 local FileTree = require("unified.file_tree.tree")
 local render = require("unified.file_tree.render")
 local actions = require("unified.file_tree.actions")
+local position_cursor_on_first_file
 
 function M.setup()
   vim.api.nvim_create_autocmd("User", {
@@ -98,47 +99,32 @@ function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
         return
       end
       vim.api.nvim_set_current_win(win)
-      actions.move_cursor_and_open_file(1)
+      position_cursor_on_first_file(buf, win)
+      -- Auto-open first file in the tree while keeping focus in the tree window
+      do
+        local first_node
+        local line_count = vim.api.nvim_buf_line_count(buf)
+        local tree_state = require("unified.file_tree.state")
+        for i = 3, line_count - 1 do
+          local n = tree_state.line_to_node[i]
+          if n and not n.is_dir then
+            first_node = n
+            break
+          end
+        end
+        if first_node then
+          actions.open_file_node(first_node)
+        end
+      end
     end)
   end)
 
   return buf
 end
 
-local function auto_select_and_open_first_file(tree_buf, tree_win)
-  local first_file_line = -1
-  local first_node = nil
-  local line_count = vim.api.nvim_buf_line_count(tree_buf)
+-- Removed: auto_select_and_open_first_file (auto-open behavior)
 
-  local tree_state = require("unified.file_tree.state")
-  for i = 3, line_count - 1 do
-    local node = tree_state.line_to_node[i]
-    if node and not node.is_dir then
-      first_file_line = i
-      first_node = node
-      break
-    end
-  end
-
-  if first_node then
-    actions.open_file_node(first_node)
-
-    local current_buf_id = vim.api.nvim_win_get_buf(tree_win)
-    if not vim.api.nvim_buf_is_valid(current_buf_id) then
-      return
-    end
-
-    local current_line_count = vim.api.nvim_buf_line_count(current_buf_id)
-    local target_line = first_file_line + 1
-
-    if target_line > 0 and target_line <= current_line_count then
-      vim.api.nvim_win_set_cursor(tree_win, { target_line, 0 })
-    end
-  else
-  end
-end
-
-local function position_cursor_on_first_file(buffer, window)
+position_cursor_on_first_file = function(buffer, window)
   if not buffer or not window or not vim.api.nvim_buf_is_valid(buffer) or not vim.api.nvim_win_is_valid(window) then
     return
   end
@@ -188,6 +174,23 @@ function M.show(commit_hash)
     -- Position cursor on the first file in the updated tree
     position_cursor_on_first_file(new_buf, tree_state.window)
 
+    -- Auto-open first file while keeping focus in the tree (diffview-like)
+    do
+      local first_node
+      local line_count = vim.api.nvim_buf_line_count(new_buf)
+      local tree_state = require("unified.file_tree.state")
+      for i = 3, line_count - 1 do
+        local n = tree_state.line_to_node[i]
+        if n and not n.is_dir then
+          first_node = n
+          break
+        end
+      end
+      if first_node then
+        actions.open_file_node(first_node)
+      end
+    end
+
     return true
   end
 
@@ -207,7 +210,7 @@ function M.show(commit_hash)
   global_state.file_tree_win = tree_win
   global_state.file_tree_buf = tree_buf -- Keep global state updated too
 
-  auto_select_and_open_first_file(tree_buf, tree_win)
+  position_cursor_on_first_file(tree_buf, tree_win)
   return true
 end
 

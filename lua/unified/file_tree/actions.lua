@@ -11,39 +11,54 @@ local function open_file_node(node)
   end
 
   local state = require("unified.state")
-  local current_win = vim.api.nvim_get_current_win()
+  local tree_win = vim.api.nvim_get_current_win()
   local win = state.get_main_window()
 
-  if not win or not vim.api.nvim_win_is_valid(win) or win == current_win then
+  if not win or not vim.api.nvim_win_is_valid(win) or win == tree_win then
     vim.cmd("rightbelow vsplit")
     win = vim.api.nvim_get_current_win()
     state.main_win = win
+    -- Restore focus to the tree window so the cursor does not jump
+    if vim.api.nvim_win_is_valid(tree_win) then
+      vim.api.nvim_set_current_win(tree_win)
+    end
   end
 
-  vim.api.nvim_set_current_win(win)
+  -- Open the target buffer in the main window without changing focus
+  local target_path = vim.fn.fnameescape(node.path)
+  local target_buf_id = vim.fn.bufadd(target_path)
+  vim.fn.bufload(target_buf_id)
 
-  vim.defer_fn(function()
-    local target_path = vim.fn.fnameescape(node.path)
-    local target_buf_id = vim.fn.bufadd(target_path)
-    vim.fn.bufload(target_buf_id)
+  if not vim.api.nvim_buf_is_valid(target_buf_id) then
+    vim.api.nvim_echo({ { "Failed to load buffer for: " .. node.path, "ErrorMsg" } }, false, {})
+    return
+  end
+  vim.api.nvim_win_set_buf(win, target_buf_id)
 
-    if not vim.api.nvim_buf_is_valid(target_buf_id) then
-      vim.api.nvim_echo({ { "Failed to load buffer for: " .. node.path, "ErrorMsg" } }, false, {})
-      vim.api.nvim_set_current_win(current_win)
-      return
+  local diff = require("unified.diff")
+  local commit = state.get_commit_base()
+  diff.show(commit, target_buf_id)
+  local auto_refresh = require("unified.auto_refresh")
+  auto_refresh.setup(target_buf_id)
+
+  -- Scroll opened buffer to first git hunk without changing focus (diffview-like)
+  local hunk_store = require("unified.hunk_store")
+  local hunks = hunk_store.get(target_buf_id)
+  if hunks and #hunks > 0 then
+    local first = hunks[1]
+    local line_count = vim.api.nvim_buf_line_count(target_buf_id)
+    if first > line_count then
+      first = line_count
     end
-    vim.api.nvim_win_set_buf(win, target_buf_id)
-
-    local diff = require("unified.diff")
-    local commit = state.get_commit_base()
-    diff.show(commit, target_buf_id)
-    local auto_refresh = require("unified.auto_refresh")
-    auto_refresh.setup(target_buf_id)
-
-    if vim.api.nvim_win_is_valid(current_win) then
-      vim.api.nvim_set_current_win(current_win)
+    if vim.api.nvim_win_is_valid(win) then
+      -- Move the other window's cursor
+      pcall(vim.api.nvim_win_set_cursor, win, { first, 0 })
+      -- Center the view in that window, without stealing focus
+      pcall(vim.api.nvim_win_call, win, function()
+        vim.cmd.normal({ "zz", bang = true })
+      end)
     end
-  end, 1)
+  end
 end
 
 -- Open file under cursor (previously toggle_node)
@@ -78,7 +93,6 @@ function M.refresh()
 
   local FileTree = require("unified.file_tree.tree")
   local render = require("unified.file_tree.render")
-  local actions = require("unified.file_tree.actions")
 
   local tree = FileTree.new(root_path)
 
@@ -98,7 +112,6 @@ function M.refresh()
 
     if first_node then
       vim.api.nvim_win_set_cursor(win, { first_line + 1, 0 })
-      actions.open_file_node(first_node)
     end
   end
 

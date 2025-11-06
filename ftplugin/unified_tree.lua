@@ -14,19 +14,9 @@ vim.wo.foldenable = false
 vim.wo.list = false
 vim.wo.wrap = false
 
-vim.keymap.set("n", "j",
-  function()
-    require('unified.file_tree.actions').move_cursor_and_open_file(1)
-  end,
-  { noremap = true, silent = true, buffer = true }
-)
+vim.keymap.set("n", "j", "j", { noremap = true, silent = true, buffer = true })
 
-vim.keymap.set("n", "k",
-  function()
-    require('unified.file_tree.actions').move_cursor_and_open_file(-1)
-  end,
-  { noremap = true, silent = true, buffer = true }
-)
+vim.keymap.set("n", "k", "k", { noremap = true, silent = true, buffer = true })
 
 vim.keymap.set("n", "R",
   function()
@@ -45,6 +35,13 @@ vim.keymap.set("n", "q",
 vim.keymap.set("n", "?",
   function()
     require('unified.file_tree.actions').show_help()
+  end,
+  { noremap = true, silent = true, buffer = true }
+)
+
+vim.keymap.set("n", "l",
+  function()
+    require('unified.file_tree.actions').toggle_node()
   end,
   { noremap = true, silent = true, buffer = true }
 )
