@@ -272,6 +272,46 @@ function M.move_cursor_and_open_file(direction)
   -- If no file node found after full loop (unlikely in a populated tree), do nothing
 end -- End of M.move_cursor_and_open_file
 
+-- Move cursor within the file tree to file nodes only
+-- direction: 1 (down/next) or -1 (up/previous)
+-- count: optional repeat count; defaults to 1
+function M.move_cursor_file_only(direction, count)
+  if not is_file_tree_buffer() then
+    return
+  end
+
+  local tree_state = require("unified.file_tree.state")
+  if not tree_state.buffer or not vim.api.nvim_buf_is_valid(tree_state.buffer) then
+    return
+  end
+
+  local total_lines = vim.api.nvim_buf_line_count(tree_state.buffer)
+  if not total_lines or total_lines < 1 then
+    return
+  end
+
+  direction = direction or 1
+  if direction == 0 then
+    return
+  end
+  count = count or 1
+
+  local current_line = vim.api.nvim_win_get_cursor(0)[1] - 1 -- 0-based
+  for _ = 1, count do
+    local next_line = current_line
+    for _i = 1, total_lines do
+      next_line = (next_line + direction + total_lines) % total_lines
+      local node = tree_state.line_to_node[next_line]
+      if node and not node.is_dir then
+        current_line = next_line
+        break
+      end
+    end
+  end
+
+  vim.api.nvim_win_set_cursor(0, { current_line + 1, 0 })
+end
+
 M.open_file_node = open_file_node -- Expose for use in init.lua
 
 return M
