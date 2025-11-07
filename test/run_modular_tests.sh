@@ -9,85 +9,13 @@ if [ -n "$1" ]; then
   # Handle special arguments
   if [ "$1" == "modular" ] || [ "$1" == "all" ]; then
     echo "Running all tests..."
-    TMP_SCRIPT=$(mktemp)
-    echo "local runner = require('test.test_runner')
-local success = runner.run_all_tests()
-if success then
-  print('All tests passed!')
-  os.exit(0)
-else
-  print('Some tests failed!')
-  os.exit(1)
-end" > $TMP_SCRIPT
-    
-    nvim --headless \
-      -c "set rtp+=$PLUGIN_DIR" \
-      -c "luafile $TMP_SCRIPT" \
-      -c "qa! 1"
-    
-    EXIT_CODE=$?
-    rm $TMP_SCRIPT
-    exit $EXIT_CODE
+    UNIFIED_PLUGIN_DIR="$PLUGIN_DIR" nvim --headless -u "$SCRIPT_DIR/minimal_init.lua" +"lua local ok=require('test.test_runner').run_all_tests(); if ok then vim.cmd('qa') else vim.cmd('cq') end"
   else
     echo "Running specific test: $1"
-    # Parse module and test name from dot notation
-    MODULE_NAME=$(echo $1 | awk -F. '{print $1}')
-    TEST_NAME=$(echo $1 | awk -F. '{print $NF}')
-    
-    # Set up environment and run test in a new Neovim instance
-    TMP_SCRIPT=$(mktemp)
-    echo "local M = require('test.$MODULE_NAME')
-if M.$TEST_NAME then
-  local success, result = pcall(M.$TEST_NAME)
-  if success and result then
-    print('Test $TEST_NAME passed!')
-    os.exit(0)
-  else
-    print('Test $TEST_NAME failed: ' .. tostring(result))
-    os.exit(1) 
-  end
-else
-  print('Test $TEST_NAME not found in module $MODULE_NAME')
-  os.exit(1)
-end" > $TMP_SCRIPT
-    
-    nvim --headless \
-      -c "set rtp+=$PLUGIN_DIR" \
-      -c "luafile $TMP_SCRIPT" \
-      -c "qa! 1"  # Fallback exit code if the script doesn't explicitly exit
-    
-    EXIT_CODE=$?
-    rm $TMP_SCRIPT
-    exit $EXIT_CODE
+    SPECIFIC_TEST="$1" UNIFIED_PLUGIN_DIR="$PLUGIN_DIR" nvim --headless -u "$SCRIPT_DIR/minimal_init.lua" +"lua local ok,err=pcall(function() require('test.test_runner').run_test(vim.env.SPECIFIC_TEST) end); if ok then vim.cmd('qa') else print(err) vim.cmd('cq') end"
   fi
 else
   # No arguments passed, run all tests
   echo "Running all tests..."
-  
-  TMP_SCRIPT=$(mktemp)
-  echo "local runner = require('test.test_runner')
-local success = runner.run_all_tests()
-if success then
-  print('All tests passed!')
-  os.exit(0)
-else
-  print('Some tests failed!')
-  os.exit(1)
-end" > $TMP_SCRIPT
-  
-  nvim --headless \
-    -c "set rtp+=$PLUGIN_DIR" \
-    -c "luafile $TMP_SCRIPT" \
-    -c "qa! 1"
-  
-  EXIT_CODE=$?
-  rm $TMP_SCRIPT
-  
-  if [ $EXIT_CODE -eq 0 ]; then
-    echo -e "\nAll tests passed!"
-    exit 0
-  else
-    echo -e "\nSome tests failed!"
-    exit 1
-  fi
+  UNIFIED_PLUGIN_DIR="$PLUGIN_DIR" nvim --headless -u "$SCRIPT_DIR/minimal_init.lua" +"lua local ok=require('test.test_runner').run_all_tests(); if ok then vim.cmd('qa') else vim.cmd('cq') end"
 fi
