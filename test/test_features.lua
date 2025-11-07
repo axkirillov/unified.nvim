@@ -30,13 +30,13 @@ function M.test_diff_against_commit()
     "Initial commit"
   )
 
-  local first_commit = vim.fn.system("git rev-parse HEAD"):gsub("\n", "")
+  local first_commit = vim.fn.system({ "git", "-C", repo.repo_dir, "rev-parse", "HEAD" }):gsub("\n", "")
 
   vim.fn.writefile({ "line 1", "modified line 2", "line 3", "line 4", "line 5", "line 6" }, test_path)
-  vim.fn.system("git add " .. test_file)
-  vim.fn.system("git commit -m 'Second commit'")
+  vim.fn.system({ "git", "-C", repo.repo_dir, "add", test_file })
+  vim.fn.system({ "git", "-C", repo.repo_dir, "commit", "-m", "Second commit" })
 
-  local second_commit = vim.fn.system("git rev-parse HEAD"):gsub("\n", "")
+  local second_commit = vim.fn.system({ "git", "-C", repo.repo_dir, "rev-parse", "HEAD" }):gsub("\n", "")
 
   vim.cmd("edit! " .. test_path)
   vim.api.nvim_buf_set_lines(0, 0, 1, false, { "modified line 1" }) -- Change line 1
@@ -91,16 +91,16 @@ function M.test_commit_base_persistence()
   )
 
   vim.fn.writefile({ "line 1", "modified line 2", "line 3", "line 4", "line 5" }, test_path)
-  vim.fn.system("git add " .. test_file)
-  vim.fn.system("git commit -m 'Second commit'")
+  vim.fn.system({ "git", "-C", repo.repo_dir, "add", test_file })
+  vim.fn.system({ "git", "-C", repo.repo_dir, "commit", "-m", "Second commit" })
 
   vim.fn.writefile({ "line 1", "modified line 2", "modified line 3", "line 4", "line 5" }, test_path)
-  vim.fn.system("git add " .. test_file)
-  vim.fn.system("git commit -m 'Third commit'")
+  vim.fn.system({ "git", "-C", repo.repo_dir, "add", test_file })
+  vim.fn.system({ "git", "-C", repo.repo_dir, "commit", "-m", "Third commit" })
 
-  local first_commit = vim.fn.system("git rev-parse HEAD~2"):gsub("\n", "")
-  local _ = vim.fn.system("git rev-parse HEAD~1"):gsub("\n", "")
-  local _ = vim.fn.system("git rev-parse HEAD"):gsub("\n", "")
+  local first_commit = vim.fn.system({ "git", "-C", repo.repo_dir, "rev-parse", "HEAD~2" }):gsub("\n", "")
+  local _ = vim.fn.system({ "git", "-C", repo.repo_dir, "rev-parse", "HEAD~1" }):gsub("\n", "")
+  local _ = vim.fn.system({ "git", "-C", repo.repo_dir, "rev-parse", "HEAD" }):gsub("\n", "")
 
   vim.cmd("edit " .. test_path)
   local buffer = vim.fn.bufnr(test_path)
@@ -120,17 +120,9 @@ function M.test_commit_base_persistence()
 
   local current_file_content = table.concat(vim.api.nvim_buf_get_lines(buffer, 0, -1, false), "\n")
 
-  local git_command = string.format(
-    "cd %s && git show %s:%s",
-    vim.fn.shellescape(repo.repo_dir),
-    vim.fn.shellescape(first_commit),
-    vim.fn.shellescape(test_file)
-  )
-  local first_commit_content = vim.fn.system(git_command)
+  local first_commit_content = vim.fn.system({ "git", "-C", repo.repo_dir, "show", first_commit .. ":" .. test_file })
 
-  git_command =
-    string.format("cd %s && git show HEAD:%s", vim.fn.shellescape(repo.repo_dir), vim.fn.shellescape(test_file))
-  local head_content = vim.fn.system(git_command)
+  local head_content = vim.fn.system({ "git", "-C", repo.repo_dir, "show", "HEAD:" .. test_file })
 
   local temp_current = vim.fn.tempname()
   local temp_first = vim.fn.tempname()

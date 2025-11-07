@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 PLUGIN_DIR="$(cd "$SCRIPT_DIR/.." &>/dev/null && pwd)"
 
 # Parse command line arguments
-USE_SHARED_REPO=1
+USE_SHARED_REPO=0
 SPECIFIC_TEST=""
 
 while [[ "$#" -gt 0 ]]; do

@@ -44,7 +44,7 @@ function M.init_shared_git_repo()
   end
 
   -- Skip test if git is not available
-  local git_version = vim.fn.system("git --version")
+  local _ = vim.fn.system({ "git", "--version" })
   if vim.v.shell_error ~= 0 then
     print("Git not available, skipping git diff test")
     return nil
@@ -54,17 +54,21 @@ function M.init_shared_git_repo()
   local repo_dir = vim.fn.tempname()
   vim.fn.mkdir(repo_dir, "p")
 
-  -- Save original directory
-  local old_dir = vim.fn.getcwd()
-  vim.cmd("cd " .. repo_dir)
-
-  -- Initialize git repo
-  vim.fn.system("git init")
-  vim.fn.system("git config user.name 'Test User'")
-  vim.fn.system("git config user.email 'test@example.com'")
+  -- Initialize git repo (prefer main as default branch)
+  vim.fn.system({ "git", "-C", repo_dir, "init", "-b", "main" })
+  if vim.v.shell_error ~= 0 then
+    vim.fn.system({ "git", "-C", repo_dir, "init" })
+    vim.fn.system({ "git", "-C", repo_dir, "branch", "-M", "main" })
+  end
+  vim.fn.system({ "git", "-C", repo_dir, "config", "user.name", "Test User" })
+  vim.fn.system({ "git", "-C", repo_dir, "config", "user.email", "test@example.com" })
 
   -- Create an empty base commit
-  vim.fn.system("git commit --allow-empty -m 'Base commit'")
+  vim.fn.system({ "git", "-C", repo_dir, "commit", "--allow-empty", "-m", "Base commit" })
+
+  -- Set window-local working directory for plugin logic that relies on CWD
+  local old_dir = vim.fn.getcwd()
+  pcall(vim.cmd, "lcd " .. repo_dir)
 
   M.shared_git_repo = {
     repo_dir = repo_dir,
@@ -80,14 +84,25 @@ function M.reset_git_repo(repo)
     return false
   end
 
-  -- Return to the repo directory
-  vim.cmd("cd " .. repo.repo_dir)
-
   -- Clean up all changes and go back to base commit
-  vim.fn.system("git checkout main 2>/dev/null || git checkout master 2>/dev/null")
-  vim.fn.system("git branch | grep -v '\\*' | xargs git branch -D 2>/dev/null") -- Delete all other branches
-  vim.fn.system("git reset --hard HEAD") -- Reset to HEAD
-  vim.fn.system("git clean -fdx") -- Clean all untracked files and directories
+  vim.fn.system({ "git", "-C", repo.repo_dir, "checkout", "--force", "main" })
+  if vim.v.shell_error ~= 0 then
+    vim.fn.system({ "git", "-C", repo.repo_dir, "checkout", "--force", "master" })
+  end
+
+  -- Delete all branches except main/master
+  local branches =
+    vim.fn.system({ "git", "-C", repo.repo_dir, "for-each-ref", "--format=%(refname:short)", "refs/heads" })
+  if type(branches) == "string" then
+    for b in branches:gmatch("[^\r\n]+") do
+      if b ~= "main" and b ~= "master" then
+        vim.fn.system({ "git", "-C", repo.repo_dir, "branch", "-D", b })
+      end
+    end
+  end
+
+  vim.fn.system({ "git", "-C", repo.repo_dir, "reset", "--hard", "HEAD" })
+  vim.fn.system({ "git", "-C", repo.repo_dir, "clean", "-fdx" })
 
   return true
 end
@@ -98,8 +113,8 @@ function M.create_test_branch(repo, branch_name)
     return false
   end
 
-  branch_name = branch_name or ("test_branch_" .. os.time())
-  vim.fn.system("git checkout -b " .. branch_name)
+  branch_name = branch_name or (string.format("test_branch_%s_%d", os.date("!%Y%m%dT%H%M%S"), vim.loop.hrtime()))
+  vim.fn.system({ "git", "-C", repo.repo_dir, "checkout", "-b", branch_name })
   return branch_name
 end
 
@@ -137,7 +152,7 @@ end
 -- Create a disposable git repository for testing
 function M.create_temp_git_repo()
   -- Skip test if git is not available
-  local git_version = vim.fn.system("git --version")
+  local _ = vim.fn.system({ "git", "--version" })
   if vim.v.shell_error ~= 0 then
     print("Git not available, skipping git diff test")
     return nil
@@ -147,14 +162,18 @@ function M.create_temp_git_repo()
   local repo_dir = vim.fn.tempname()
   vim.fn.mkdir(repo_dir, "p")
 
-  -- Save original directory
-  local old_dir = vim.fn.getcwd()
-  vim.cmd("cd " .. repo_dir)
+  -- Initialize git repo (prefer main as default branch)
+  vim.fn.system({ "git", "-C", repo_dir, "init", "-b", "main" })
+  if vim.v.shell_error ~= 0 then
+    vim.fn.system({ "git", "-C", repo_dir, "init" })
+    vim.fn.system({ "git", "-C", repo_dir, "branch", "-M", "main" })
+  end
+  vim.fn.system({ "git", "-C", repo_dir, "config", "user.name", "Test User" })
+  vim.fn.system({ "git", "-C", repo_dir, "config", "user.email", "test@example.com" })
 
-  -- Initialize git repo
-  vim.fn.system("git init")
-  vim.fn.system("git config user.name 'Test User'")
-  vim.fn.system("git config user.email 'test@example.com'")
+  -- Set window-local working directory for plugin logic that relies on CWD
+  local old_dir = vim.fn.getcwd()
+  pcall(vim.cmd, "lcd " .. repo_dir)
 
   return {
     repo_dir = repo_dir,
@@ -169,8 +188,10 @@ function M.cleanup_git_repo(repo)
     return
   end
 
-  -- Return to original directory
-  vim.cmd("cd " .. repo.old_dir)
+  -- Restore previous window-local working directory if we changed it
+  if repo.old_dir and type(repo.old_dir) == "string" and repo.old_dir ~= "" then
+    pcall(vim.cmd, "lcd " .. repo.old_dir)
+  end
 
   -- For shared repo, just mark as no longer in use
   if not repo.is_temp and vim.env.UNIFIED_USE_SHARED_REPO == "1" then
@@ -186,8 +207,8 @@ end
 function M.create_and_commit_file(repo, filename, content, commit_message)
   local file_path = repo.repo_dir .. "/" .. filename
   vim.fn.writefile(content, file_path)
-  vim.fn.system("git add " .. filename)
-  vim.fn.system("git commit -m '" .. (commit_message or "Add file") .. "'")
+  vim.fn.system({ "git", "-C", repo.repo_dir, "add", filename })
+  vim.fn.system({ "git", "-C", repo.repo_dir, "commit", "-m", (commit_message or "Add file") })
   return file_path
 end
 
@@ -195,8 +216,8 @@ end
 function M.modify_and_commit_file(repo, filename, content, commit_message)
   local file_path = repo.repo_dir .. "/" .. filename
   vim.fn.writefile(content, file_path)
-  vim.fn.system("cd " .. repo.repo_dir .. " && git add " .. filename)
-  vim.fn.system("cd " .. repo.repo_dir .. " && git commit -m '" .. (commit_message or "Modify file") .. "'")
+  vim.fn.system({ "git", "-C", repo.repo_dir, "add", filename })
+  vim.fn.system({ "git", "-C", repo.repo_dir, "commit", "-m", (commit_message or "Modify file") })
   return file_path
 end
 
@@ -206,13 +227,8 @@ function M.get_current_commit_hash(repo_dir_path)
     return nil
   end
 
-  local original_cwd = vim.fn.getcwd()
-  vim.api.nvim_set_current_dir(repo_dir_path)
-
-  local hash_out = vim.fn.system({ "git", "rev-parse", "HEAD" })
+  local hash_out = vim.fn.system({ "git", "-C", repo_dir_path, "rev-parse", "HEAD" })
   local hash_code = vim.v.shell_error
-
-  vim.api.nvim_set_current_dir(original_cwd)
 
   if hash_code == 0 and hash_out and vim.trim(hash_out) ~= "" then
     return vim.trim(hash_out)

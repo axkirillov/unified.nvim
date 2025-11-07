@@ -90,12 +90,12 @@ function M.test_multiple_added_lines_with_commit()
   local test_path = utils.create_and_commit_file(repo, test_file, { "line 1", "line 2", "line 3" }, "Initial commit")
 
   -- Make a first commit (this will be our base)
-  local first_commit = vim.fn.system("git rev-parse HEAD"):gsub("\n", "")
+  local first_commit = vim.fn.system({ "git", "-C", repo.repo_dir, "rev-parse", "HEAD" }):gsub("\n", "")
 
   -- Create a second commit with some changes
   vim.fn.writefile({ "line 1", "line 2", "modified line 3" }, test_path)
-  vim.fn.system("git add " .. test_file)
-  vim.fn.system("git commit -m 'Modify line 3'")
+  vim.fn.system({ "git", "-C", repo.repo_dir, "add", test_file })
+  vim.fn.system({ "git", "-C", repo.repo_dir, "commit", "-m", "Modify line 3" })
 
   -- Open the file and add multiple consecutive new lines
   vim.cmd("edit " .. test_path)
