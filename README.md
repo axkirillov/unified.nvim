@@ -106,6 +106,27 @@ vim.keymap.set('n', ']h', function() require('unified.navigation').next_hunk() e
 vim.keymap.set('n', '[h', function() require('unified.navigation').previous_hunk() end)
 ```
 
+### Hunk actions (API)
+
+Unified provides a function-only API for hunk actions. Define your own keymaps or commands if desired.
+
+Example keymaps:
+
+```lua
+local actions = require('unified.hunk_actions')
+vim.keymap.set('n', 'gs', actions.stage_hunk,   { desc = 'Unified: Stage hunk' })
+vim.keymap.set('n', 'gu', actions.unstage_hunk, { desc = 'Unified: Unstage hunk' })
+vim.keymap.set('n', 'gr', actions.revert_hunk,  { desc = 'Unified: Revert hunk' })
+```
+
+Behavior notes:
+- Operates on the hunk under the cursor inside a regular file buffer (not in the unified file tree buffer).
+- Stage: applies a minimal single-hunk patch to the index.
+- Unstage: reverse-applies the hunk patch from the index.
+- Revert: reverse-applies the hunk patch to the working tree.
+- Binary patches are skipped with a user message.
+- After an action, the inline diff and file tree are refreshed automatically.
+
 ## Commands
 
   * `:Unified`: Toggles the diff view. If closed, it shows the diff against `HEAD`. If open, it closes the view.
