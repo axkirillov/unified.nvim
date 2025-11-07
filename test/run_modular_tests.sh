@@ -9,13 +9,13 @@ if [ -n "$1" ]; then
   # Handle special arguments
   if [ "$1" == "modular" ] || [ "$1" == "all" ]; then
     echo "Running all tests..."
-    UNIFIED_PLUGIN_DIR="$PLUGIN_DIR" nvim --headless -u "$SCRIPT_DIR/minimal_init.lua" +"lua local ok=require('test.test_runner').run_all_tests(); if ok then vim.cmd('qa') else vim.cmd('cq') end"
+    UNIFIED_PLUGIN_DIR="$PLUGIN_DIR" nvim --headless -u "$SCRIPT_DIR/minimal_init.lua" +"lua local ok=require('test.test_runner').run_all_tests(); if ok then vim.cmd('qa!') else vim.cmd('cq!') end"
   else
     echo "Running specific test: $1"
-    SPECIFIC_TEST="$1" UNIFIED_PLUGIN_DIR="$PLUGIN_DIR" nvim --headless -u "$SCRIPT_DIR/minimal_init.lua" +"lua local ok,err=pcall(function() require('test.test_runner').run_test(vim.env.SPECIFIC_TEST) end); if ok then vim.cmd('qa') else print(err) vim.cmd('cq') end"
+    SPECIFIC_TEST="$1" UNIFIED_PLUGIN_DIR="$PLUGIN_DIR" nvim --headless -u "$SCRIPT_DIR/minimal_init.lua" +"lua local ok,err=pcall(function() require('test.test_runner').run_test(vim.env.SPECIFIC_TEST) end); if ok then vim.cmd('qa!') else print(err) vim.cmd('cq!') end"
   fi
 else
   # No arguments passed, run all tests
   echo "Running all tests..."
-  UNIFIED_PLUGIN_DIR="$PLUGIN_DIR" nvim --headless -u "$SCRIPT_DIR/minimal_init.lua" +"lua local ok=require('test.test_runner').run_all_tests(); if ok then vim.cmd('qa') else vim.cmd('cq') end"
+  UNIFIED_PLUGIN_DIR="$PLUGIN_DIR" nvim --headless -u "$SCRIPT_DIR/minimal_init.lua" +"lua local ok=require('test.test_runner').run_all_tests(); if ok then vim.cmd('qa!') else vim.cmd('cq!') end"
 fi
