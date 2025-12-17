@@ -128,8 +128,7 @@ function M.test_diff_parsing()
   vim.fn.writefile({ "modified line 1", "line 2", "line 4", "new line", "line 5" }, file2)
 
   -- Generate diff
-  local diff_cmd = string.format("diff -u %s %s", file1, file2)
-  local diff_output = vim.fn.system(diff_cmd)
+  local diff_output = vim.fn.system({ "diff", "-u", file1, file2 })
 
   -- Parse the diff
   -- Parse the diff

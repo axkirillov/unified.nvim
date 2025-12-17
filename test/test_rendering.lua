@@ -450,9 +450,7 @@ function M.test_single_deleted_line_element()
   local ns_id = vim.api.nvim_create_namespace("unified_diff")
 
   -- Count the number of deleted lines in the diff
-  local diff_cmd =
-    string.format("cd %s && git diff %s", vim.fn.shellescape(repo.repo_dir), vim.fn.shellescape(test_file))
-  local diff_output = vim.fn.system(diff_cmd)
+  local diff_output = vim.fn.system({ "git", "-C", repo.repo_dir, "diff", "--", test_file })
 
   -- Count lines starting with "-" (excluding the diff header lines)
   local deleted_lines_count = 0

@@ -132,11 +132,10 @@ function M.test_commit_base_persistence()
   vim.fn.writefile(vim.split(first_commit_content, "\n"), temp_first)
   vim.fn.writefile(vim.split(head_content, "\n"), temp_head)
 
-  local diff_first_cmd = string.format("diff -u %s %s", temp_first, temp_current)
-  local diff_head_cmd = string.format("diff -u %s %s", temp_head, temp_current)
+  -- Use table-form diff invocations directly when calling system()
 
-  local diff_first_output = vim.fn.system(diff_first_cmd)
-  local diff_head_output = vim.fn.system(diff_head_cmd)
+  local diff_first_output = vim.fn.system({ "diff", "-u", temp_first, temp_current })
+  local diff_head_output = vim.fn.system({ "diff", "-u", temp_head, temp_current })
 
   local still_diffing_against_first = diff_first_output:find("modified line 2")
     and diff_first_output:find("modified line 3")

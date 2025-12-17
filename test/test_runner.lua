@@ -109,6 +109,35 @@ function M.run_all_tests()
 
   print(string.format("\nSummary: %d passed, %d failed, %d total", pass_count, fail_count, pass_count + fail_count))
 
+  -- Emit JUnit XML for CI consumers
+  local function xml_escape(s)
+    s = tostring(s or "")
+    -- Properly escape XML special characters
+    s = s:gsub("&", "&"):gsub("<", "<"):gsub(">", ">"):gsub('"', '"'):gsub("'", "'")
+    return s
+  end
+  local junit_dir = "test-results"
+  pcall(vim.fn.mkdir, junit_dir, "p")
+  local lines = {}
+  table.insert(lines, '<?xml version="1.0" encoding="UTF-8"?>')
+  table.insert(
+    lines,
+    string.format('<testsuite name="unified.nvim" tests="%d" failures="%d">', pass_count + fail_count, fail_count)
+  )
+  for _, r in ipairs(all_results) do
+    local group, test = r.name:match("([^%.]+)%.(.+)")
+    group, test = group or "unknown", test or r.name
+    if r.status then
+      table.insert(lines, string.format('  <testcase classname="%s" name="%s"/>', xml_escape(group), xml_escape(test)))
+    else
+      table.insert(lines, string.format('  <testcase classname="%s" name="%s">', xml_escape(group), xml_escape(test)))
+      table.insert(lines, string.format('    <failure message="%s"/>', xml_escape(r.error)))
+      table.insert(lines, "  </testcase>")
+    end
+  end
+  table.insert(lines, "</testsuite>")
+  vim.fn.writefile(lines, junit_dir .. "/unified.xml")
+
   -- Return success if all tests passed
   return fail_count == 0
 end

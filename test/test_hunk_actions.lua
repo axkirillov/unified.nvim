@@ -22,8 +22,10 @@ local function setup_repo_with_file(initial_lines)
   return repo, test_path
 end
 
-local function git(repo, cmd)
-  return vim.fn.system("cd " .. repo.repo_dir .. " && " .. cmd), vim.v.shell_error
+local function git(repo, args)
+  local full = vim.list_extend({ "git", "-C", repo.repo_dir }, args or {})
+  local out = vim.fn.system(full)
+  return out, vim.v.shell_error
 end
 
 -- Stage a single added-line hunk and verify it appears in the index
@@ -49,7 +51,7 @@ function M.test_stage_hunk_added_line()
   require("unified.hunk_actions").stage_hunk()
 
   -- Verify the file is in the index diff
-  local out = git(repo, "git diff --cached --name-only -- test.txt")
+  local out = git(repo, { "diff", "--cached", "--name-only", "--", "test.txt" })
   assert_true(tostring(out):match("test.txt") ~= nil, "Expected test.txt to be staged")
 
   -- Cleanup
@@ -74,12 +76,12 @@ function M.test_unstage_staged_hunk()
   -- Stage first
   vim.api.nvim_win_set_cursor(0, { 1, 0 })
   require("unified.hunk_actions").stage_hunk()
-  local out = git(repo, "git diff --cached --name-only -- test.txt")
+  local out = git(repo, { "diff", "--cached", "--name-only", "--", "test.txt" })
   assert_true(tostring(out):match("test.txt") ~= nil, "Expected test.txt to be staged before unstage")
 
   -- Unstage the same hunk
   require("unified.hunk_actions").unstage_hunk()
-  local out2 = git(repo, "git diff --cached --name-only -- test.txt")
+  local out2 = git(repo, { "diff", "--cached", "--name-only", "--", "test.txt" })
   -- Should be empty (no staged changes for the file)
   assert_true(not tostring(out2):match("test.txt"), "Expected test.txt to be removed from index after unstage")
 
@@ -117,7 +119,7 @@ function M.test_revert_hunk_added_line()
   assert_eq(lines[3], initial[3], "Expected line 3 to be restored after revert_hunk")
 
   -- And file should have no diff for that hunk anymore
-  local diffout = git(repo, "git diff -- test.txt")
+  local diffout = git(repo, { "diff", "--", "test.txt" })
   -- It could still have other differences, but should not contain "modified line 3"
   assert_true(not tostring(diffout):match("modified line 3"), "Unexpected leftover diff content for reverted hunk")
 
