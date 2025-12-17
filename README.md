@@ -83,10 +83,13 @@ require('unified').setup({
 
 When the file tree is open, you can use the following keymaps:
 
-  * `j`/`k`: Move the cursor down/up. The file under the cursor will be opened in the main window, displaying its diff.
+  * `j`/`k` or `<Down>`/`<Up>`: Move the cursor down/up between file nodes.
+  * `l`: Open the file under the cursor in the main window, displaying its diff.
   * `q`: Close the file tree window.
   * `R`: Refresh the file tree.
   * `?`: Show a help dialog.
+
+When the file tree opens, the first file is automatically opened in the main window.
 
 The file tree displays the Git status of each file:
 
@@ -105,6 +108,16 @@ To navigate between hunks, you'll need to set your own keymaps:
 vim.keymap.set('n', ']h', function() require('unified.navigation').next_hunk() end)
 vim.keymap.set('n', '[h', function() require('unified.navigation').previous_hunk() end)
 ```
+
+### Toggle API
+
+For programmatic control, you can use the toggle function:
+
+```lua
+vim.keymap.set('n', '<leader>ud', require('unified').toggle, { desc = 'Toggle unified diff' })
+```
+
+This toggles the diff view on/off, remembering the previous commit reference.
 
 ### Hunk actions (API)
 
@@ -137,10 +150,16 @@ Behavior notes:
 
 ### Running Tests
 
-To run the automated tests:
+To run all automated tests:
 
 ```bash
-./test/run_tests.sh
+make tests
+```
+
+To run a specific test function:
+
+```bash
+make test TEST=test_file_name.test_function_name
 ```
 
 ## License
