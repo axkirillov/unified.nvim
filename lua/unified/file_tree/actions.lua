@@ -27,7 +27,23 @@ local function open_file_node(node)
   -- Open the target buffer in the main window without changing focus
   local target_path = vim.fn.fnameescape(node.path)
   local target_buf_id = vim.fn.bufadd(target_path)
-  vim.fn.bufload(target_buf_id)
+  local ok, err = pcall(vim.fn.bufload, target_buf_id)
+  if not ok then
+    local msg = tostring(err)
+    if msg:match("E325") then
+      local opened = pcall(vim.api.nvim_win_call, win, function()
+        vim.cmd("edit " .. target_path)
+      end)
+      if not opened then
+        vim.api.nvim_echo({ { "Swap file exists for: " .. node.path, "ErrorMsg" } }, false, {})
+        return
+      end
+      target_buf_id = vim.api.nvim_win_get_buf(win)
+    else
+      vim.api.nvim_echo({ { "Failed to load buffer for: " .. node.path, "ErrorMsg" } }, false, {})
+      return
+    end
+  end
 
   if not vim.api.nvim_buf_is_valid(target_buf_id) then
     vim.api.nvim_echo({ { "Failed to load buffer for: " .. node.path, "ErrorMsg" } }, false, {})

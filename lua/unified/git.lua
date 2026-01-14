@@ -44,6 +44,15 @@ local function write_tmp(content)
   return tmp
 end
 
+local function buffer_text(buf)
+  local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+  local text = table.concat(lines, "\n")
+  if vim.bo[buf].endofline then
+    text = text .. "\n"
+  end
+  return text
+end
+
 local function clear_diff(buf)
   local ns = Config.ns_id
   vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
@@ -140,8 +149,7 @@ function M.show_git_diff_against_commit(commit, buf)
 
   -- 2) gather contents
   local git_blob = M.get_git_file_content(abs_path, hash)
-  local cur_lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
-  local cur_text = table.concat(cur_lines, "\n")
+  local cur_text = buffer_text(buf)
   local file_now = vim.fn.filereadable(abs_path) == 1
 
   -- 3) decide scenario
