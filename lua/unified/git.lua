@@ -142,6 +142,7 @@ function M.show_git_diff_against_commit(commit, buf)
   local git_blob = M.get_git_file_content(abs_path, hash)
   local cur_lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
   local cur_text = table.concat(cur_lines, "\n")
+  if vim.bo[buf].eol then cur_text = cur_text .. "\n" end
   local file_now = vim.fn.filereadable(abs_path) == 1
 
   -- 3) decide scenario
