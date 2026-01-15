@@ -146,6 +146,36 @@ function M.display_inline_diff(buffer, hunks)
     new_idx = 0
     in_changed_block = false
 
+    local deleted_lines = {}
+    local deleted_attach_line = nil
+
+    local function flush_deleted_lines()
+      if #deleted_lines == 0 then
+        return
+      end
+      if buf_line_count == 0 then
+        deleted_lines = {}
+        deleted_attach_line = nil
+        return
+      end
+
+      local attach_line = math.min(deleted_attach_line, buf_line_count - 1)
+      local virt_lines = {}
+      for _, text in ipairs(deleted_lines) do
+        table.insert(virt_lines, { { text, "UnifiedDiffDelete" } })
+      end
+      local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, attach_line, 0, {
+        virt_lines = virt_lines,
+        virt_lines_above = deleted_attach_line > 0,
+      })
+      if mark_id > 0 then
+        mark_count = mark_count + #deleted_lines
+      end
+
+      deleted_lines = {}
+      deleted_attach_line = nil
+    end
+
     for _, line in ipairs(hunk.lines) do
       local first_char = line:sub(1, 1)
 
@@ -160,11 +190,13 @@ function M.display_inline_diff(buffer, hunks)
 
       if first_char == " " then
         -- Context line
+        flush_deleted_lines()
         line_idx = line_idx + 1
         old_idx = old_idx + 1
         new_idx = new_idx + 1
       elseif first_char == "+" then
         -- Added or modified line
+        flush_deleted_lines()
         local hl_group = "UnifiedDiffAdd"
 
         -- Process only if line is within range and not already marked
@@ -214,29 +246,16 @@ function M.display_inline_diff(buffer, hunks)
         new_idx = new_idx + 1
       elseif first_char == "-" then
         local line_text = line:sub(2)
-        local hl_group = "UnifiedDiffDelete"
-
-        local attach_line = math.max(line_idx, 0)
-        local show_above = attach_line > 0
-
-        if line_idx >= buf_line_count then
-          attach_line = buf_line_count - 1
+        if deleted_attach_line == nil then
+          deleted_attach_line = math.max(line_idx, 0)
         end
-
-        if attach_line < buf_line_count then
-          local virt_line_opts = {
-            virt_lines = { { { line_text, hl_group } } },
-            virt_lines_above = show_above,
-          }
-          local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, attach_line, 0, virt_line_opts)
-          if mark_id > 0 then
-            mark_count = mark_count + 1
-          end
-        end
+        table.insert(deleted_lines, line_text)
 
         old_idx = old_idx + 1
       end
     end
+
+    flush_deleted_lines()
   end
 
   if #new_hunk_lines > 0 then
