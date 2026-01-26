@@ -5,6 +5,14 @@ local m = {
   active = false,
 }
 
+local function exec_user_autocmd(pattern, data)
+  -- Don't let user autocmd errors break Unified internals.
+  pcall(vim.api.nvim_exec_autocmds, "User", {
+    pattern = pattern,
+    data = data,
+  })
+end
+
 -- Main window reference
 M.main_win = nil
 
@@ -53,7 +61,19 @@ function M.get_commit_base()
 end
 
 function M.set_active(val)
-  m.active = not not val
+  val = not not val
+
+  if m.active == val then
+    return
+  end
+
+  m.active = val
+
+  if val then
+    exec_user_autocmd("UnifiedEnter")
+  else
+    exec_user_autocmd("UnifiedExit")
+  end
 end
 function M.is_active()
   return m.active

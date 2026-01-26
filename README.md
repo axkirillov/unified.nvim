@@ -119,6 +119,53 @@ vim.keymap.set('n', '<leader>ud', require('unified').toggle, { desc = 'Toggle un
 
 This toggles the diff view on/off, remembering the previous commit reference.
 
+### Autocmd hooks
+
+Unified emits `User` autocmds you can use to attach/detach your own buffer-local keymaps.
+
+- `User UnifiedEnter`: Fired when Unified becomes active.
+- `User UnifiedExit`: Fired when Unified is deactivated (e.g. toggled off / `:Unified reset`).
+
+Example (install buffer-local hunk-action maps while Unified is active):
+
+```lua
+local grp = vim.api.nvim_create_augroup("MyUnifiedMaps", { clear = true })
+local touched = {}
+
+vim.api.nvim_create_autocmd("User", {
+  pattern = "UnifiedEnter",
+  callback = function()
+    vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter" }, {
+      group = grp,
+      callback = function(ev)
+        if not require("unified.state").is_active() then return end
+        if vim.bo[ev.buf].buftype ~= "" then return end
+        if touched[ev.buf] then return end
+        touched[ev.buf] = true
+
+        local actions = require("unified.hunk_actions")
+        vim.keymap.set("n", "gs", actions.stage_hunk, { buffer = ev.buf, desc = "Unified: Stage hunk" })
+        vim.keymap.set("n", "gu", actions.unstage_hunk, { buffer = ev.buf, desc = "Unified: Unstage hunk" })
+        vim.keymap.set("n", "gr", actions.revert_hunk, { buffer = ev.buf, desc = "Unified: Revert hunk" })
+      end,
+    })
+  end,
+})
+
+vim.api.nvim_create_autocmd("User", {
+  pattern = "UnifiedExit",
+  callback = function()
+    vim.api.nvim_clear_autocmds({ group = grp })
+    for buf, _ in pairs(touched) do
+      pcall(vim.keymap.del, "n", "gs", { buffer = buf })
+      pcall(vim.keymap.del, "n", "gu", { buffer = buf })
+      pcall(vim.keymap.del, "n", "gr", { buffer = buf })
+    end
+    touched = {}
+  end,
+})
+```
+
 ### Hunk actions (API)
 
 Unified provides a function-only API for hunk actions. Define your own keymaps or commands if desired.

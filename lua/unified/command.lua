@@ -2,6 +2,14 @@ local M = {}
 
 M.setup = function()
   vim.api.nvim_create_user_command("Unified", function(opts)
+    local state = require("unified.state")
+
+    -- Behave like a toggle when called without args.
+    if opts.args == "" and state.is_active() then
+      M.reset()
+      return
+    end
+
     M.run(opts.args)
   end, {
     nargs = "*",
@@ -35,7 +43,6 @@ M.run = function(args)
 
   local git = require("unified.git")
   local state = require("unified.state")
-  local file_tree = require("unified.file_tree")
   local cwd = vim.fn.getcwd()
 
   git.resolve_commit_hash(commit_ref, cwd, function(hash)
@@ -46,11 +53,11 @@ M.run = function(args)
 
     -- Keep the user-provided ref (e.g. HEAD/main/branch) so it can be re-resolved
     -- later and follow moving refs.
-    state.set_commit_base(commit_ref)
-    state.set_active(true)
     state.main_win = vim.api.nvim_get_current_win()
 
-    file_tree.show(commit_ref)
+    -- Mark Unified active *before* we emit any update events that may open buffers.
+    state.set_active(true)
+    state.set_commit_base(commit_ref)
   end)
 
   return nil
