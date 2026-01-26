@@ -9,6 +9,9 @@ vim.o.backup = false
 vim.o.undofile = false
 vim.o.shortmess = vim.o.shortmess .. "I"
 
+-- Avoid loading ftplugins/indent (some depend on Tree-sitter parsers)
+vim.cmd("filetype plugin indent off")
+
 -- Stable UI for tests
 vim.wo.signcolumn = "yes"
 

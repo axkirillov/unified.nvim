@@ -160,4 +160,65 @@ function M.test_commit_base_persistence()
   return true
 end
 
+function M.test_symbolic_ref_follows_head_after_commit()
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  local test_file = "test.txt"
+  local test_path = utils.create_and_commit_file(
+    repo,
+    test_file,
+    { "line 1", "line 2", "line 3", "line 4", "line 5" },
+    "Initial commit"
+  )
+
+  vim.cmd("edit " .. test_path)
+  local buf = vim.api.nvim_get_current_buf()
+
+  -- Make a change that we will commit later.
+  vim.api.nvim_buf_set_lines(buf, 0, 1, false, { "modified line 1" })
+  vim.cmd("write")
+
+  -- Avoid opening the file tree in tests; we only need command.run() to store the base ref.
+  local file_tree = require("unified.file_tree")
+  local old_show = file_tree.show
+  file_tree.show = function()
+    return true
+  end
+
+  require("unified.command").run("HEAD")
+
+  local ok = vim.wait(1000, function()
+    local state = require("unified.state")
+    local ok_base, base = pcall(state.get_commit_base)
+    return state.is_active() and ok_base and base ~= nil
+  end)
+  assert(ok, "Unified did not activate in time")
+
+  local state = require("unified.state")
+  local base = state.get_commit_base()
+  assert(base == "HEAD", "Expected commit base to stay symbolic (HEAD), got: " .. tostring(base))
+
+  require("unified.command").reset()
+  file_tree.show = old_show
+
+  -- Commit the change, moving HEAD forward.
+  vim.fn.system({ "git", "-C", repo.repo_dir, "add", test_file })
+  vim.fn.system({ "git", "-C", repo.repo_dir, "commit", "-m", "Commit change" })
+
+  -- Now the working tree matches the new HEAD; diffing against the stored base should show no changes.
+  require("unified.diff").show_current()
+  local ns = vim.api.nvim_create_namespace("unified_diff")
+  local extmarks = vim.api.nvim_buf_get_extmarks(buf, ns, 0, -1, {})
+  assert(#extmarks == 0, "Expected no diff extmarks after commit when base is a moving ref")
+
+  utils.clear_diff_marks(buf)
+  vim.cmd("bdelete!")
+  utils.cleanup_git_repo(repo)
+
+  return true
+end
+
 return M

@@ -44,11 +44,13 @@ M.run = function(args)
       return
     end
 
-    state.set_commit_base(hash)
+    -- Keep the user-provided ref (e.g. HEAD/main/branch) so it can be re-resolved
+    -- later and follow moving refs.
+    state.set_commit_base(commit_ref)
     state.set_active(true)
     state.main_win = vim.api.nvim_get_current_win()
 
-    file_tree.show(hash)
+    file_tree.show(commit_ref)
   end)
 
   return nil

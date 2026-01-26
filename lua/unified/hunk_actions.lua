@@ -239,8 +239,13 @@ local function do_action(which)
   Diff.show_current()
   local ok_base, base = pcall(State.get_commit_base)
   if ok_base and base then
-    local ftree = require("unified.file_tree")
-    ftree.show(base)
+    -- Only refresh the tree if it's already open. Hunk actions should not
+    -- create/focus the tree as a side effect.
+    local global_state = require("unified.state")
+    if global_state.file_tree_win and vim.api.nvim_win_is_valid(global_state.file_tree_win) then
+      local ftree = require("unified.file_tree")
+      ftree.show(base)
+    end
   end
 end
 
