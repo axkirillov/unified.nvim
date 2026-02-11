@@ -356,7 +356,7 @@ function M.test_no_line_numbers_in_deleted_lines()
     if details.virt_lines then
       for _, vline in ipairs(details.virt_lines) do
         for _, vtext in ipairs(vline) do
-          local text = vtext[1]
+          local text = vim.trim(vtext[1])
 
           -- Look for suspicious line number patterns
           for _, pattern in ipairs(suspicious_patterns) do
@@ -394,7 +394,7 @@ function M.test_no_line_numbers_in_deleted_lines()
     if details.virt_lines then
       for _, vline in ipairs(details.virt_lines) do
         for _, vtext in ipairs(vline) do
-          local text = vtext[1]
+          local text = vim.trim(vtext[1])
           -- Check for the exact content of Line 11
           if text == "Line 11: This is line number 11" then
             found_correct_line_content = true

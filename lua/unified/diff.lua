@@ -140,7 +140,6 @@ function M.display_inline_diff(buffer, hunks)
       consecutive_added_lines[current_start] = added_count
     end
 
-    -- Reset for the main pass
     line_idx = hunk.new_start - 1
     old_idx = 0
     new_idx = 0
@@ -160,9 +159,25 @@ function M.display_inline_diff(buffer, hunks)
       end
 
       local attach_line = math.min(deleted_attach_line, buf_line_count - 1)
+      -- Find the window displaying this buffer to get the correct width
+      local win_width = 0
+      for _, win in ipairs(vim.api.nvim_list_wins()) do
+        if vim.api.nvim_win_get_buf(win) == buffer then
+          win_width = vim.api.nvim_win_get_width(win)
+          break
+        end
+      end
+      if win_width == 0 then
+        win_width = vim.api.nvim_win_get_width(0)
+      end
       local virt_lines = {}
       for _, text in ipairs(deleted_lines) do
-        table.insert(virt_lines, { { text, "UnifiedDiffDelete" } })
+        local display_width = vim.fn.strdisplaywidth(text)
+        local padded = text
+        if display_width < win_width then
+          padded = text .. string.rep(" ", win_width - display_width)
+        end
+        table.insert(virt_lines, { { padded, "UnifiedDiffDelete" } })
       end
       local mark_id = vim.api.nvim_buf_set_extmark(buffer, ns_id, attach_line, 0, {
         virt_lines = virt_lines,
