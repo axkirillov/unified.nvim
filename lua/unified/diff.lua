@@ -31,6 +31,9 @@ function M.parse_diff(diff_text)
       }
     elseif current_hunk and (line:match("^%+") or line:match("^%-") or line:match("^ ")) then
       table.insert(current_hunk.lines, line)
+    elseif current_hunk and line == "" then
+      -- Empty context line (some git versions strip the leading space from blank lines)
+      table.insert(current_hunk.lines, " ")
     end
   end
 
@@ -169,6 +172,10 @@ function M.display_inline_diff(buffer, hunks)
       end
       if win_width == 0 then
         win_width = vim.api.nvim_win_get_width(0)
+      end
+      -- Ensure at least some width so empty deleted lines are still visible
+      if win_width == 0 then
+        win_width = 80
       end
       local virt_lines = {}
       for _, text in ipairs(deleted_lines) do

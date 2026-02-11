@@ -562,4 +562,63 @@ function M.test_new_file_shows_all_lines_added()
   return true
 end
 
+-- Test that deleted empty lines are highlighted as virtual lines
+function M.test_deleted_empty_line_highlighted()
+  local utils = require("test.test_utils")
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  -- Create a file with an empty line in the middle and commit it
+  local test_file = "test.txt"
+  local test_path = utils.create_and_commit_file(repo, test_file, {
+    "line 1",
+    "",
+    "line 3",
+  }, "Initial commit")
+
+  -- Open the file and delete the empty line
+  vim.cmd("edit " .. test_path)
+  vim.api.nvim_buf_set_lines(0, 1, 2, false, {}) -- Delete the empty line
+
+  -- Call the plugin function to show diff
+  local result = require("unified.git").show_git_diff_against_commit("HEAD", vim.api.nvim_get_current_buf())
+  assert(result, "Failed to display diff")
+
+  -- Get buffer and namespace
+  local buffer = vim.api.nvim_get_current_buf()
+
+  local extmarks = utils.get_extmarks(buffer, { namespace = "unified_diff", details = true })
+
+  -- Look for virtual lines representing the deleted empty line
+  local found_deleted_virt_line = false
+  for _, mark in ipairs(extmarks) do
+    local details = mark[4]
+    if details.virt_lines then
+      for _, vline in ipairs(details.virt_lines) do
+        for _, vtext in ipairs(vline) do
+          local hl = vtext[2]
+          if hl == "UnifiedDiffDelete" then
+            found_deleted_virt_line = true
+            break
+          end
+        end
+        if found_deleted_virt_line then
+          break
+        end
+      end
+    end
+  end
+
+  assert(found_deleted_virt_line, "Deleted empty line should be displayed as a highlighted virtual line")
+
+  -- Clean up
+  utils.clear_diff_marks(buffer)
+  vim.cmd("bdelete!")
+  utils.cleanup_git_repo(repo)
+
+  return true
+end
+
 return M
