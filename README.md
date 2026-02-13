@@ -70,7 +70,8 @@ require('unified').setup({
   },
   auto_refresh = true, -- Whether to automatically refresh diff when buffer changes
   file_tree = {
-    width = 30, -- Width of the file tree window
+    width = 0.5, -- Width of the file tree window
+    filename_first = true, -- Show filename before directory path (Snacks backend only)
   },
 })
 ```

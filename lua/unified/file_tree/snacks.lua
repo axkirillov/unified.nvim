@@ -45,7 +45,8 @@ function M.show(commit_hash)
   end
 
   local config = require("unified.config")
-  local width = config.values.file_tree.width or 50
+  local width = config.values.file_tree.width
+  local filename_first = config.values.file_tree.filename_first
 
   -- Use Snacks git_diff picker with the specified base commit
   local picker_opts = {
@@ -58,6 +59,11 @@ function M.show(commit_hash)
       layout = {
         position = "left",
         width = width,
+      },
+    },
+    formatters = {
+      file = {
+        filename_first = filename_first,
       },
     },
     -- Custom confirm action to show unified diff when file is selected
