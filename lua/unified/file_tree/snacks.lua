@@ -39,8 +39,6 @@ function M.show(commit_hash)
   tree_state.root_path = root_dir
   tree_state.diff_only = true
 
-  local config = require("unified.config")
-
   -- Use Snacks git_diff picker with the specified base commit
   local picker_opts = {
     source = "git_diff",
