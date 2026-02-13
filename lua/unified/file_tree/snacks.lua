@@ -39,12 +39,27 @@ function M.show(commit_hash)
   tree_state.root_path = root_dir
   tree_state.diff_only = true
 
+  -- Close existing window if it exists
+  if tree_state.window and vim.api.nvim_win_is_valid(tree_state.window) then
+    vim.api.nvim_win_close(tree_state.window, true)
+  end
+
+  local config = require("unified.config")
+  local width = config.values.file_tree.width or 50
+
   -- Use Snacks git_diff picker with the specified base commit
   local picker_opts = {
     source = "git_diff",
     base = commit_hash or "HEAD",
     cwd = root_dir,
     group = true, -- Group changes by file (not individual hunks)
+    layout = {
+      preset = "sidebar",
+      layout = {
+        position = "left",
+        width = width,
+      },
+    },
     -- Custom confirm action to show unified diff when file is selected
     confirm = function(picker, item)
       if not item or not item.file then

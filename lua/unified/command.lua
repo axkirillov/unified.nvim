@@ -7,7 +7,7 @@ M.setup = function()
     nargs = "*",
     complete = function(ArgLead, CmdLine, _)
       if CmdLine:match("^Unified%s+") then
-        local suggestions = { "HEAD", "HEAD~1", "main", "reset" }
+        local suggestions = { "-s", "HEAD", "HEAD~1", "main", "reset" }
         local filtered_suggestions = {}
         for _, suggestion in ipairs(suggestions) do
           if suggestion:sub(1, #ArgLead) == ArgLead then
@@ -22,36 +22,66 @@ M.setup = function()
 end
 
 M.run = function(args)
+  -- Handle reset command
   if args == "reset" then
     M.reset()
     return
   end
 
-  local commit_ref = args
-
-  if commit_ref == "" then
-    commit_ref = "HEAD"
+  -- Parse arguments to check for "-s" flag (snacks backend)
+  local args_parts = vim.split(args, "%s+", { trimempty = true })
+  local use_snacks = args_parts[1] == "-s"
+  local commit_ref
+  
+  if use_snacks then
+    -- If using snacks, the commit ref is the second argument (required)
+    commit_ref = args_parts[2]
+    if not commit_ref then
+      vim.api.nvim_echo({ { 'Error: -s requires a git ref argument (e.g., ":Unified -s HEAD")', "ErrorMsg" } }, false, {})
+      return
+    end
+  else
+    -- Default backend: use the entire args string as commit ref (or HEAD if empty)
+    commit_ref = args ~= "" and args or "HEAD"
   end
 
   local git = require("unified.git")
   local state = require("unified.state")
-  local file_tree = require("unified.file_tree")
   local cwd = vim.fn.getcwd()
 
-  git.resolve_commit_hash(commit_ref, cwd, function(hash)
-    if not hash then
-      vim.api.nvim_echo({ { 'Error: could not resolve "' .. commit_ref .. '"', "ErrorMsg" } }, false, {})
-      return
-    end
+  if use_snacks then
+    -- Use Snacks backend
+    git.resolve_commit_hash(commit_ref, cwd, function(hash)
+      if not hash then
+        vim.api.nvim_echo({ { 'Error: could not resolve "' .. commit_ref .. '"', "ErrorMsg" } }, false, {})
+        return
+      end
 
-    -- Keep the user-provided ref (e.g. HEAD/main/branch) so it can be re-resolved
-    -- later and follow moving refs.
-    state.set_commit_base(commit_ref)
-    state.set_active(true)
-    state.main_win = vim.api.nvim_get_current_win()
+      -- Keep the user-provided ref so it can be re-resolved later
+      state.set_backend("snacks")
+      state.set_active(true)
+      state.main_win = vim.api.nvim_get_current_win()
+      
+      -- This triggers the autocmd which calls snacks_backend.show
+      state.set_commit_base(commit_ref)
+    end)
+  else
+    -- Use default backend
+    git.resolve_commit_hash(commit_ref, cwd, function(hash)
+      if not hash then
+        vim.api.nvim_echo({ { 'Error: could not resolve "' .. commit_ref .. '"', "ErrorMsg" } }, false, {})
+        return
+      end
 
-    file_tree.show(commit_ref)
-  end)
+      -- Keep the user-provided ref so it can be re-resolved later
+      state.set_backend("default")
+      state.set_active(true)
+      state.main_win = vim.api.nvim_get_current_win()
+
+      -- This triggers the autocmd which calls file_tree.show
+      state.set_commit_base(commit_ref)
+    end)
+  end
 
   return nil
 end
@@ -88,6 +118,7 @@ function M.reset()
   state.file_tree_buf = nil
   state.main_win = nil
   state.set_active(false)
+  state.set_backend("default")
 end
 
 return M

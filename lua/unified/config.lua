@@ -18,6 +18,9 @@ M.defaults = {
     change = "~",
   },
   auto_refresh = true, -- Whether to auto-refresh diff when buffer changes
+  file_tree = {
+    width = 30, -- Width of the file tree window
+  },
 }
 
 -- User configuration (will be populated in setup)
