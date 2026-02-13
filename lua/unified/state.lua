@@ -3,6 +3,7 @@ local M = {}
 local m = {
   commit_base = nil,
   active = false,
+  backend = "default", -- "default" or "snacks"
 }
 
 -- Main window reference
@@ -57,6 +58,14 @@ function M.set_active(val)
 end
 function M.is_active()
   return m.active
+end
+
+function M.set_backend(backend)
+  m.backend = backend
+end
+
+function M.get_backend()
+  return m.backend
 end
 
 return M

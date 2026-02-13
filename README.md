@@ -17,6 +17,7 @@ A Neovim plugin for displaying inline unified diffs directly in your buffer.
 -   Neovim >= 0.5.0
 -   Git
 -   A [Nerd Font](https://www.nerdfonts.com/) installed and configured in your terminal/GUI is required to display file icons correctly in the file tree.
+-   (Optional) [snacks.nvim](https://github.com/folke/snacks.nvim) - Required only if you want to use the Snacks file explorer backend instead of the default custom file tree.
 
 ## Installation
 
@@ -68,20 +69,60 @@ require('unified').setup({
     change = "~",
   },
   auto_refresh = true, -- Whether to automatically refresh diff when buffer changes
+  file_tree = {
+    width = 0.5, -- Width of the file tree window
+    filename_first = true, -- Show filename before directory path (Snacks backend only)
+  },
 })
 ```
 
 ## Usage
 
+### Basic Commands
+
 1.  Open a file in a git repository.
 2.  Make some changes to the file.
 3.  Run the command `:Unified` to display the diff against `HEAD` and open the file tree.
-4.  To close the diff view and file tree, run `:Unified` again.
+4.  To close the diff view and file tree, run `:Unified reset`.
 5.  To show the diff against a specific commit, run `:Unified <commit_ref>`, for example `:Unified HEAD~1`.
 
-### File Tree Interaction
+### Snacks Integration (Optional)
 
-When the file tree is open, you can use the following keymaps:
+unified.nvim supports integration with [snacks.nvim](https://github.com/folke/snacks.nvim)'s git_diff picker as an alternative file browser. This provides a feature-rich experience with built-in diff previews, git status formatting, and staging capabilities.
+
+**Installation:**
+
+First, install snacks.nvim:
+
+```lua
+{
+  'folke/snacks.nvim',
+  priority = 1000,
+  lazy = false,
+  opts = {
+    -- your snacks config
+  }
+}
+```
+
+**Commands:**
+
+```vim
+:Unified -s HEAD        " Use Snacks picker, compare against HEAD
+:Unified -s HEAD~1      " Use Snacks picker, compare against HEAD~1
+:Unified -s origin/main " Use Snacks picker, compare against origin/main
+```
+
+The Snacks picker provides:
+- Built-in diff preview pane
+- Git status indicators and formatting
+- File staging with `<Tab>`
+- File restoration with `<c-r>`
+- All standard unified.nvim inline diff functionality when files are selected
+
+### File Tree Interaction (Default Backend)
+
+When the default file tree is open, you can use the following keymaps:
 
   * `j`/`k` or `<Down>`/`<Up>`: Move the cursor down/up between file nodes.
   * `l`: Open the file under the cursor in the main window, displaying its diff.
@@ -142,8 +183,9 @@ Behavior notes:
 
 ## Commands
 
-  * `:Unified`: Toggles the diff view. If closed, it shows the diff against `HEAD`. If open, it closes the view.
-  * `:Unified <commit_ref>`: Shows the diff against the specified commit reference (e.g., a commit hash, branch name, or tag) and opens the file tree for that range.
+  * `:Unified`: Shows the diff against `HEAD` using the default file tree.
+  * `:Unified <commit_ref>`: Shows the diff against the specified commit reference (e.g., a commit hash, branch name, or tag) using the default file tree.
+  * `:Unified -s <commit_ref>`: Shows the diff against the specified commit reference using the Snacks git_diff picker (requires snacks.nvim).
   * `:Unified reset`: Removes all unified diff highlights and signs from the current buffer and closes the file tree window if it is open.
 
 ## Development

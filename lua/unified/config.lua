@@ -18,6 +18,10 @@ M.defaults = {
     change = "~",
   },
   auto_refresh = true, -- Whether to auto-refresh diff when buffer changes
+  file_tree = {
+    width = 0.5, -- Width of the file tree window
+    filename_first = true, -- Show filename before directory path (Snacks backend only)
+  },
 }
 
 -- User configuration (will be populated in setup)

@@ -10,8 +10,14 @@ function M.setup()
   vim.api.nvim_create_autocmd("User", {
     pattern = "UnifiedBaseCommitUpdated",
     callback = function()
+      local backend = global_state.get_backend()
       local commit_hash = global_state.get_commit_base()
-      M.show(commit_hash)
+      
+      if backend == "snacks" then
+        require("unified.file_tree.snacks").show(commit_hash)
+      else
+        M.show(commit_hash)
+      end
     end,
   })
 end
@@ -201,7 +207,9 @@ function M.show(commit_hash)
   end -- Exit if buffer creation failed
 
   -- Create new window for tree
-  vim.cmd("topleft 30vsplit") -- Consider making width configurable
+  local config = require("unified.config")
+  local width = config.values.file_tree.width or 30
+  vim.cmd("topleft " .. width .. "vsplit")
   local tree_win = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(tree_win, tree_buf)
 
