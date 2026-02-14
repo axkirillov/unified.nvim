@@ -71,6 +71,7 @@ function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
 
   local tree = FileTree.new(root_dir)
 
+  create_split()
   local buf = vim.api.nvim_create_buf(false, true)
 
   local buffer_name = "Unified: File Tree"
@@ -126,6 +127,14 @@ function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
   end)
 
   return buf
+end
+
+create_split = function()
+  -- Create new window for tree
+  local config = require("unified.config")
+  local width = config.values.file_tree.width or 30
+  vim.cmd("vsplit")
+  vim.cmd("wincmd p")
 end
 
 -- Removed: auto_select_and_open_first_file (auto-open behavior)
@@ -206,10 +215,6 @@ function M.show(commit_hash)
     return false
   end -- Exit if buffer creation failed
 
-  -- Create new window for tree
-  local config = require("unified.config")
-  local width = config.values.file_tree.width or 30
-  vim.cmd("topleft " .. width .. "vsplit")
   local tree_win = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(tree_win, tree_buf)
 
