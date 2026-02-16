@@ -12,7 +12,7 @@ function M.setup()
     callback = function()
       local backend = global_state.get_backend()
       local commit_hash = global_state.get_commit_base()
-      
+
       if backend == "snacks" then
         require("unified.file_tree.snacks").show(commit_hash)
       else
@@ -209,6 +209,10 @@ function M.show(commit_hash)
   -- Create new window for tree
   local config = require("unified.config")
   local width = config.values.file_tree.width or 30
+  -- Convert relative width (0-1 fraction) to absolute columns
+  if width > 0 and width < 1 then
+    width = math.floor(vim.o.columns * width)
+  end
   vim.cmd("topleft " .. width .. "vsplit")
   local tree_win = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(tree_win, tree_buf)

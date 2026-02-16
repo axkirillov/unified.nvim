@@ -32,12 +32,16 @@ M.run = function(args)
   local args_parts = vim.split(args, "%s+", { trimempty = true })
   local use_snacks = args_parts[1] == "-s"
   local commit_ref
-  
+
   if use_snacks then
     -- If using snacks, the commit ref is the second argument (required)
     commit_ref = args_parts[2]
     if not commit_ref then
-      vim.api.nvim_echo({ { 'Error: -s requires a git ref argument (e.g., ":Unified -s HEAD")', "ErrorMsg" } }, false, {})
+      vim.api.nvim_echo(
+        { { 'Error: -s requires a git ref argument (e.g., ":Unified -s HEAD")', "ErrorMsg" } },
+        false,
+        {}
+      )
       return
     end
   else
@@ -61,7 +65,7 @@ M.run = function(args)
       state.set_backend("snacks")
       state.set_active(true)
       state.main_win = vim.api.nvim_get_current_win()
-      
+
       -- This triggers the autocmd which calls snacks_backend.show
       state.set_commit_base(commit_ref)
     end)

@@ -217,4 +217,102 @@ function M.test_file_tree_help_dialog()
   return true
 end
 
+-- Test that file_tree.show() creates a vertical (side-by-side) split, not horizontal
+function M.test_file_tree_show_creates_vsplit()
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  -- Create a file and commit it so we have a valid commit hash
+  utils.create_and_commit_file(repo, "test.txt", { "line 1", "line 2" }, "Initial commit")
+
+  -- Make a modification and commit so diff has content
+  utils.modify_and_commit_file(repo, "test.txt", { "modified line 1", "line 2" }, "Modify file")
+
+  local commit_hash = utils.get_current_commit_hash(repo.repo_dir)
+  assert(commit_hash, "Should have a valid commit hash")
+
+  -- Ensure we start with a single window
+  vim.cmd("only")
+  local layout_before = vim.fn.winlayout()
+  assert(layout_before[1] == "leaf", "Should start with a single window (leaf), got: " .. vim.inspect(layout_before))
+
+  -- Call show() which should create a topleft vsplit
+  local file_tree = require("unified.file_tree")
+  local result = file_tree.show(commit_hash)
+  assert(result, "file_tree.show() should return true")
+
+  -- Check window layout: vsplit should produce "row" (side-by-side), NOT "col" (top-bottom)
+  local layout_after = vim.fn.winlayout()
+  assert(
+    layout_after[1] == "row",
+    "Expected 'row' (vertical/side-by-side split) but got '"
+      .. tostring(layout_after[1])
+      .. "': "
+      .. vim.inspect(layout_after)
+  )
+
+  -- Clean up: close all windows except one, delete buffers
+  vim.cmd("only")
+  local tree_state = require("unified.file_tree.state")
+  if tree_state.buffer and vim.api.nvim_buf_is_valid(tree_state.buffer) then
+    vim.cmd("bdelete! " .. tree_state.buffer)
+  end
+  tree_state.window = nil
+  tree_state.buffer = nil
+  vim.cmd("bdelete! " .. vim.api.nvim_get_current_buf())
+  utils.cleanup_git_repo(repo)
+
+  return true
+end
+
+-- Test that file_tree.show() creates a side-by-side split even when starting from a horizontal layout
+function M.test_file_tree_show_vsplit_from_hsplit()
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  utils.create_and_commit_file(repo, "test.txt", { "line 1", "line 2" }, "Initial commit")
+  utils.modify_and_commit_file(repo, "test.txt", { "modified line 1", "line 2" }, "Modify file")
+  local commit_hash = utils.get_current_commit_hash(repo.repo_dir)
+  assert(commit_hash, "Should have a valid commit hash")
+
+  -- Start with a single window, then create a horizontal split (top-bottom)
+  vim.cmd("only")
+  vim.cmd("split")
+  local layout_before = vim.fn.winlayout()
+  assert(layout_before[1] == "col", "Should start with horizontal split (col), got: " .. vim.inspect(layout_before))
+
+  -- Call show() which should create a topleft vsplit (side-by-side tree on the left)
+  local file_tree = require("unified.file_tree")
+  local result = file_tree.show(commit_hash)
+  assert(result, "file_tree.show() should return true")
+
+  -- The toplevel layout should now be "row" because topleft vsplit creates a full-height
+  -- side-by-side split at the far left, wrapping the existing col layout
+  local layout_after = vim.fn.winlayout()
+  assert(
+    layout_after[1] == "row",
+    "Expected 'row' (topleft vsplit should create side-by-side at top level) but got '"
+      .. tostring(layout_after[1])
+      .. "': "
+      .. vim.inspect(layout_after)
+  )
+
+  -- Clean up
+  vim.cmd("only")
+  local tree_state = require("unified.file_tree.state")
+  if tree_state.buffer and vim.api.nvim_buf_is_valid(tree_state.buffer) then
+    vim.cmd("bdelete! " .. tree_state.buffer)
+  end
+  tree_state.window = nil
+  tree_state.buffer = nil
+  vim.cmd("bdelete! " .. vim.api.nvim_get_current_buf())
+  utils.cleanup_git_repo(repo)
+
+  return true
+end
+
 return M
