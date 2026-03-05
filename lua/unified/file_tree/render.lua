@@ -135,7 +135,8 @@ function M.render_tree(tree, buffer)
   end
 
   -- === Determine Repository Status Line ===
-  local has_git_dir = vim.fn.isdirectory(tree.root.path .. "/.git") == 1
+  local git_entry = tree.root.path .. "/.git"
+  local has_git_dir = vim.fn.isdirectory(git_entry) == 1 or vim.fn.filereadable(git_entry) == 1
   local status_line = ""
   if has_git_dir then
     local changed_count = 0

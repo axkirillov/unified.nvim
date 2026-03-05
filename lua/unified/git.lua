@@ -14,6 +14,12 @@ local function git_sync(args, cwd)
   return Job.await(args, { cwd = cwd, ignore_stderr = true })
 end
 
+--- Check whether a path has a .git entry (directory or file, as in worktrees).
+local function has_git_entry(dir)
+  local p = dir .. "/.git"
+  return vim.fn.isdirectory(p) == 1 or vim.fn.filereadable(p) == 1
+end
+
 local function find_git_root(path)
   local dir = vim.fn.isdirectory(path) == 1 and path or vim.fn.fnamemodify(path, ":h")
   local stdout, code = git_sync({ "git", "rev-parse", "--show-toplevel" }, dir)
@@ -22,7 +28,7 @@ local function find_git_root(path)
   end
   local current = dir
   for _ = 1, 10 do
-    if vim.fn.isdirectory(current .. "/.git") == 1 then
+    if has_git_entry(current) then
       return current
     end
     local parent = vim.fn.fnamemodify(current, ":h")

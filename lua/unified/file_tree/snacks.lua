@@ -24,7 +24,12 @@ function M.show(commit_hash)
     local git_root_cmd =
       string.format("cd %s && git rev-parse --show-toplevel 2>/dev/null", vim.fn.shellescape(file_path))
     local git_root = vim.trim(vim.fn.system(git_root_cmd))
-    if vim.v.shell_error == 0 and git_root ~= "" and vim.fn.isdirectory(git_root .. "/.git") == 1 then
+    local git_entry = git_root .. "/.git"
+    if
+      vim.v.shell_error == 0
+      and git_root ~= ""
+      and (vim.fn.isdirectory(git_entry) == 1 or vim.fn.filereadable(git_entry) == 1)
+    then
       root_dir = git_root
     end
   end

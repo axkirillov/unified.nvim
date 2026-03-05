@@ -44,13 +44,19 @@ function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
   if is_git_repo then
     local git_root_cmd = string.format("cd %s && git rev-parse --show-toplevel 2>/dev/null", vim.fn.shellescape(dir))
     local git_root = vim.trim(vim.fn.system(git_root_cmd))
-    if vim.v.shell_error == 0 and git_root ~= "" and vim.fn.isdirectory(git_root .. "/.git") == 1 then
+    local git_entry = git_root .. "/.git"
+    if
+      vim.v.shell_error == 0
+      and git_root ~= ""
+      and (vim.fn.isdirectory(git_entry) == 1 or vim.fn.filereadable(git_entry) == 1)
+    then
       root_dir = git_root
     else
       local check_dir = dir
       local max_depth = 10
       for _ = 1, max_depth do
-        if vim.fn.isdirectory(check_dir .. "/.git") == 1 then
+        local p = check_dir .. "/.git"
+        if vim.fn.isdirectory(p) == 1 or vim.fn.filereadable(p) == 1 then
           root_dir = check_dir
           break
         end

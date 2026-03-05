@@ -41,10 +41,11 @@ local function find_git_root(start_dir)
   if code == 0 and out and out ~= "" then
     return vim.trim(out)
   end
-  -- fallback: walk up to 10 dirs
+  -- fallback: walk up to 10 dirs (.git may be a file in worktrees)
   local current = start_dir
   for _ = 1, 10 do
-    if vim.fn.isdirectory(current .. "/.git") == 1 then
+    local p = current .. "/.git"
+    if vim.fn.isdirectory(p) == 1 or vim.fn.filereadable(p) == 1 then
       return current
     end
     local parent = vim.fn.fnamemodify(current, ":h")
