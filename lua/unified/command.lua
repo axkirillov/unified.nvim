@@ -91,15 +91,18 @@ M.run = function(args)
 end
 
 function M.reset()
-  local buffer = vim.api.nvim_get_current_buf()
   local config = require("unified.config")
   local ns_id = config.ns_id
   local hunk_store = require("unified.hunk_store")
 
-  vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
-  vim.fn.sign_unplace("unified_diff", { buffer = buffer })
-
-  hunk_store.clear(buffer)
+  -- Clear highlights, signs and hunk data from ALL buffers
+  for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.api.nvim_buf_is_valid(buf) then
+      vim.api.nvim_buf_clear_namespace(buf, ns_id, 0, -1)
+      vim.fn.sign_unplace("unified_diff", { buffer = buf })
+      hunk_store.clear(buf)
+    end
+  end
 
   local state = require("unified.state")
   if state.auto_refresh_augroup then
