@@ -122,10 +122,10 @@ function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
       if not vim.api.nvim_win_is_valid(win) then
         return
       end
-      vim.api.nvim_set_current_win(win)
       position_cursor_on_first_file(buf, win)
       -- Auto-open first file in the tree while keeping focus in the tree window
       if require("unified.config").values.file_tree.auto_open_first_file then
+        vim.api.nvim_set_current_win(win)
         local first_node
         local line_count = vim.api.nvim_buf_line_count(buf)
         local tree_state = require("unified.file_tree.state")
@@ -192,14 +192,12 @@ function M.show(commit_hash)
     -- The create function updates tree_state.buffer, but we also need to update global state
     global_state.file_tree_buf = new_buf -- Update global state reference
 
-    -- Focus the tree window
-    vim.api.nvim_set_current_win(tree_state.window)
-
     -- Position cursor on the first file in the updated tree
     position_cursor_on_first_file(new_buf, tree_state.window)
 
     -- Auto-open first file while keeping focus in the tree (diffview-like)
-    do
+    if require("unified.config").values.file_tree.auto_open_first_file then
+      vim.api.nvim_set_current_win(tree_state.window)
       local first_node
       local line_count = vim.api.nvim_buf_line_count(new_buf)
       local tree_state = require("unified.file_tree.state")
@@ -231,9 +229,15 @@ function M.show(commit_hash)
   if width > 0 and width < 1 then
     width = math.floor(vim.o.columns * width)
   end
-  vim.cmd("topleft " .. width .. "vsplit")
-  local tree_win = vim.api.nvim_get_current_win()
-  vim.api.nvim_win_set_buf(tree_win, tree_buf)
+  local tree_win = vim.api.nvim_open_win(tree_buf, false, {
+    split = "left",
+    width = width,
+  })
+  -- Move the new window to the far left, full editor height, to mimic
+  -- `:topleft vsplit`. win_execute keeps the user's window focused.
+  vim.fn.win_execute(tree_win, "wincmd H")
+  -- wincmd H may alter the width; reset it.
+  vim.api.nvim_win_set_width(tree_win, width)
   apply_tree_window_options(tree_win)
 
   -- Store window reference in tree state and global state
@@ -242,6 +246,13 @@ function M.show(commit_hash)
   global_state.file_tree_buf = tree_buf -- Keep global state updated too
 
   position_cursor_on_first_file(tree_buf, tree_win)
+
+  -- nvim_open_win above leaves focus on the user's window. When auto-open
+  -- is enabled we mirror the previous UX of jumping into the tree.
+  if config.values.file_tree.auto_open_first_file then
+    vim.api.nvim_set_current_win(tree_win)
+  end
+
   return true
 end
 
