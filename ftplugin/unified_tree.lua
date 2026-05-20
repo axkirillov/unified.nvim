@@ -4,15 +4,11 @@ vim.bo.swapfile = false
 vim.bo.bufhidden = "wipe"
 vim.bo.syntax = "unified_tree"
 
-vim.wo.cursorline = true
-vim.wo.statusline = "File Explorer"
-vim.wo.number = false
-vim.wo.relativenumber = false
-vim.wo.signcolumn = "no"
-vim.wo.winfixwidth = true
-vim.wo.foldenable = false
-vim.wo.list = false
-vim.wo.wrap = false
+-- Window-local options are applied via apply_tree_window_options in
+-- lua/unified/file_tree/init.lua. Setting them here would target whichever
+-- window happens to be current when the FileType event fires — which is the
+-- user's editing window, not the tree window (the tree window doesn't exist
+-- yet at that point).
 
 -- Local fallback to avoid errors if an older cached version of actions.lua is loaded
 local function unified_move_cursor_file_only(direction, count)

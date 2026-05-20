@@ -6,6 +6,18 @@ local render = require("unified.file_tree.render")
 local actions = require("unified.file_tree.actions")
 local position_cursor_on_first_file
 
+local function apply_tree_window_options(win)
+  vim.wo[win].winfixwidth = true
+  vim.wo[win].cursorline = true
+  vim.wo[win].statusline = "File Explorer"
+  vim.wo[win].number = false
+  vim.wo[win].relativenumber = false
+  vim.wo[win].signcolumn = "no"
+  vim.wo[win].foldenable = false
+  vim.wo[win].list = false
+  vim.wo[win].wrap = false
+end
+
 function M.setup()
   vim.api.nvim_create_autocmd("User", {
     pattern = "UnifiedBaseCommitUpdated",
@@ -113,7 +125,7 @@ function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
       vim.api.nvim_set_current_win(win)
       position_cursor_on_first_file(buf, win)
       -- Auto-open first file in the tree while keeping focus in the tree window
-      do
+      if require("unified.config").values.file_tree.auto_open_first_file then
         local first_node
         local line_count = vim.api.nvim_buf_line_count(buf)
         local tree_state = require("unified.file_tree.state")
@@ -222,6 +234,7 @@ function M.show(commit_hash)
   vim.cmd("topleft " .. width .. "vsplit")
   local tree_win = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(tree_win, tree_buf)
+  apply_tree_window_options(tree_win)
 
   -- Store window reference in tree state and global state
   tree_state.window = tree_win
