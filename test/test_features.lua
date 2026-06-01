@@ -17,6 +17,70 @@ function M.test_auto_refresh()
   return true
 end
 
+-- Regression: `auto_refresh = false` must make auto_refresh.setup a no-op
+-- (previously the config value was never consulted).
+function M.test_auto_refresh_disabled_is_noop()
+  local state = require("unified.state")
+  local auto_refresh = require("unified.auto_refresh")
+
+  if state.auto_refresh_augroup then
+    pcall(vim.api.nvim_del_augroup_by_id, state.auto_refresh_augroup)
+    state.auto_refresh_augroup = nil
+  end
+
+  require("unified").setup({ auto_refresh = false })
+
+  local buf = vim.api.nvim_create_buf(false, true)
+  auto_refresh.setup(buf)
+
+  assert(state.auto_refresh_augroup == nil, "Disabled auto-refresh must not create an augroup")
+
+  vim.api.nvim_buf_delete(buf, { force = true })
+  require("unified").setup({})
+  return true
+end
+
+-- Regression: each opened buffer keeps its own refresh autocmd (the old
+-- clear=true wipe meant only the last buffer refreshed), the augroup id is
+-- stored for teardown, and re-running setup does not duplicate autocmds.
+function M.test_auto_refresh_registers_per_buffer()
+  local state = require("unified.state")
+  local auto_refresh = require("unified.auto_refresh")
+
+  if state.auto_refresh_augroup then
+    pcall(vim.api.nvim_del_augroup_by_id, state.auto_refresh_augroup)
+    state.auto_refresh_augroup = nil
+  end
+
+  require("unified").setup({ auto_refresh = true })
+
+  local buf1 = vim.api.nvim_create_buf(false, true)
+  local buf2 = vim.api.nvim_create_buf(false, true)
+
+  auto_refresh.setup(buf1)
+  assert(state.auto_refresh_augroup ~= nil, "Enabled auto-refresh must store the augroup id for teardown")
+  local group = state.auto_refresh_augroup
+
+  auto_refresh.setup(buf2)
+  assert(state.auto_refresh_augroup == group, "Augroup id must remain stable across setups")
+
+  local au1 = vim.api.nvim_get_autocmds({ group = group, buffer = buf1 })
+  local au2 = vim.api.nvim_get_autocmds({ group = group, buffer = buf2 })
+  assert(#au1 > 0, "buf1 must keep its autocmd after buf2 is set up")
+  assert(#au2 > 0, "buf2 must have its own autocmd")
+
+  auto_refresh.setup(buf1)
+  local au1_again = vim.api.nvim_get_autocmds({ group = group, buffer = buf1 })
+  assert(#au1_again == #au1, "Re-running setup for a buffer must not duplicate its autocmds")
+
+  pcall(vim.api.nvim_del_augroup_by_id, group)
+  state.auto_refresh_augroup = nil
+  vim.api.nvim_buf_delete(buf1, { force = true })
+  vim.api.nvim_buf_delete(buf2, { force = true })
+  require("unified").setup({})
+  return true
+end
+
 function M.test_diff_against_commit()
   local repo = utils.create_git_repo()
   if not repo then

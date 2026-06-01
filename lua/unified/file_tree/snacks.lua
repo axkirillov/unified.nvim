@@ -9,7 +9,7 @@ function M.show(commit_hash)
   local ok, snacks = pcall(require, "snacks")
   if not ok then
     vim.notify(
-      "Snacks.nvim is not installed. Please install folke/snacks.nvim or set file_tree.backend = 'default'",
+      "Snacks.nvim is not installed. Install folke/snacks.nvim, or use the default file tree by omitting the -s flag.",
       vim.log.levels.ERROR
     )
     return false

@@ -140,18 +140,14 @@ function M.show_git_diff_against_commit(commit, buf)
     return false
   end
 
-  -- 1) resolve ref (async → simple wait loop)
-  local hash
-  local done = false
-  M.resolve_commit_hash(commit, root, function(h)
-    hash, done = h, true
-  end)
-  while not done do
-    vim.wait(10)
-  end
-  if not hash then
+  -- 1) resolve ref. git_sync is coroutine-aware: it blocks when called
+  -- synchronously (direct calls / tests) and yields when run inside a coroutine
+  -- (the auto-refresh hot path), so this never busy-waits on the UI thread.
+  local rev_out, rev_code = git_sync({ "git", "rev-parse", "--verify", commit }, root)
+  if rev_code ~= 0 then
     return false
   end
+  local hash = vim.trim(rev_out)
 
   -- 2) gather contents
   local git_blob = M.get_git_file_content(abs_path, hash)
@@ -191,6 +187,7 @@ function M.show_git_diff_against_commit(commit, buf)
   local stdout, code = git_sync({ "git", "diff", "--no-index", "--text", tmp_git, tmp_cur }, root)
   vim.fn.delete(tmp_git)
   vim.fn.delete(tmp_cur)
+  stdout = stdout or ""
 
   if stdout:match("^Binary files") then
     ui_binary(buf)
@@ -200,13 +197,8 @@ function M.show_git_diff_against_commit(commit, buf)
     return false
   end -- diff failed
 
-  -- strip noisy headers for clean parsing
-  stdout = stdout
-    :gsub("diff %-%-git [^\\n]+\\n", "")
-    :gsub("index [^\\n]+\\n", "")
-    :gsub("%-%-%- [^\\n]+\\n", "")
-    :gsub("%+%+%+ [^\\n]+\\n", "")
-
+  -- Header lines (diff --git / index / --- / +++) precede the first @@ and are
+  -- ignored by Diff.parse_diff, so no header stripping is needed here.
   ui_inline(buf, stdout)
   return true
 end

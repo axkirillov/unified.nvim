@@ -51,4 +51,27 @@ function M.debounce(func, delay_ms)
   end
 end
 
+--- Runs `fn` as a fire-and-forget coroutine.
+---
+--- Any `job.await` calls made inside `fn` will execute asynchronously
+--- (non-blocking) instead of blocking the UI thread, because `job.await`
+--- detects it is running inside a coroutine and yields. Errors raised inside
+--- `fn` are reported via `vim.notify` and never propagate to the caller.
+---
+--- @param fn function The function to run inside a coroutine.
+function M.run(fn)
+  assert(type(fn) == "function", "async.run: 'fn' must be a function.")
+
+  local co = coroutine.create(function()
+    local ok, err = pcall(fn)
+    if not ok then
+      vim.schedule(function()
+        vim.notify("Unified: " .. tostring(err), vim.log.levels.ERROR)
+      end)
+    end
+  end)
+
+  coroutine.resume(co)
+end
+
 return M

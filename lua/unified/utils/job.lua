@@ -17,6 +17,25 @@ local function _spawn(cmd, opts, on_exit)
   end)
 end
 
+-- internal: build a blocking shell command string, honoring opts.cwd/opts.env.
+-- Only used on the legacy (pre-0.10) path that lacks vim.system().
+local function build_shell_command(cmd, opts)
+  local exec_cmd = type(cmd) == "table" and table.concat(vim.tbl_map(vim.fn.shellescape, cmd), " ") or cmd
+  if opts then
+    if opts.env then
+      local env_parts = {}
+      for k, v in pairs(opts.env) do
+        table.insert(env_parts, ("%s=%s"):format(k, vim.fn.shellescape(v)))
+      end
+      exec_cmd = ("env %s %s"):format(table.concat(env_parts, " "), exec_cmd)
+    end
+    if opts.cwd then
+      exec_cmd = ("cd %s && %s"):format(vim.fn.shellescape(opts.cwd), exec_cmd)
+    end
+  end
+  return exec_cmd
+end
+
 ---@param cmd  (string|string[] ) command
 ---@param opts table|nil           { cwd = <dir>, env = {...}, ... }
 ---@param cb   fun(stdout, code, stderr)|nil
@@ -24,21 +43,7 @@ function Job.run(cmd, opts, cb)
   if vim.system then -- 0.10+
     return _spawn(cmd, opts, cb or function() end)
   else
-    local exec_cmd = type(cmd) == "table" and table.concat(vim.tbl_map(vim.fn.shellescape, cmd), " ") or cmd
-
-    local final_cmd = exec_cmd
-    if opts then
-      if opts.env then
-        local env_parts = {}
-        for k, v in pairs(opts.env) do
-          table.insert(env_parts, ("%s=%s"):format(k, vim.fn.shellescape(v)))
-        end
-        final_cmd = ("env %s %s"):format(table.concat(env_parts, " "), final_cmd)
-      end
-      if opts.cwd then
-        final_cmd = ("cd %s && %s"):format(vim.fn.shellescape(opts.cwd), final_cmd)
-      end
-    end
+    local final_cmd = build_shell_command(cmd, opts)
     local out = vim.fn.system(final_cmd)
     local code = vim.v.shell_error
     if cb then
@@ -50,7 +55,8 @@ end
 
 --- Await helper (sugar for synchronous code paths that expect a return) ------
 --- Must be called from within a coroutine for async behavior.
---- Falls back to blocking vim.fn.system if called outside a coroutine.
+--- Falls back to a blocking vim.system():wait() if called outside a coroutine,
+--- which still honors opts (cwd/env).
 ---@param cmd  (string|string[] ) command
 ---@param opts table|nil           { cwd = <dir>, env = {...}, ... }
 ---@return string|nil stdout       stdout if successful, nil otherwise
@@ -58,19 +64,20 @@ end
 ---@return string|nil stderr       stderr if available, nil otherwise
 function Job.await(cmd, opts)
   if not vim.system then -- pre-0.10, nothing to await
-    local exec_cmd = type(cmd) == "table" and table.concat(vim.tbl_map(vim.fn.shellescape, cmd), " ") or cmd
-    local out = vim.fn.system(exec_cmd)
-    local code = vim.v.shell_error
-    return out, code, "" -- Return empty stderr for consistency
+    local out = vim.fn.system(build_shell_command(cmd, opts))
+    return out, vim.v.shell_error, ""
   end
 
   local caller_co = coroutine.running()
-  -- If we're not inside a coroutine, run the command synchronously (blocking)
+  -- If we're not inside a coroutine, run synchronously (blocking) but still
+  -- honor opts.cwd/opts.env via vim.system():wait().
   if not caller_co then
-    local exec_cmd = type(cmd) == "table" and table.concat(vim.tbl_map(vim.fn.shellescape, cmd), " ") or cmd
-    local out = vim.fn.system(exec_cmd)
-    local code = vim.v.shell_error
-    return out, code, "" -- keep the same return shape
+    if type(cmd) == "table" then
+      local res = vim.system(cmd, vim.tbl_extend("force", { text = true }, opts or {})):wait()
+      return res.stdout or "", res.code, res.stderr or ""
+    end
+    local out = vim.fn.system(build_shell_command(cmd, opts))
+    return out, vim.v.shell_error, ""
   end
 
   local results = {}
