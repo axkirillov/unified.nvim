@@ -145,4 +145,52 @@ function M.test_picker_cancel_shows_no_diff()
   return true
 end
 
+-- Regression: the picker must diff the buffer that was focused when it was opened,
+-- not whatever happens to be current when the async list_commits/selection chain
+-- resolves a tick later. Switching buffers while the picker is pending used to bind
+-- the diff to the wrong buffer.
+function M.test_picker_diffs_origin_buffer_not_current_at_callback()
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  require("unified.config").setup({ file_tree = { enabled = false } })
+
+  local path_a = utils.create_and_commit_file(repo, "a.txt", { "a1", "a2" }, "commit a")
+  local path_b = utils.create_and_commit_file(repo, "b.txt", { "b1", "b2" }, "commit b")
+
+  -- Two modified buffers. A is the one focused when the picker is invoked.
+  vim.cmd("edit " .. path_b)
+  vim.api.nvim_buf_set_lines(0, 0, 1, false, { "modified b1" })
+  local buf_b = vim.api.nvim_get_current_buf()
+
+  vim.cmd("edit " .. path_a)
+  vim.api.nvim_buf_set_lines(0, 0, 1, false, { "modified a1" })
+  local buf_a = vim.api.nvim_get_current_buf()
+
+  local orig_select = vim.ui.select
+  vim.ui.select = function(items, _, on_choice)
+    on_choice(items[1])
+  end
+
+  require("unified.command").run("") -- opens picker; list_commits resolves on a later tick
+
+  -- Before that async callback fires, the current buffer changes to B. The picker
+  -- must still diff A (its origin), not B.
+  vim.api.nvim_set_current_buf(buf_b)
+
+  local a_diffed = wait_until(function()
+    return buffer_has_diff(buf_a)
+  end)
+
+  vim.ui.select = orig_select
+
+  assert(a_diffed, "picker must diff the buffer it was opened from (A)")
+  assert(not buffer_has_diff(buf_b), "picker must not diff the buffer that became current later (B)")
+
+  utils.cleanup_git_repo(repo)
+  return true
+end
+
 return M

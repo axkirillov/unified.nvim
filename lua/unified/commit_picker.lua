@@ -18,6 +18,16 @@ function M.pick()
     return
   end
 
+  -- Capture the window and buffer the picker is invoked from. list_commits and the
+  -- vim.ui.select handler both resolve on later ticks, by which point the current
+  -- buffer may have changed (focus moved, or a fuzzy picker made its own buffer
+  -- current). Without this the diff would bind to whatever is current when the async
+  -- chain finishes -- the wrong file, or a nameless picker buffer that diffs nothing.
+  -- The picker must behave exactly like `:Unified <hash>` on the originally-focused
+  -- buffer.
+  local origin_win = vim.api.nvim_get_current_win()
+  local origin_buf = vim.api.nvim_get_current_buf()
+
   git.list_commits(cwd, LIMIT, function(commits)
     if not commits then
       vim.api.nvim_echo({ { "No commits to pick from.", "WarningMsg" } }, false, {})
@@ -32,6 +42,13 @@ function M.pick()
     }, function(choice)
       if not choice then
         return
+      end
+      -- Re-establish the origin window/buffer before diffing (see above).
+      if vim.api.nvim_win_is_valid(origin_win) then
+        vim.api.nvim_set_current_win(origin_win)
+        if vim.api.nvim_buf_is_valid(origin_buf) and vim.api.nvim_win_get_buf(origin_win) ~= origin_buf then
+          vim.api.nvim_win_set_buf(origin_win, origin_buf)
+        end
       end
       require("unified.command").run(choice.hash)
     end)
