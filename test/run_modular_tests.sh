@@ -22,6 +22,15 @@ if ! command -v nvim >/dev/null 2>&1; then
   exit 127
 fi
 
+# The suite spins up throwaway git repos in tempdirs and runs `git` inside them. When
+# the suite is launched from within a git operation -- notably this project's
+# pre-commit hook -- git exports GIT_DIR, GIT_INDEX_FILE and friends, and those `git`
+# calls would inherit them and operate on *this* repo instead of the temp one, failing
+# every history-dependent test. Scrub them so each temp repo is discovered from its own
+# working directory. (Unsetting an already-unset var is a no-op, safe under `set -u`.)
+unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX GIT_OBJECT_DIRECTORY \
+  GIT_COMMON_DIR GIT_NAMESPACE GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_REFLOG_ACTION
+
 # Run modular tests
 if [ -n "$1" ]; then
   # Handle special arguments
