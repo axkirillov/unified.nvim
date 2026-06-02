@@ -414,4 +414,36 @@ function M.test_deleted_file_view_does_not_clobber_modified_buffer()
   return true
 end
 
+-- Regression: an unmodified, committed *empty* file (0 bytes) must show no diff.
+-- Neovim represents an empty buffer as a single empty line with 'endofline' set, so
+-- buffer_text used to yield "\n" and diff it against the empty blob -- a spurious
+-- change on common empty files (.gitkeep, empty __init__.py, ...).
+function M.test_unmodified_empty_file_shows_no_diff()
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  require("unified").setup({ file_tree = { enabled = false } })
+
+  -- writefile({}) commits a true 0-byte file.
+  local path = utils.create_and_commit_file(repo, "empty.txt", {}, "add empty file")
+
+  vim.cmd("edit " .. path)
+  local buffer = vim.api.nvim_get_current_buf()
+
+  require("unified.git").show_git_diff_against_commit("HEAD", buffer)
+
+  assert(
+    not require("unified.diff").is_diff_displayed(buffer),
+    "an unmodified empty file must not show a diff against its empty blob"
+  )
+
+  require("unified.command").reset()
+  vim.cmd("bdelete!")
+  require("unified").setup({})
+  utils.cleanup_git_repo(repo)
+  return true
+end
+
 return M

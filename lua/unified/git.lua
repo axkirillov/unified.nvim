@@ -50,15 +50,6 @@ local function write_tmp(content)
   return tmp
 end
 
-local function buffer_text(buf)
-  local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
-  local text = table.concat(lines, "\n")
-  if vim.bo[buf].endofline then
-    text = text .. "\n"
-  end
-  return text
-end
-
 -- A buffer counts as "empty" when it holds no real content: a single empty line,
 -- which is how Neovim represents both a brand-new buffer and one loaded from a
 -- path that does not exist on disk.
@@ -68,6 +59,23 @@ local function buffer_is_empty(buf)
   end
   local first = vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1]
   return first == nil or first == ""
+end
+
+local function buffer_text(buf)
+  -- An empty buffer represents zero bytes, not a lone newline. Neovim shows both a
+  -- 0-byte file and a single-"\n" file as one empty line with 'endofline' set, so the
+  -- two are indistinguishable here -- but empty files (.gitkeep, empty __init__.py)
+  -- are common and single-blank-line files are not, so map empty to "". Without this
+  -- an unmodified empty file diffs against its empty blob and shows a spurious change.
+  if buffer_is_empty(buf) then
+    return ""
+  end
+  local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+  local text = table.concat(lines, "\n")
+  if vim.bo[buf].endofline then
+    text = text .. "\n"
+  end
+  return text
 end
 
 local function clear_diff(buf)
