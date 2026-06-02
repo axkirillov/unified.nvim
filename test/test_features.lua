@@ -81,6 +81,53 @@ function M.test_auto_refresh_registers_per_buffer()
   return true
 end
 
+-- Regression (#26): a debounce armed by a buffer edit must not repaint the diff
+-- after `:Unified reset`. vim.defer_fn's timer outlives the deleted augroup, so
+-- the debounced refresh has to bail when the view is no longer active.
+function M.test_reset_cancels_pending_auto_refresh()
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  -- Keep the tree out of the way; we only care about the inline diff lifecycle.
+  require("unified").setup({ file_tree = { enabled = false } })
+
+  local test_path = utils.create_and_commit_file(repo, "test.txt", { "line 1", "line 2", "line 3" }, "Initial commit")
+
+  vim.cmd("edit " .. test_path)
+  local buffer = vim.api.nvim_get_current_buf()
+  vim.api.nvim_buf_set_lines(buffer, 0, 1, false, { "modified line 1" })
+
+  require("unified.command").run("HEAD")
+
+  local diff = require("unified.diff")
+  assert(
+    vim.wait(1000, function()
+      return diff.is_diff_displayed(buffer)
+    end),
+    "diff should render before we reset"
+  )
+
+  -- Arm the real debounce the way a keystroke would, then immediately reset.
+  vim.api.nvim_exec_autocmds("TextChanged", { buffer = buffer })
+  require("unified.command").reset()
+
+  assert(not diff.is_diff_displayed(buffer), "reset should clear the diff immediately")
+
+  -- Let the pending debounce timer (300ms) fire; the diff must stay gone.
+  vim.wait(500, function()
+    return false
+  end)
+
+  assert(not diff.is_diff_displayed(buffer), "a pending auto-refresh must not resurrect the diff after reset (#26)")
+
+  vim.cmd("bdelete!")
+  require("unified").setup({})
+  utils.cleanup_git_repo(repo)
+  return true
+end
+
 function M.test_diff_against_commit()
   local repo = utils.create_git_repo()
   if not repo then

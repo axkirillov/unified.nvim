@@ -36,6 +36,12 @@ function M.setup(buffer)
 
   local debounced_show_diff = async.debounce(function()
     local state = require("unified.state")
+    -- If the view was reset while this debounce was pending, do nothing. The
+    -- augroup is gone, but vim.defer_fn's timer still fires, and re-rendering
+    -- here would resurrect a diff the user just cleared with `:Unified reset`.
+    if not state.is_active() then
+      return
+    end
     local ok, commit = pcall(state.get_commit_base)
     if not ok then
       return
