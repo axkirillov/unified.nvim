@@ -35,4 +35,26 @@ function M.previous_hunk()
   jump(false)
 end
 
+-- Move `win`'s cursor to the first changed hunk in `buf` and center the view.
+-- `win`/`buf` default to the current window/buffer; passing an explicit window
+-- lets callers scroll a buffer shown elsewhere (e.g. the tree scrolling the main
+-- window) without stealing focus. No-op when the buffer has no hunks. This is a
+-- plain primitive: callers gate it on the `jump_to_first_hunk` option.
+function M.jump_to_first_hunk(win, buf)
+  win = win or vim.api.nvim_get_current_win()
+  if not vim.api.nvim_win_is_valid(win) then
+    return
+  end
+  buf = buf or vim.api.nvim_win_get_buf(win)
+  local hunks = hunk_store.get(buf)
+  if not hunks or #hunks == 0 then
+    return
+  end
+  local target = math.min(hunks[1], vim.api.nvim_buf_line_count(buf))
+  pcall(vim.api.nvim_win_set_cursor, win, { target, 0 })
+  pcall(vim.api.nvim_win_call, win, function()
+    vim.cmd.normal({ "zz", bang = true })
+  end)
+end
+
 return M

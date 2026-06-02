@@ -57,23 +57,10 @@ local function open_file_node(node)
   local auto_refresh = require("unified.auto_refresh")
   auto_refresh.setup(target_buf_id)
 
-  -- Scroll opened buffer to first git hunk without changing focus (diffview-like)
-  local hunk_store = require("unified.hunk_store")
-  local hunks = hunk_store.get(target_buf_id)
-  if hunks and #hunks > 0 then
-    local first = hunks[1]
-    local line_count = vim.api.nvim_buf_line_count(target_buf_id)
-    if first > line_count then
-      first = line_count
-    end
-    if vim.api.nvim_win_is_valid(win) then
-      -- Move the other window's cursor
-      pcall(vim.api.nvim_win_set_cursor, win, { first, 0 })
-      -- Center the view in that window, without stealing focus
-      pcall(vim.api.nvim_win_call, win, function()
-        vim.cmd.normal({ "zz", bang = true })
-      end)
-    end
+  -- Scroll the opened buffer to its first hunk without stealing focus from the
+  -- tree (diffview-like). The blocking diff above has populated the hunk store.
+  if require("unified.config").values.jump_to_first_hunk then
+    require("unified.navigation").jump_to_first_hunk(win, target_buf_id)
   end
 end
 

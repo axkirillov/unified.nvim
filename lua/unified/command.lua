@@ -86,8 +86,16 @@ M.run = function(args)
       -- side panel for navigation only; it no longer drives which file is diffed.
       -- Show the current buffer's diff now, while it is still focused (set_commit_base
       -- below may move the cursor into the tree when file_tree.focus is set).
+      local cur_win = vim.api.nvim_get_current_win()
+      local cur_buf = vim.api.nvim_get_current_buf()
       require("unified.diff").show_current(commit_ref)
-      require("unified.auto_refresh").setup(vim.api.nvim_get_current_buf())
+      require("unified.auto_refresh").setup(cur_buf)
+
+      -- The blocking diff above has populated the hunk store, so land the cursor
+      -- on the first hunk now, before set_commit_base may move focus to the tree.
+      if require("unified.config").values.jump_to_first_hunk then
+        require("unified.navigation").jump_to_first_hunk(cur_win, cur_buf)
+      end
 
       -- This triggers the autocmd which calls file_tree.show
       state.set_commit_base(commit_ref)

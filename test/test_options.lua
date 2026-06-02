@@ -1,5 +1,5 @@
--- Tests for configuration options: file_tree.enabled and file_tree.focus,
--- plus the reset/active-state contract that toggle() relies on.
+-- Tests for configuration options: file_tree.enabled, file_tree.focus and
+-- jump_to_first_hunk, plus the reset/active-state contract that toggle() relies on.
 local M = {}
 
 local utils = require("test.test_utils")
@@ -44,6 +44,20 @@ local function open_modified_file(repo)
   )
   vim.cmd("edit " .. path)
   vim.api.nvim_buf_set_lines(0, 0, 1, false, { "modified line 1" })
+  return path
+end
+
+-- Open a file whose only change sits well below the top, with the cursor parked
+-- at line 1. Lets a test observe whether :Unified jumps the cursor to the hunk.
+local function open_file_with_late_hunk(repo)
+  local lines = {}
+  for i = 1, 10 do
+    lines[i] = "line " .. i
+  end
+  local path = utils.create_and_commit_file(repo, "test.txt", lines, "Initial commit")
+  vim.cmd("edit " .. path)
+  vim.api.nvim_buf_set_lines(0, 6, 7, false, { "modified line 7" })
+  vim.api.nvim_win_set_cursor(0, { 1, 0 })
   return path
 end
 
@@ -166,6 +180,70 @@ function M.test_focus_true_lands_in_tree_but_still_diffs_current()
     end),
     "focus should move into the tree when focus = true"
   )
+
+  utils.cleanup_git_repo(repo)
+  return true
+end
+
+-- jump_to_first_hunk = true (default): :Unified on the current buffer lands the
+-- cursor on the first changed hunk, even though the change is below the top.
+function M.test_jump_to_first_hunk_moves_cursor_in_current_buffer()
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  require("unified.config").setup({})
+
+  open_file_with_late_hunk(repo)
+  local buffer = vim.api.nvim_get_current_buf()
+  local win = vim.api.nvim_get_current_win()
+
+  require("unified.command").run("HEAD")
+
+  assert(
+    wait_until(function()
+      return buffer_has_diff(buffer)
+    end),
+    "current buffer should show its diff"
+  )
+
+  local first = require("unified.hunk_store").get(buffer)[1]
+  assert(first and first > 1, "test setup: the first hunk should be below the top of the file")
+  assert(
+    vim.api.nvim_win_get_cursor(win)[1] == first,
+    "cursor should jump to the first hunk line when jump_to_first_hunk is enabled"
+  )
+
+  utils.cleanup_git_repo(repo)
+  return true
+end
+
+-- jump_to_first_hunk = false: the diff is shown but the cursor stays where it was.
+function M.test_jump_to_first_hunk_false_keeps_cursor()
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  require("unified.config").setup({ jump_to_first_hunk = false })
+
+  open_file_with_late_hunk(repo)
+  local buffer = vim.api.nvim_get_current_buf()
+  local win = vim.api.nvim_get_current_win()
+
+  require("unified.command").run("HEAD")
+
+  assert(
+    wait_until(function()
+      return buffer_has_diff(buffer)
+    end),
+    "diff should still be shown when jump_to_first_hunk is disabled"
+  )
+
+  local first = require("unified.hunk_store").get(buffer)[1]
+  assert(first and first > 1, "test setup: the first hunk should be below the top of the file")
+  assert(vim.api.nvim_win_get_cursor(win)[1] == 1, "cursor should stay put when jump_to_first_hunk is disabled")
 
   utils.cleanup_git_repo(repo)
   return true

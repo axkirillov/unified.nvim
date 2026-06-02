@@ -69,6 +69,10 @@ require('unified').setup({
     change = "~",
   },
   auto_refresh = true, -- Whether to automatically refresh diff when buffer changes
+  -- When true, showing a diff moves the cursor to the first changed hunk -- both
+  -- when opening a file from the tree and when :Unified runs on the current
+  -- buffer. Set false to leave the cursor where it is.
+  jump_to_first_hunk = true,
   file_tree = {
     enabled = true, -- When false, :Unified does not open the tree; the diff is shown for the current buffer.
     width = 30, -- Width of the tree window (columns, or a 0-1 fraction of the editor width)

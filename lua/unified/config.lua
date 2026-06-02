@@ -18,6 +18,10 @@ M.defaults = {
     change = "~",
   },
   auto_refresh = true, -- Whether to auto-refresh diff when buffer changes
+  -- When true, showing a diff moves the cursor to the first changed hunk: both
+  -- when a file is opened from the tree and when :Unified runs on the current
+  -- buffer. Set false to leave the cursor where it is.
+  jump_to_first_hunk = true,
   file_tree = {
     enabled = true, -- When false, :Unified never opens the file tree; the diff is shown for the current buffer.
     width = 30, -- Width of the file tree window (columns, or 0-1 for relative)
