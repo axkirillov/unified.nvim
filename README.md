@@ -194,30 +194,7 @@ Behavior notes:
 
 ## Development
 
-### Running Tests
-
-To run all automated tests:
-
-```bash
-make tests
-```
-
-To run a specific test function:
-
-```bash
-make test TEST=test_file_name.test_function_name
-```
-
-### Formatting
-
-Code is formatted with [stylua](https://github.com/JohnnyMorganz/StyLua), pinned via the Nix flake so everyone uses the same version. With [Nix](https://nixos.org) installed (flakes enabled):
-
-```bash
-make format   # format lua/, test/ and example/ in place
-make lint     # verify formatting without modifying files
-```
-
-Both call `nix run .#stylua`, so no separate stylua install is needed. `nix develop` drops you into a shell with the tooling on `PATH`. If you'd rather not use Nix, `make format-docker` / `make lint-docker` run the same stylua inside a container (requires Docker). A git `pre-commit` hook runs `make format` and the tests automatically.
+See [development.md](development.md) for how to run the tests and format the code.
 
 ## License
 

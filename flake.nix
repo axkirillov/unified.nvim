@@ -15,7 +15,7 @@
       forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
     in
     {
-      # Pinned stylua used by `make format` / `make lint` and the pre-commit hook:
+      # Pinned stylua (see development.md). Used directly and by the pre-commit hook:
       #   nix run .#stylua -- --check lua/ test/ example/
       packages = forAllSystems (pkgs: {
         stylua = pkgs.stylua;
