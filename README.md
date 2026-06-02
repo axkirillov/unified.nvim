@@ -70,8 +70,12 @@ require('unified').setup({
   },
   auto_refresh = true, -- Whether to automatically refresh diff when buffer changes
   file_tree = {
-    width = 0.5, -- Width of the file tree window
+    enabled = true, -- When false, :Unified does not open the tree; the diff is shown for the current buffer.
+    width = 30, -- Width of the tree window (columns, or a 0-1 fraction of the editor width)
     filename_first = true, -- Show filename before directory path (Snacks backend only)
+    -- When true, :Unified moves the cursor into the tree on open.
+    -- When false, focus stays in your buffer. Either way the current buffer's diff is shown.
+    focus = false,
   },
 })
 ```
@@ -130,7 +134,7 @@ When the default file tree is open, you can use the following keymaps:
   * `R`: Refresh the file tree.
   * `?`: Show a help dialog.
 
-When the file tree opens, the first file is automatically opened in the main window.
+`:Unified` shows the diff for the buffer you're in; the tree is a side panel for navigating to other changed files. Set `file_tree.focus = true` if you'd rather have the cursor land in the tree when it opens.
 
 The file tree displays the Git status of each file:
 

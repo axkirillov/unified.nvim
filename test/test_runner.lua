@@ -10,6 +10,7 @@ local test_multiple_lines = require("test.test_multiple_lines")
 local test_file_tree = require("test.test_file_tree")
 local test_hunk_management = require("test.test_hunk_management")
 local test_hunk_actions = require("test.test_hunk_actions")
+local test_options = require("test.test_options")
 -- Helper to run a group of tests
 local function run_test_group(group, group_name)
   local function is_test_function(name)
@@ -73,6 +74,7 @@ function M.run_all_tests()
     { name = "test_file_tree", module = test_file_tree },
     { name = "test_hunk_management", module = test_hunk_management },
     { name = "test_hunk_actions", module = test_hunk_actions },
+    { name = "test_options", module = test_options },
   }
 
   local all_results = {}
@@ -172,6 +174,7 @@ function M.run_test(test_name)
     test_file_tree = test_file_tree,
     test_hunk_management = test_hunk_management,
     test_hunk_actions = test_hunk_actions,
+    test_options = test_options,
   }
 
   local group = groups[group_name]

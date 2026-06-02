@@ -27,7 +27,7 @@ function M.setup()
 
       if backend == "snacks" then
         require("unified.file_tree.snacks").show(commit_hash)
-      else
+      elseif require("unified.config").values.file_tree.enabled then
         M.show(commit_hash)
       end
     end,
@@ -123,23 +123,6 @@ function M.create_file_tree_buffer(buffer_path, diff_only, commit_ref_arg)
         return
       end
       position_cursor_on_first_file(buf, win)
-      -- Auto-open first file in the tree while keeping focus in the tree window
-      if require("unified.config").values.file_tree.auto_open_first_file then
-        vim.api.nvim_set_current_win(win)
-        local first_node
-        local line_count = vim.api.nvim_buf_line_count(buf)
-        local tree_state = require("unified.file_tree.state")
-        for i = 3, line_count - 1 do
-          local n = tree_state.line_to_node[i]
-          if n and not n.is_dir then
-            first_node = n
-            break
-          end
-        end
-        if first_node then
-          actions.open_file_node(first_node)
-        end
-      end
     end)
   end)
 
@@ -195,22 +178,9 @@ function M.show(commit_hash)
     -- Position cursor on the first file in the updated tree
     position_cursor_on_first_file(new_buf, tree_state.window)
 
-    -- Auto-open first file while keeping focus in the tree (diffview-like)
-    if require("unified.config").values.file_tree.auto_open_first_file then
+    -- Move the cursor into the tree only when the user opted into it.
+    if require("unified.config").values.file_tree.focus then
       vim.api.nvim_set_current_win(tree_state.window)
-      local first_node
-      local line_count = vim.api.nvim_buf_line_count(new_buf)
-      local tree_state = require("unified.file_tree.state")
-      for i = 3, line_count - 1 do
-        local n = tree_state.line_to_node[i]
-        if n and not n.is_dir then
-          first_node = n
-          break
-        end
-      end
-      if first_node then
-        actions.open_file_node(first_node)
-      end
     end
 
     return true
@@ -247,9 +217,10 @@ function M.show(commit_hash)
 
   position_cursor_on_first_file(tree_buf, tree_win)
 
-  -- nvim_open_win above leaves focus on the user's window. When auto-open
-  -- is enabled we mirror the previous UX of jumping into the tree.
-  if config.values.file_tree.auto_open_first_file then
+  -- nvim_open_win above leaves focus on the user's window. Move the cursor into
+  -- the tree only when the user opted into it; otherwise they keep working in
+  -- their buffer with its diff already shown.
+  if config.values.file_tree.focus then
     vim.api.nvim_set_current_win(tree_win)
   end
 

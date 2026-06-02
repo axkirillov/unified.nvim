@@ -82,6 +82,13 @@ M.run = function(args)
       state.set_active(true)
       state.main_win = vim.api.nvim_get_current_win()
 
+      -- The inline diff always follows the buffer you are in. The file tree is a
+      -- side panel for navigation only; it no longer drives which file is diffed.
+      -- Show the current buffer's diff now, while it is still focused (set_commit_base
+      -- below may move the cursor into the tree when file_tree.focus is set).
+      require("unified.diff").show_current(commit_ref)
+      require("unified.auto_refresh").setup(vim.api.nvim_get_current_buf())
+
       -- This triggers the autocmd which calls file_tree.show
       state.set_commit_base(commit_ref)
     end)
@@ -110,19 +117,21 @@ function M.reset()
     state.auto_refresh_augroup = nil
   end
 
+  -- Close the tree window if one is still open. This window close is
+  -- conditional, but the state teardown below is NOT: the tree may already have
+  -- been closed (e.g. via `q`) while the inline diff is still active. Previously
+  -- the early returns here skipped set_active(false), leaving the plugin stuck
+  -- "active" so toggle() could never turn the diff back on.
   local windows = vim.api.nvim_list_wins()
-  if not state.file_tree_win or not vim.api.nvim_win_is_valid(state.file_tree_win) then
-    return
+  if state.file_tree_win and vim.api.nvim_win_is_valid(state.file_tree_win) and #windows > 1 then
+    vim.api.nvim_win_close(state.file_tree_win, true)
   end
-
-  if #windows == 1 then
-    return
-  end
-
-  vim.api.nvim_win_close(state.file_tree_win, true)
-
+  -- Always drop the tree references, even if the window was already gone (closed
+  -- via `q`) or we kept it as the last window. A dangling handle would make the
+  -- next :Unified think a tree still exists and try to reuse it.
   state.file_tree_win = nil
   state.file_tree_buf = nil
+
   state.main_win = nil
   state.set_active(false)
   state.set_backend("default")

@@ -74,6 +74,17 @@ require('unified').setup({
     change = "~",
   },
   auto_refresh = true, -- Whether to automatically refresh diff when buffer changes
+  file_tree = {
+    -- When false, :Unified does not open the file tree and instead shows the
+    -- diff for the current buffer. Useful if you only want inline diffs.
+    enabled = true,
+    width = 30, -- Width of the tree window (columns, or a 0-1 fraction of the editor width)
+    filename_first = true, -- Show filename before directory path (Snacks backend only)
+    -- When true, :Unified moves the cursor into the tree on open. When false,
+    -- focus stays in the buffer you are in. The current buffer's diff is shown
+    -- either way.
+    focus = false,
+  },
 })
 <
 
