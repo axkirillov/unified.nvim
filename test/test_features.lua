@@ -332,4 +332,50 @@ function M.test_symbolic_ref_follows_head_after_commit()
   return true
 end
 
+-- Regression: the default backend must resolve the ref against the *buffer's*
+-- git root, the way the inline diff does -- not Neovim's cwd. Launching nvim
+-- from a non-repo directory (or a different repo) used to make `:Unified HEAD`
+-- fail to resolve HEAD even though the buffer sat in a perfectly good repo.
+function M.test_default_backend_resolves_ref_against_buffer_repo()
+  local original_cwd = vim.fn.getcwd()
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  require("unified").setup({ file_tree = { enabled = false } })
+
+  local test_path = utils.create_and_commit_file(repo, "test.txt", { "line 1", "line 2", "line 3" }, "Initial commit")
+
+  -- Open and modify the buffer while cwd is still the repo, so its name resolves
+  -- to an absolute path before we move cwd elsewhere.
+  vim.cmd("edit " .. test_path)
+  local buffer = vim.api.nvim_get_current_buf()
+  vim.api.nvim_buf_set_lines(buffer, 0, 1, false, { "modified line 1" })
+
+  -- Move nvim's cwd out of the repo, into a fresh directory that is not a git
+  -- repo. Resolving HEAD here would fail; resolving it in the buffer's repo works.
+  local outside = vim.fn.tempname()
+  vim.fn.mkdir(outside, "p")
+  vim.cmd("lcd " .. outside)
+
+  require("unified.command").run("HEAD")
+
+  local diff = require("unified.diff")
+  local shown = vim.wait(1000, function()
+    return diff.is_diff_displayed(buffer)
+  end)
+
+  -- Restore cwd before asserting so a failure can't strand us in a dir we delete.
+  vim.cmd("lcd " .. original_cwd)
+  assert(shown, "default backend must resolve the ref against the buffer's repo, not nvim's cwd")
+
+  require("unified.command").reset()
+  vim.cmd("bdelete!")
+  require("unified").setup({})
+  vim.fn.delete(outside, "rf")
+  utils.cleanup_git_repo(repo)
+  return true
+end
+
 return M

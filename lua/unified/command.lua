@@ -61,7 +61,8 @@ M.run = function(args)
   local cwd = vim.fn.getcwd()
 
   if use_snacks then
-    -- Use Snacks backend
+    -- The snacks picker is repo-wide and rooted at Neovim's cwd (see
+    -- file_tree.snacks), so validate the ref against that same repo.
     git.resolve_commit_hash(commit_ref, cwd, function(hash)
       if not hash then
         vim.api.nvim_echo({ { 'Error: could not resolve "' .. commit_ref .. '"', "ErrorMsg" } }, false, {})
@@ -77,8 +78,14 @@ M.run = function(args)
       state.set_commit_base(commit_ref)
     end)
   else
-    -- Use default backend
-    git.resolve_commit_hash(commit_ref, cwd, function(hash)
+    -- The inline diff follows the current buffer and is computed from *its* git
+    -- root (see git.show_git_diff_against_commit), not Neovim's cwd. Resolve the
+    -- ref in that same repo: validating against getcwd() would reject refs the
+    -- diff can resolve (nvim launched from a different repo, or none) and accept
+    -- ones it cannot.
+    local buf_name = vim.api.nvim_buf_get_name(vim.api.nvim_get_current_buf())
+    local resolve_dir = buf_name ~= "" and vim.fn.fnamemodify(buf_name, ":h") or cwd
+    git.resolve_commit_hash(commit_ref, resolve_dir, function(hash)
       if not hash then
         vim.api.nvim_echo({ { 'Error: could not resolve "' .. commit_ref .. '"', "ErrorMsg" } }, false, {})
         return
