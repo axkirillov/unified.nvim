@@ -378,4 +378,40 @@ function M.test_default_backend_resolves_ref_against_buffer_repo()
   return true
 end
 
+-- Regression: viewing a file that has been deleted from disk must not clobber a
+-- buffer that still holds unsaved content. The "whole file deleted" view overwrites
+-- the buffer with the committed blob and resets 'modified', so firing it on a live
+-- buffer silently destroyed the user's edits. It must run only for an empty buffer
+-- (a throwaway view); otherwise the diff follows the buffer's current content.
+function M.test_deleted_file_view_does_not_clobber_modified_buffer()
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  require("unified").setup({ file_tree = { enabled = false } })
+
+  local path = utils.create_and_commit_file(repo, "foo.txt", { "line 1", "line 2", "line 3" }, "Initial commit")
+
+  vim.cmd("edit " .. path)
+  local buffer = vim.api.nvim_get_current_buf()
+
+  -- Unsaved edit, then the file vanishes from disk (external rm, branch switch, ...).
+  vim.api.nvim_buf_set_lines(buffer, 0, 1, false, { "my unsaved edit" })
+  vim.fn.delete(path)
+  assert(vim.fn.filereadable(path) == 0, "precondition: file must be gone from disk")
+
+  require("unified.git").show_git_diff_against_commit("HEAD", buffer)
+
+  local lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
+  assert(lines[1] == "my unsaved edit", "deleted-file view must not overwrite the buffer's unsaved content")
+  assert(vim.bo[buffer].modified == true, "deleted-file view must not reset 'modified' on a live buffer")
+
+  require("unified.command").reset()
+  vim.cmd("bdelete!")
+  require("unified").setup({})
+  utils.cleanup_git_repo(repo)
+  return true
+end
+
 return M

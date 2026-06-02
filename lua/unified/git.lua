@@ -59,6 +59,17 @@ local function buffer_text(buf)
   return text
 end
 
+-- A buffer counts as "empty" when it holds no real content: a single empty line,
+-- which is how Neovim represents both a brand-new buffer and one loaded from a
+-- path that does not exist on disk.
+local function buffer_is_empty(buf)
+  if vim.api.nvim_buf_line_count(buf) > 1 then
+    return false
+  end
+  local first = vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1]
+  return first == nil or first == ""
+end
+
 local function clear_diff(buf)
   local ns = Config.ns_id
   vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
@@ -199,7 +210,13 @@ function M.show_git_diff_against_commit(commit, buf)
     return false
   end -- fetch error
 
-  if not file_now then -- deleted now
+  -- File is gone from disk. Render the wholesale "deleted file" view only when the
+  -- buffer is empty -- e.g. a throwaway view opened from the tree for a deleted path.
+  -- If the buffer still holds content, display_deleted_file would overwrite it and
+  -- reset 'modified', silently destroying unsaved work. Fall through instead so the
+  -- diff follows the buffer's content (committed blob vs current text), like every
+  -- other scenario here.
+  if not file_now and buffer_is_empty(buf) then -- deleted, buffer empty: nothing to lose
     ui_deleted(buf, git_blob)
     return true
   end
