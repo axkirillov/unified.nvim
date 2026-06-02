@@ -28,6 +28,13 @@ M.run = function(args)
     return
   end
 
+  -- No argument: let the user pick a base commit. `:Unified <ref>` still diffs
+  -- against an explicit ref; toggle() passes "HEAD" so it stays instant.
+  if vim.trim(args) == "" then
+    require("unified.commit_picker").pick()
+    return
+  end
+
   -- Parse arguments to check for "-s" flag (snacks backend)
   local args_parts = vim.split(args, "%s+", { trimempty = true })
   local use_snacks = args_parts[1] == "-s"

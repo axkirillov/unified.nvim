@@ -96,7 +96,8 @@ require('unified').setup({
 
 1. Open a file in Neovim.
 2. Make some changes to the file.
-3. Run the command `:Unified` to display the diff against HEAD and the file tree.
+3. Run `:Unified` to pick a base commit from a list and show the diff against
+   it. (Use `:Unified HEAD` or `:Unified <commit_ref>` to skip the picker.)
 4. Use `:Unified reset` to close the view.
 5. Run `:Unified <commit_ref>` to show the diff against a specific commit.
 
@@ -135,8 +136,9 @@ Default Keymaps (in the file tree window):
 The main command for the plugin. Behavior depends on arguments and state:
 
 :Unified (no arguments)
-    Shows the diff between the current buffer and `HEAD`. Opens the file
-    tree showing files changed since `HEAD`. Equivalent to `:Unified HEAD`.
+    Opens a picker (via |vim.ui.select()|) listing recent commits and
+    diffs the current buffer against the one you choose. Use `:Unified
+    HEAD` to diff against HEAD directly, without the picker.
 
 :Unified {commit_ref}
     Shows the diff between the current buffer and the specified git
@@ -166,6 +168,11 @@ The plugin exposes a few functions for integration and scripting.
   Toggles the unified diff view for the current buffer. If the view is
   active, it will be closed. Otherwise, it will be opened, showing the
   diff against the last used commit reference (or `HEAD` by default).
+
+`require('unified').pick_commit()`
+  Opens a picker (via |vim.ui.select()|) to choose a base commit, then
+  diffs the current buffer against it. Same as running `:Unified` with no
+  arguments.
 
 `require('unified.navigation').next_hunk()`
   Jumps to the next hunk in the current buffer.

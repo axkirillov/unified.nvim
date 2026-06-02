@@ -90,9 +90,9 @@ require('unified').setup({
 
 1.  Open a file in a git repository.
 2.  Make some changes to the file.
-3.  Run the command `:Unified` to display the diff against `HEAD` and open the file tree.
+3.  Run `:Unified` to pick a base commit from a list and show the diff against it (the file tree opens alongside).
 4.  To close the diff view and file tree, run `:Unified reset`.
-5.  To show the diff against a specific commit, run `:Unified <commit_ref>`, for example `:Unified HEAD~1`.
+5.  To skip the picker and diff against a specific commit, run `:Unified <commit_ref>`, for example `:Unified HEAD~1`.
 
 ### Snacks Integration (Optional)
 
@@ -166,7 +166,13 @@ For programmatic control, you can use the toggle function:
 vim.keymap.set('n', '<leader>ud', require('unified').toggle, { desc = 'Toggle unified diff' })
 ```
 
-This toggles the diff view on/off, remembering the previous commit reference.
+This toggles the diff view on/off, remembering the previous commit reference (defaulting to `HEAD` the first time).
+
+You can also open the commit picker directly — handy if you usually diff against a chosen commit rather than `HEAD`:
+
+```lua
+vim.keymap.set('n', '<leader>uc', require('unified').pick_commit, { desc = 'Unified: pick base commit' })
+```
 
 ### Hunk actions (API)
 
@@ -191,7 +197,7 @@ Behavior notes:
 
 ## Commands
 
-  * `:Unified`: Shows the diff against `HEAD` using the default file tree.
+  * `:Unified`: Opens a picker (via `vim.ui.select`) to choose the base commit, then shows the diff against it using the default file tree.
   * `:Unified <commit_ref>`: Shows the diff against the specified commit reference (e.g., a commit hash, branch name, or tag) using the default file tree.
   * `:Unified -s <commit_ref>`: Shows the diff against the specified commit reference using the Snacks git_diff picker (requires snacks.nvim).
   * `:Unified reset`: Removes all unified diff highlights and signs from the current buffer and closes the file tree window if it is open.

@@ -78,6 +78,34 @@ function M.resolve_commit_hash(ref, cwd, cb)
   end)
 end
 
+--- List recent commits (newest first) for the commit picker. Async: `cb`
+--- receives an array of { hash, subject, date, author } tables, or nil when the
+--- log is empty or git fails.
+function M.list_commits(cwd, limit, cb)
+  -- Tab-separated so the fields are trivial to split: short-hash, subject,
+  -- relative date, author name.
+  local fmt = "%h%x09%s%x09%cr%x09%an"
+  local args = { "git", "log", "--no-color", "--max-count=" .. limit, "--pretty=format:" .. fmt }
+  git_async(args, cwd, function(out, code)
+    vim.schedule(function()
+      if code ~= 0 or not out or out == "" then
+        cb(nil)
+        return
+      end
+      local commits = {}
+      for line in (out .. "\n"):gmatch("(.-)\n") do
+        if line ~= "" then
+          local hash, subject, date, author = line:match("^(.-)\t(.-)\t(.-)\t(.*)$")
+          if hash and hash ~= "" then
+            commits[#commits + 1] = { hash = hash, subject = subject, date = date, author = author }
+          end
+        end
+      end
+      cb(#commits > 0 and commits or nil)
+    end)
+  end)
+end
+
 M.get_git_file_content = Cache.memoize(function(abs_path, commit)
   local root = find_git_root(abs_path)
   if not root then

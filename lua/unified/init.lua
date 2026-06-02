@@ -18,8 +18,16 @@ function M.toggle()
     return
   end
 
+  -- Reuse the remembered base if there is one; otherwise default to HEAD so the
+  -- toggle stays instant. (Bare `:Unified` opens the commit picker instead.)
   local ok, commit_ref = pcall(state.get_commit_base)
-  command.run(ok and commit_ref or "")
+  command.run(ok and commit_ref or "HEAD")
+end
+
+-- Open a picker to choose the base commit to diff against, then show the diff
+-- (the same thing bare `:Unified` does). Exposed so you can map it directly.
+function M.pick_commit()
+  require("unified.commit_picker").pick()
 end
 
 return M
