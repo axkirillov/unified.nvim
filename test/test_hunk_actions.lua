@@ -128,4 +128,43 @@ function M.test_revert_hunk_added_line()
   return true
 end
 
+-- Regression (#27): an action fired while the cursor is on no hunk must do
+-- nothing. pick_hunk_for_cursor used to fall back to the nearest hunk, so a
+-- revert on an unchanged line silently discarded a distant change.
+function M.test_action_on_no_hunk_is_a_noop()
+  local initial = { "line 1", "line 2", "line 3", "line 4", "line 5" }
+  local repo, path = setup_repo_with_file(initial)
+  if not repo then
+    return true
+  end
+
+  vim.cmd("edit " .. path)
+  local buf = vim.api.nvim_get_current_buf()
+  -- A single hunk, in the middle of the file.
+  vim.api.nvim_buf_set_lines(buf, 2, 3, false, { "modified line 3" })
+  vim.cmd("write")
+  require("unified.git").show_git_diff_against_commit("HEAD", buf)
+
+  -- Park the cursor on an unchanged line, far from the only hunk.
+  vim.api.nvim_win_set_cursor(0, { 5, 0 })
+
+  -- Revert is the destructive action: under the old nearest-hunk fallback this
+  -- would have wiped the line-3 change even though the cursor is nowhere near it.
+  require("unified.hunk_actions").revert_hunk()
+  vim.cmd("checktime")
+
+  local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+  assert_eq(lines[3], "modified line 3", "revert with the cursor on no hunk must not touch the distant hunk (#27)")
+
+  local diffout = git(repo, { "diff", "--", "test.txt" })
+  assert_true(
+    tostring(diffout):match("modified line 3") ~= nil,
+    "the change should still be present in the working tree"
+  )
+
+  vim.cmd("bdelete!")
+  utils.cleanup_git_repo(repo)
+  return true
+end
+
 return M

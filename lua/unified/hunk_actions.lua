@@ -122,26 +122,25 @@ local function parse_patch(patch_text)
   return { headers = headers, hunks = hunks }
 end
 
+-- Return the hunk the cursor is on, or nil when it is on none. We deliberately
+-- do NOT fall back to the nearest hunk: stage/unstage/revert must only ever
+-- touch what the cursor is pointing at, otherwise an action fired on an
+-- unchanged line would silently mutate a distant hunk (#27).
 local function pick_hunk_for_cursor(hunks, cursor_line)
-  local best
   for _, h in ipairs(hunks) do
     if h.new_count and h.new_count > 0 then
       if cursor_line >= h.new_start and cursor_line < h.new_start + h.new_count then
         return h
       end
     else
+      -- Pure deletion: nothing exists on the new side, so treat the cursor as
+      -- "on" the hunk when it sits on the deletion anchor or the line above it.
       if cursor_line == h.new_start or cursor_line == math.max(1, h.new_start - 1) then
         return h
       end
     end
-    -- track nearest as fallback
-    local target = (h.new_count and h.new_count > 0) and h.new_start or math.max(1, h.new_start - 1)
-    if not best or math.abs(cursor_line - target) < math.abs(cursor_line - best._dist_anchor) then
-      best = h
-      best._dist_anchor = target
-    end
   end
-  return best
+  return nil
 end
 
 local function build_single_hunk_patch(rel, parsed, hunk)
@@ -209,7 +208,7 @@ local function do_action(which)
   local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
   local h = pick_hunk_for_cursor(parsed.hunks, cursor_line)
   if not h then
-    vim.api.nvim_echo({ { "Unified: could not determine current hunk", "WarningMsg" } }, false, {})
+    vim.api.nvim_echo({ { "Unified: no hunk under the cursor", "WarningMsg" } }, false, {})
     return
   end
   local single = build_single_hunk_patch(rel, parsed, h)
