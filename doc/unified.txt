@@ -27,7 +27,7 @@ reference commit (e.g., HEAD).
 2. REQUIREMENTS                                        *unified-requirements*
 
   - Neovim >= 0.5.0
-  - `diff` command available in your PATH
+  - Git available in your PATH
   - A Nerd Font installed and configured in your terminal/GUI for file icons.
 
 ==============================================================================
@@ -112,7 +112,7 @@ Status Indicators:
   - `A`: Added
   - `D`: Deleted
   - `R`: Renamed
-  - `C`: Copied
+  - `C`: Copied / In Commit
   - `?`: Untracked (if showing untracked files is enabled)
 
 Path Shortening:
@@ -123,11 +123,12 @@ immediate parent directories.
 
 Default Keymaps (in the file tree window):
 
-  - `j`/`k`: Move the cursor down/up. Automatically opens the file under the
-    cursor in the main window, displaying its diff.
+  - `j`/`k` (or `<Down>`/`<Up>`): Move the cursor between changed files.
+  - `l`: Open the file under the cursor in the main window, displaying its
+    diff.
   - `q`: Close the file tree window.
   - `R`: Refresh the file tree contents.
-  - `?`: Show a help dialog (if implemented).
+  - `?`: Show a help dialog.
 
 ==============================================================================
 6. COMMANDS                                                *unified-commands*
@@ -147,6 +148,11 @@ The main command for the plugin. Behavior depends on arguments and state:
     tag, etc. Autocompletion is provided for {commit_ref}. The specified
     {commit_ref} is stored and used for subsequent refreshes until a new
     reference is provided or the view is closed.
+
+:Unified -s {commit_ref}
+    Like `:Unified {commit_ref}`, but lists the changed files with the
+    snacks.nvim git_diff picker instead of the built-in file tree (requires
+    snacks.nvim). The inline diff behaves identically once a file is opened.
 
 :Unified reset
     Removes all unified diff highlights and signs from the current buffer
@@ -189,7 +195,7 @@ The plugin exposes a few functions for integration and scripting.
 
 `unified.nvim` does not create any global mappings by default.
 
-You should set your own mappings. Foe example, for hunk navigation:
+You should set your own mappings. For example, for hunk navigation:
     >
     vim.keymap.set("n", "]h", require("unified.navigation").next_hunk)
     vim.keymap.set("n", "[h", require("unified.navigation").previous_hunk)
@@ -201,7 +207,7 @@ You should set your own mappings. Foe example, for hunk navigation:
 
       - Your buffer has a file name (saved at least once)
       - You have made changes to the buffer compared to the saved file
-      - The `diff` command is available in your PATH
+      - Git is available in your PATH
 
   - If sign column markers are not showing:
 

@@ -141,6 +141,7 @@ function M.show_help()
     "",
     "Navigation:",
     "  j/k       : Move up/down",
+    "  l         : Open file under cursor",
     "",
     "Actions:",
     "  R         : Refresh the tree",

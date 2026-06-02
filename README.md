@@ -146,7 +146,7 @@ The file tree displays the Git status of each file:
   - `A`: Added
   - `D`: Deleted
   - `R`: Renamed
-  - `C`: Copied
+  - `C`: Copied / In Commit
   - `?`: Untracked
 
 ### Navigating Hunks
