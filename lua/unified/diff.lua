@@ -298,6 +298,12 @@ end
 -- Function to check if diff is currently displayed in a buffer
 function M.is_diff_displayed(buffer)
   buffer = buffer or vim.api.nvim_get_current_buf()
+  -- A predicate must never throw. A buffer that no longer exists plainly shows no
+  -- diff, so answer false instead of letting nvim_buf_get_extmarks raise "Invalid
+  -- buffer id" on a stale handle.
+  if not vim.api.nvim_buf_is_valid(buffer) then
+    return false
+  end
   local ns_id = config.ns_id
   local marks = vim.api.nvim_buf_get_extmarks(buffer, ns_id, 0, -1, {})
   return #marks > 0

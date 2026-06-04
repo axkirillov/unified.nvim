@@ -446,4 +446,23 @@ function M.test_unmodified_empty_file_shows_no_diff()
   return true
 end
 
+-- Regression: is_diff_displayed is a predicate and must never throw. Auto-refresh
+-- queries it from a buffer-local autocmd; if that buffer is ever interrogated once
+-- it has stopped being valid, the only sensible answer is "no diff here" -- false --
+-- not an "Invalid buffer id" error surfaced as a toast.
+function M.test_is_diff_displayed_false_for_invalid_buffer()
+  require("unified").setup({})
+
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_delete(buf, { force = true })
+  assert(not vim.api.nvim_buf_is_valid(buf), "buffer should be invalid after delete")
+
+  assert(
+    require("unified.diff").is_diff_displayed(buf) == false,
+    "is_diff_displayed must return false for an invalid buffer, not throw"
+  )
+
+  return true
+end
+
 return M
