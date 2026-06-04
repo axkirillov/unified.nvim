@@ -18,7 +18,11 @@ M.auto_refresh_augroup = nil
 
 -- Flag to prevent recursive tree refresh when opening a file from the tree
 
--- Get the main content window (to navigate from tree back to content)
+-- Get the main content window (to navigate from tree back to content). Skips the
+-- tree window and any window showing a non-file buffer (a terminal, help,
+-- quickfix, ...): a file diff has no business replacing those. When unified is
+-- launched from such a buffer there may be no content window yet -- returning nil
+-- tells the caller (file_tree.actions) to create a real split instead.
 function M.get_main_window()
   if
     M.main_win
@@ -30,13 +34,13 @@ function M.get_main_window()
 
   local valid_file_tree_win = M.file_tree_win and vim.api.nvim_win_is_valid(M.file_tree_win)
   for _, win in ipairs(vim.api.nvim_list_wins()) do
-    if not valid_file_tree_win or win ~= M.file_tree_win then
+    local is_tree = valid_file_tree_win and win == M.file_tree_win
+    if not is_tree and vim.bo[vim.api.nvim_win_get_buf(win)].buftype == "" then
       M.main_win = win
       return win
     end
   end
 
-  vim.api.nvim_err_writeln("Unified: Could not find a suitable main window.")
   return nil
 end
 

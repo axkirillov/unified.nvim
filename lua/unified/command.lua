@@ -78,13 +78,31 @@ M.run = function(args)
       state.set_commit_base(commit_ref)
     end)
   else
-    -- The inline diff follows the current buffer and is computed from *its* git
-    -- root (see git.show_git_diff_against_commit), not Neovim's cwd. Resolve the
-    -- ref in that same repo: validating against getcwd() would reject refs the
-    -- diff can resolve (nvim launched from a different repo, or none) and accept
-    -- ones it cannot.
-    local buf_name = vim.api.nvim_buf_get_name(vim.api.nvim_get_current_buf())
-    local resolve_dir = buf_name ~= "" and vim.fn.fnamemodify(buf_name, ":h") or cwd
+    -- Capture the launch buffer/window now: the async resolve callback below runs
+    -- a tick later, when the current buffer/window may have changed.
+    local cur_buf = vim.api.nvim_get_current_buf()
+    local cur_win = vim.api.nvim_get_current_win()
+
+    -- Only a real, named file buffer (buftype "" with a name) has a file the
+    -- inline diff can follow. Launching from a non-file buffer (a terminal, help,
+    -- quickfix, ...) still works -- it shows the repo-wide tree -- but there is
+    -- nothing to diff inline.
+    local buf_name = vim.api.nvim_buf_get_name(cur_buf)
+    local is_file_buf = vim.bo[cur_buf].buftype == "" and buf_name ~= ""
+
+    -- Resolve the ref in the buffer's own repo when it is a real file: the inline
+    -- diff is computed from *that* repo (see git.show_git_diff_against_commit),
+    -- which may differ from nvim's cwd. For a non-file buffer the name is not a
+    -- filesystem path, so resolve against nvim's cwd -- the ref is a repo concept,
+    -- and the tree is rooted at cwd anyway.
+    local resolve_dir = cwd
+    if is_file_buf then
+      local buf_dir = vim.fn.fnamemodify(buf_name, ":h")
+      if vim.fn.isdirectory(buf_dir) == 1 then
+        resolve_dir = buf_dir
+      end
+    end
+
     git.resolve_commit_hash(commit_ref, resolve_dir, function(hash)
       if not hash then
         vim.api.nvim_echo({ { 'Error: could not resolve "' .. commit_ref .. '"', "ErrorMsg" } }, false, {})
@@ -94,24 +112,32 @@ M.run = function(args)
       -- Keep the user-provided ref so it can be re-resolved later
       state.set_backend("default")
       state.set_active(true)
-      state.main_win = vim.api.nvim_get_current_win()
 
-      -- The inline diff always follows the buffer you are in. The file tree is a
-      -- side panel for navigation only; it no longer drives which file is diffed.
-      -- Show the current buffer's diff now, while it is still focused (set_commit_base
-      -- below may move the cursor into the tree when file_tree.focus is set).
-      local cur_win = vim.api.nvim_get_current_win()
-      local cur_buf = vim.api.nvim_get_current_buf()
-      require("unified.diff").show_current(commit_ref)
-      require("unified.auto_refresh").setup(cur_buf)
+      if is_file_buf then
+        -- The inline diff follows the buffer you are in; this is the content
+        -- window. The file tree is a side panel for navigation only; it no longer
+        -- drives which file is diffed. Show the diff now, while the buffer is
+        -- still focused (set_commit_base below may move focus into the tree when
+        -- file_tree.focus is set).
+        state.main_win = cur_win
+        require("unified.diff").show_current(commit_ref)
+        require("unified.auto_refresh").setup(cur_buf)
 
-      -- The blocking diff above has populated the hunk store, so land the cursor
-      -- on the first hunk now, before set_commit_base may move focus to the tree.
-      if require("unified.config").values.jump_to_first_hunk then
-        require("unified.navigation").jump_to_first_hunk(cur_win, cur_buf)
+        -- The blocking diff above has populated the hunk store, so land the cursor
+        -- on the first hunk now, before set_commit_base may move focus to the tree.
+        if require("unified.config").values.jump_to_first_hunk then
+          require("unified.navigation").jump_to_first_hunk(cur_win, cur_buf)
+        end
+      else
+        -- Launched from a non-file buffer: nothing to diff inline. Don't claim
+        -- this window as the content window -- a terminal is no place to open
+        -- files -- so the tree-open path finds/creates a real one (see
+        -- state.get_main_window). Skip the inline diff, auto-refresh, and hunk
+        -- jump, which all need a file.
+        state.main_win = nil
       end
 
-      -- This triggers the autocmd which calls file_tree.show
+      -- This triggers the autocmd which calls file_tree.show (repo-wide, cwd-rooted).
       state.set_commit_base(commit_ref)
     end)
   end

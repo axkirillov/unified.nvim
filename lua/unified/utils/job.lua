@@ -7,14 +7,33 @@
 
 local Job = {}
 
+-- vim.system() validates its opts eagerly and *throws* before the process ever
+-- starts -- most notably when opts.cwd does not exist, which happens when a git
+-- command is derived from a non-file buffer (a term:// buffer's name is not a
+-- real path). A fire-and-forget async wrapper must never let that surface as an
+-- uncaught editor error, so a failed spawn is reported as a failed command: a
+-- non-zero exit through the normal callback/return. -1 is distinct from git's own
+-- exit codes (0/1/128) so callers that special-case those -- e.g. 128 meaning
+-- "path not in tree" -- never mistake a spawn failure for one.
+local SPAWN_FAILED = -1
+
 -- internal: start process and collect plain-text I/O -------------------------
 local function _spawn(cmd, opts, on_exit)
   opts = vim.tbl_extend("force", { text = true }, opts or {})
-  return vim.system(cmd, opts, function(proc)
+  local ok, handle = pcall(vim.system, cmd, opts, function(proc)
     vim.schedule(function()
       on_exit(proc.stdout or "", proc.code, proc.stderr)
     end)
   end)
+  if not ok then
+    -- Schedule like the success path so callers (incl. the coroutine in await)
+    -- are always resumed asynchronously, never re-entrantly mid-spawn.
+    vim.schedule(function()
+      on_exit("", SPAWN_FAILED, tostring(handle))
+    end)
+    return nil
+  end
+  return handle
 end
 
 -- internal: build a blocking shell command string, honoring opts.cwd/opts.env.
@@ -73,7 +92,15 @@ function Job.await(cmd, opts)
   -- honor opts.cwd/opts.env via vim.system():wait().
   if not caller_co then
     if type(cmd) == "table" then
-      local res = vim.system(cmd, vim.tbl_extend("force", { text = true }, opts or {})):wait()
+      -- pcall: vim.system() throws on a bad cwd, and this blocking path is what
+      -- find_git_root/git_sync use outside a coroutine -- the frames in the
+      -- ENOENT crash. Convert the throw into a failed command instead.
+      local ok, res = pcall(function()
+        return vim.system(cmd, vim.tbl_extend("force", { text = true }, opts or {})):wait()
+      end)
+      if not ok then
+        return "", SPAWN_FAILED, tostring(res)
+      end
       return res.stdout or "", res.code, res.stderr or ""
     end
     local out = vim.fn.system(build_shell_command(cmd, opts))
