@@ -13,6 +13,7 @@ local test_hunk_actions = require("test.test_hunk_actions")
 local test_options = require("test.test_options")
 local test_commit_picker = require("test.test_commit_picker")
 local test_command = require("test.test_command")
+local test_commit_tree = require("test.test_filetree.test_commit_tree")
 -- Helper to run a group of tests
 local function run_test_group(group, group_name)
   local function is_test_function(name)
@@ -79,6 +80,7 @@ function M.run_all_tests()
     { name = "test_options", module = test_options },
     { name = "test_commit_picker", module = test_commit_picker },
     { name = "test_command", module = test_command },
+    { name = "test_commit_tree", module = test_commit_tree },
   }
 
   local all_results = {}
@@ -181,6 +183,7 @@ function M.run_test(test_name)
     test_options = test_options,
     test_commit_picker = test_commit_picker,
     test_command = test_command,
+    test_commit_tree = test_commit_tree,
   }
 
   local group = groups[group_name]
