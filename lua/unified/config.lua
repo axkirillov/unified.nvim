@@ -22,6 +22,10 @@ M.defaults = {
   -- when a file is opened from the tree and when :Unified runs on the current
   -- buffer. Set false to leave the cursor where it is.
   jump_to_first_hunk = true,
+  -- When true, :Unified opens its diff view (the content window and the file
+  -- tree) in a new tab, leaving your current window layout untouched. `:Unified
+  -- -t` forces this for a single invocation regardless of this setting.
+  tab = false,
   file_tree = {
     enabled = true, -- When false, :Unified never opens the file tree; the diff is shown for the current buffer.
     width = 30, -- Width of the file tree window (columns, or 0-1 for relative)

@@ -9,7 +9,10 @@ local LIMIT = 100
 --- it -- equivalent to running `:Unified <hash>`. Uses vim.ui.select, so it
 --- honours whatever picker you have wired up (telescope, fzf-lua, snacks, ...);
 --- with the default handler it falls back to a plain numbered list.
-function M.pick()
+---@param opts? { force_tab?: boolean } force_tab opens the chosen diff in a new
+---       tab, so `:Unified -t` (no ref) still lands in a tab after picking.
+function M.pick(opts)
+  opts = opts or {}
   local git = require("unified.git")
   local cwd = vim.fn.getcwd()
 
@@ -50,7 +53,7 @@ function M.pick()
           vim.api.nvim_win_set_buf(origin_win, origin_buf)
         end
       end
-      require("unified.command").run(choice.hash)
+      require("unified.command").run(choice.hash, { force_tab = opts.force_tab })
     end)
   end)
 end

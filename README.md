@@ -73,6 +73,10 @@ require('unified').setup({
   -- when opening a file from the tree and when :Unified runs on the current
   -- buffer. Set false to leave the cursor where it is.
   jump_to_first_hunk = true,
+  -- When true, :Unified opens its diff view (the content window and the file
+  -- tree) in a new tab, leaving your current window layout untouched. `:Unified
+  -- -t` forces this for a single invocation regardless of this setting.
+  tab = false,
   file_tree = {
     enabled = true, -- When false, :Unified does not open the tree; the diff is shown for the current buffer.
     width = 30, -- Width of the tree window (columns, or a 0-1 fraction of the editor width)
@@ -93,6 +97,7 @@ require('unified').setup({
 3.  Run `:Unified` to pick a base commit from a list and show the diff against it (the file tree opens alongside).
 4.  To close the diff view and file tree, run `:Unified reset`.
 5.  To skip the picker and diff against a specific commit, run `:Unified <commit_ref>`, for example `:Unified HEAD~1`.
+6.  To open the diff view in a new tab instead of reusing your current window layout, add `-t`, for example `:Unified -t` or `:Unified -t HEAD~1`. Set `tab = true` to make this the default.
 
 ### Snacks Integration (Optional)
 
@@ -200,6 +205,7 @@ Behavior notes:
   * `:Unified`: Opens a picker (via `vim.ui.select`) to choose the base commit, then shows the diff against it using the default file tree.
   * `:Unified <commit_ref>`: Shows the diff against the specified commit reference (e.g., a commit hash, branch name, or tag) using the default file tree.
   * `:Unified -s <commit_ref>`: Shows the diff against the specified commit reference using the Snacks git_diff picker (requires snacks.nvim).
+  * `:Unified -t [<commit_ref>]`: Opens the diff view in a new tab, leaving your current window layout untouched. Works with or without a commit ref (without one, the picker opens first). Set `tab = true` to make every `:Unified` open in a new tab.
   * `:Unified reset`: Removes all unified diff highlights and signs from the current buffer and closes the file tree window if it is open.
 
 ## Development

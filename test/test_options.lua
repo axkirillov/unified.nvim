@@ -296,4 +296,115 @@ function M.test_get_main_window_scoped_to_current_tab()
   return true
 end
 
+-- tab = true: :Unified opens the diff view in a new tab, roots the content window
+-- and the tree there, and leaves the original tab's window untouched.
+function M.test_tab_option_opens_view_in_new_tab()
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  require("unified.config").setup({ tab = true })
+
+  vim.cmd("tabonly")
+  open_modified_file(repo)
+  local buffer = vim.api.nvim_get_current_buf()
+  local original_tab = vim.api.nvim_get_current_tabpage()
+  local original_win = vim.api.nvim_get_current_win()
+  local tabs_before = #vim.api.nvim_list_tabpages()
+
+  require("unified.command").run("HEAD")
+
+  assert(
+    wait_until(function()
+      return buffer_has_diff(buffer)
+    end),
+    "the diff should be shown"
+  )
+  assert(#vim.api.nvim_list_tabpages() == tabs_before + 1, "a new tab should be opened")
+
+  local current_tab = vim.api.nvim_get_current_tabpage()
+  assert(current_tab ~= original_tab, "focus should move to the new tab")
+
+  local state = require("unified.state")
+  assert(
+    state.main_win and vim.api.nvim_win_get_tabpage(state.main_win) == current_tab,
+    "the content window should live in the new tab"
+  )
+  assert(
+    wait_until(function()
+      return any_tree_window() ~= nil
+    end),
+    "the tree should open"
+  )
+  assert(vim.api.nvim_win_get_tabpage(any_tree_window()) == current_tab, "the tree should open in the new tab")
+
+  -- The original tab is left as it was: a single window, and not the tree.
+  assert(vim.api.nvim_win_is_valid(original_win), "the original window should still exist")
+  assert(#vim.api.nvim_tabpage_list_wins(original_tab) == 1, "the original tab should keep its single window")
+
+  utils.cleanup_git_repo(repo)
+  return true
+end
+
+-- :Unified -t opens in a new tab for that invocation even when tab = false.
+function M.test_tab_flag_opens_view_in_new_tab()
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  require("unified.config").setup({}) -- tab defaults to false
+
+  vim.cmd("tabonly")
+  open_modified_file(repo)
+  local buffer = vim.api.nvim_get_current_buf()
+  local original_tab = vim.api.nvim_get_current_tabpage()
+  local tabs_before = #vim.api.nvim_list_tabpages()
+
+  require("unified.command").run("-t HEAD")
+
+  assert(
+    wait_until(function()
+      return buffer_has_diff(buffer)
+    end),
+    "the diff should be shown"
+  )
+  assert(#vim.api.nvim_list_tabpages() == tabs_before + 1, "-t should open a new tab")
+  assert(vim.api.nvim_get_current_tabpage() ~= original_tab, "-t should move focus to the new tab")
+
+  utils.cleanup_git_repo(repo)
+  return true
+end
+
+-- Default (tab = false, no flag): :Unified stays in the current tab.
+function M.test_default_stays_in_current_tab()
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  require("unified.config").setup({})
+
+  vim.cmd("tabonly")
+  open_modified_file(repo)
+  local buffer = vim.api.nvim_get_current_buf()
+  local original_tab = vim.api.nvim_get_current_tabpage()
+  local tabs_before = #vim.api.nvim_list_tabpages()
+
+  require("unified.command").run("HEAD")
+
+  assert(
+    wait_until(function()
+      return buffer_has_diff(buffer)
+    end),
+    "the diff should be shown"
+  )
+  assert(#vim.api.nvim_list_tabpages() == tabs_before, "no new tab should be opened by default")
+  assert(vim.api.nvim_get_current_tabpage() == original_tab, "focus should stay in the current tab")
+
+  utils.cleanup_git_repo(repo)
+  return true
+end
+
 return M

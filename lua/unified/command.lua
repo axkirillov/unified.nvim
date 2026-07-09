@@ -7,7 +7,7 @@ M.setup = function()
     nargs = "*",
     complete = function(ArgLead, CmdLine, _)
       if CmdLine:match("^Unified%s+") then
-        local suggestions = { "-s", "HEAD", "HEAD~1", "main", "reset" }
+        local suggestions = { "-s", "-t", "HEAD", "HEAD~1", "main", "reset" }
         local filtered_suggestions = {}
         for _, suggestion in ipairs(suggestions) do
           if suggestion:sub(1, #ArgLead) == ArgLead then
@@ -21,28 +21,51 @@ M.setup = function()
   })
 end
 
-M.run = function(args)
+---@param args string Command-line arguments (e.g. "HEAD~1", "-s HEAD", "-t", "reset").
+---@param opts? { force_tab?: boolean } Internal: force the new-tab layout regardless
+---       of config (used to thread `:Unified -t` through the commit picker).
+M.run = function(args, opts)
+  opts = opts or {}
+
   -- Handle reset command
   if args == "reset" then
     M.reset()
     return
   end
 
-  -- No argument: let the user pick a base commit. `:Unified <ref>` still diffs
-  -- against an explicit ref; toggle() passes "HEAD" so it stays instant.
-  if vim.trim(args) == "" then
-    require("unified.commit_picker").pick()
+  -- Parse flags (order-independent): -s selects the snacks backend, -t opens the
+  -- view in a new tab for this invocation. Any remaining token is the commit ref.
+  local args_parts = vim.split(args or "", "%s+", { trimempty = true })
+  local use_snacks = false
+  local flag_tab = false
+  local ref_parts = {}
+  for _, part in ipairs(args_parts) do
+    if part == "-s" then
+      use_snacks = true
+    elseif part == "-t" then
+      flag_tab = true
+    else
+      table.insert(ref_parts, part)
+    end
+  end
+
+  local config = require("unified.config")
+  -- Open in a new tab when forced (picker thread), requested via -t, or configured.
+  local open_in_tab = opts.force_tab or flag_tab or config.values.tab
+
+  -- No ref given: let the user pick a base commit. `:Unified <ref>` still diffs
+  -- against an explicit ref; toggle() passes "HEAD" so it stays instant. Thread
+  -- the tab preference through so `:Unified -t` opens the chosen diff in a tab.
+  -- (`-s` still requires an explicit ref -- its error is reported below.)
+  if #ref_parts == 0 and not use_snacks then
+    require("unified.commit_picker").pick({ force_tab = open_in_tab })
     return
   end
 
-  -- Parse arguments to check for "-s" flag (snacks backend)
-  local args_parts = vim.split(args, "%s+", { trimempty = true })
-  local use_snacks = args_parts[1] == "-s"
   local commit_ref
-
   if use_snacks then
-    -- If using snacks, the commit ref is the second argument (required)
-    commit_ref = args_parts[2]
+    -- If using snacks, a commit ref is required.
+    commit_ref = ref_parts[1]
     if not commit_ref then
       vim.api.nvim_echo(
         { { 'Error: -s requires a git ref argument (e.g., ":Unified -s HEAD")', "ErrorMsg" } },
@@ -52,13 +75,38 @@ M.run = function(args)
       return
     end
   else
-    -- Default backend: use the entire args string as commit ref (or HEAD if empty)
-    commit_ref = args ~= "" and args or "HEAD"
+    -- Default backend: the remaining token is the commit ref (or HEAD if omitted).
+    commit_ref = ref_parts[1] or "HEAD"
   end
 
   local git = require("unified.git")
   local state = require("unified.state")
   local cwd = vim.fn.getcwd()
+
+  -- Capture the launch buffer/window now: the async resolve callbacks below run a
+  -- tick later, when the current buffer/window may have changed.
+  local cur_buf = vim.api.nvim_get_current_buf()
+  local cur_win = vim.api.nvim_get_current_win()
+
+  -- Only a real, named file buffer (buftype "" with a name) has a file the inline
+  -- diff can follow. Launching from a non-file buffer (a terminal, help,
+  -- quickfix, ...) still works -- it shows the repo-wide tree -- but there is
+  -- nothing to diff inline.
+  local buf_name = vim.api.nvim_buf_get_name(cur_buf)
+  local is_file_buf = vim.bo[cur_buf].buftype == "" and buf_name ~= ""
+
+  -- Open the diff view in its own tab, leaving the launch layout untouched. When
+  -- launched from a real file, `tab split` branches that same buffer into the new
+  -- tab so the inline diff has something to follow; otherwise open an empty tab
+  -- and let files open into it from the tree. Returns to cur_win first so a focus
+  -- change between command invocation and this async callback can't split the
+  -- wrong window.
+  local function open_tab()
+    if vim.api.nvim_win_is_valid(cur_win) then
+      vim.api.nvim_set_current_win(cur_win)
+    end
+    vim.cmd(is_file_buf and "tab split" or "tabnew")
+  end
 
   if use_snacks then
     -- The snacks picker is repo-wide and rooted at Neovim's cwd (see
@@ -72,24 +120,15 @@ M.run = function(args)
       -- Keep the user-provided ref so it can be re-resolved later
       state.set_backend("snacks")
       state.set_active(true)
+      if open_in_tab then
+        open_tab()
+      end
       state.main_win = vim.api.nvim_get_current_win()
 
       -- This triggers the autocmd which calls snacks_backend.show
       state.set_commit_base(commit_ref)
     end)
   else
-    -- Capture the launch buffer/window now: the async resolve callback below runs
-    -- a tick later, when the current buffer/window may have changed.
-    local cur_buf = vim.api.nvim_get_current_buf()
-    local cur_win = vim.api.nvim_get_current_win()
-
-    -- Only a real, named file buffer (buftype "" with a name) has a file the
-    -- inline diff can follow. Launching from a non-file buffer (a terminal, help,
-    -- quickfix, ...) still works -- it shows the repo-wide tree -- but there is
-    -- nothing to diff inline.
-    local buf_name = vim.api.nvim_buf_get_name(cur_buf)
-    local is_file_buf = vim.bo[cur_buf].buftype == "" and buf_name ~= ""
-
     -- Resolve the ref in the buffer's own repo when it is a real file: the inline
     -- diff is computed from *that* repo (see git.show_git_diff_against_commit),
     -- which may differ from nvim's cwd. For a non-file buffer the name is not a
@@ -116,24 +155,34 @@ M.run = function(args)
       if is_file_buf then
         -- The inline diff follows the buffer you are in; this is the content
         -- window. The file tree is a side panel for navigation only; it no longer
-        -- drives which file is diffed. Show the diff now, while the buffer is
-        -- still focused (set_commit_base below may move focus into the tree when
-        -- file_tree.focus is set).
-        state.main_win = cur_win
-        require("unified.diff").show_current(commit_ref)
+        -- drives which file is diffed. When opening in a tab, branch this buffer
+        -- into the new tab first, then claim that window. Show the diff now, while
+        -- the buffer is still focused (set_commit_base below may move focus into
+        -- the tree when file_tree.focus is set).
+        if open_in_tab then
+          open_tab()
+          state.main_win = vim.api.nvim_get_current_win()
+        else
+          state.main_win = cur_win
+        end
+        require("unified.diff").show(commit_ref, cur_buf)
         require("unified.auto_refresh").setup(cur_buf)
 
         -- The blocking diff above has populated the hunk store, so land the cursor
         -- on the first hunk now, before set_commit_base may move focus to the tree.
-        if require("unified.config").values.jump_to_first_hunk then
-          require("unified.navigation").jump_to_first_hunk(cur_win, cur_buf)
+        if config.values.jump_to_first_hunk then
+          require("unified.navigation").jump_to_first_hunk(state.main_win, cur_buf)
         end
       else
-        -- Launched from a non-file buffer: nothing to diff inline. Don't claim
-        -- this window as the content window -- a terminal is no place to open
-        -- files -- so the tree-open path finds/creates a real one (see
-        -- state.get_main_window). Skip the inline diff, auto-refresh, and hunk
-        -- jump, which all need a file.
+        -- Launched from a non-file buffer: nothing to diff inline. Open an empty
+        -- tab when requested so the tree lands there; either way don't claim the
+        -- launch window as the content window -- a terminal is no place to open
+        -- files -- so the tree-open path finds/creates a real one in the current
+        -- tab (see state.get_main_window). Skip the inline diff, auto-refresh, and
+        -- hunk jump, which all need a file.
+        if open_in_tab then
+          open_tab()
+        end
         state.main_win = nil
       end
 

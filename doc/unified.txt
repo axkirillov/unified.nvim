@@ -78,6 +78,10 @@ require('unified').setup({
   -- when opening a file from the tree and when :Unified runs on the current
   -- buffer. Set false to leave the cursor where it is.
   jump_to_first_hunk = true,
+  -- When true, :Unified opens its diff view (the content window and the file
+  -- tree) in a new tab, leaving your current window layout untouched. `:Unified
+  -- -t` forces this for a single invocation regardless of this setting.
+  tab = false,
   file_tree = {
     -- When false, :Unified does not open the file tree and instead shows the
     -- diff for the current buffer. Useful if you only want inline diffs.
@@ -154,6 +158,12 @@ The main command for the plugin. Behavior depends on arguments and state:
     snacks.nvim git_diff picker instead of the built-in file tree (requires
     snacks.nvim). The inline diff behaves identically once a file is opened.
 
+:Unified -t [{commit_ref}]
+    Opens the diff view in a new tab, leaving your current window layout
+    untouched. Works with or without {commit_ref} (without one, the commit
+    picker opens first). Set `tab = true` in your config to make every
+    `:Unified` open in a new tab.
+
 :Unified reset
     Removes all unified diff highlights and signs from the current buffer
     and closes the unified file tree window if it is open.
@@ -168,7 +178,7 @@ The plugin exposes a few functions for integration and scripting.
 
 `require('unified.command').run(args)`
   Programmatically runs the main `:Unified` command. `args` is a string
-  containing the command-line arguments (e.g., "HEAD~1", "reset").
+  containing the command-line arguments (e.g., "HEAD~1", "-t HEAD", "reset").
 
 `require('unified').toggle()`
   Toggles the unified diff view for the current buffer. If the view is
