@@ -414,6 +414,61 @@ function M.test_deleted_file_view_does_not_clobber_modified_buffer()
   return true
 end
 
+-- Regression: the whole-file "deleted" view (every committed line highlighted red) must
+-- survive a re-render. Opening a deleted path from the tree loads an empty buffer, so the
+-- first render takes the deleted-file branch and fills the buffer with the committed blob.
+-- Auto-refresh then calls show_git_diff_against_commit again -- but the buffer is no longer
+-- empty. The emptiness guard used to skip the deleted view on that second pass, collapsing
+-- the all-red view. The buffer must keep every line marked as deleted across the refresh.
+function M.test_deleted_file_view_persists_across_refresh()
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  require("unified").setup({ file_tree = { enabled = false } })
+
+  local path = utils.create_and_commit_file(repo, "gone.txt", { "alpha", "beta", "gamma", "delta" }, "add gone.txt")
+  vim.fn.delete(path)
+  assert(vim.fn.filereadable(path) == 0, "precondition: file must be gone from disk")
+
+  -- Mirror how the tree opens a deleted node: load the missing path into an empty buffer.
+  local buffer = vim.fn.bufadd(path)
+  vim.fn.bufload(buffer)
+
+  local function count_delete_marks()
+    local ns = require("unified.config").ns_id
+    local marks = vim.api.nvim_buf_get_extmarks(buffer, ns, 0, -1, { details = true })
+    local n = 0
+    for _, mark in ipairs(marks) do
+      if mark[4] and mark[4].line_hl_group == "UnifiedDiffDelete" then
+        n = n + 1
+      end
+    end
+    return n
+  end
+
+  local git = require("unified.git")
+
+  assert(git.show_git_diff_against_commit("HEAD", buffer), "first render should succeed")
+  local first = count_delete_marks()
+  assert(first > 0, "deleted-file view should highlight every committed line as deleted")
+
+  -- Auto-refresh re-runs the same call; the all-red view must not collapse.
+  assert(git.show_git_diff_against_commit("HEAD", buffer), "re-render should succeed")
+  local second = count_delete_marks()
+  assert(
+    second == first,
+    string.format("deleted-file view must persist across refresh (had %d marks, now %d)", first, second)
+  )
+
+  require("unified.command").reset()
+  vim.cmd("bdelete!")
+  require("unified").setup({})
+  utils.cleanup_git_repo(repo)
+  return true
+end
+
 -- Regression: an unmodified, committed *empty* file (0 bytes) must show no diff.
 -- Neovim represents an empty buffer as a single empty line with 'endofline' set, so
 -- buffer_text used to yield "\n" and diff it against the empty blob -- a spurious

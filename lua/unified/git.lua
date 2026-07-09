@@ -145,6 +145,13 @@ M.get_git_file_content = Cache.memoize(function(abs_path, commit)
 end)
 
 local function ui_deleted(buf, blob)
+  -- Mark this buffer as a synthetic "deleted file" view. The emptiness guard below
+  -- only holds on the first open; once display_deleted_file fills the buffer with the
+  -- committed blob, a re-render (auto-refresh) finds it non-empty. This flag lets that
+  -- re-render re-enter the deleted branch instead of falling through and collapsing the
+  -- all-red view. It is only ever set here -- after the buffer was already empty -- so a
+  -- live buffer holding unsaved content never carries it and stays clobber-protected.
+  vim.b[buf].unified_deleted_view = true
   Diff.display_deleted_file(buf, blob)
 end
 
@@ -218,13 +225,14 @@ function M.show_git_diff_against_commit(commit, buf)
     return false
   end -- fetch error
 
-  -- File is gone from disk. Render the wholesale "deleted file" view only when the
-  -- buffer is empty -- e.g. a throwaway view opened from the tree for a deleted path.
-  -- If the buffer still holds content, display_deleted_file would overwrite it and
-  -- reset 'modified', silently destroying unsaved work. Fall through instead so the
-  -- diff follows the buffer's content (committed blob vs current text), like every
-  -- other scenario here.
-  if not file_now and buffer_is_empty(buf) then -- deleted, buffer empty: nothing to lose
+  -- File is gone from disk. Render the wholesale "deleted file" view when the buffer is
+  -- empty -- e.g. a throwaway view opened from the tree for a deleted path -- or when it
+  -- is already showing that view (auto-refresh re-runs this after we filled the buffer
+  -- with the blob, so it is no longer empty). If instead the buffer still holds unsaved
+  -- content, display_deleted_file would overwrite it and reset 'modified', silently
+  -- destroying that work; fall through so the diff follows the buffer's content
+  -- (committed blob vs current text), like every other scenario here.
+  if not file_now and (buffer_is_empty(buf) or vim.b[buf].unified_deleted_view) then
     ui_deleted(buf, git_blob)
     return true
   end
