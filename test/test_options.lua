@@ -9,9 +9,13 @@ local utils = require("test.test_utils")
 -- This module's tests assert on global tree state, so they can't inherit leakage.
 local function clean_slate()
   pcall(require("unified.command").reset)
+  -- Collapse back to a single tab: the tab-aware tests below open extra tabs, and
+  -- a leftover tab would skew the next test's window/tab assertions.
+  pcall(vim.cmd, "tabonly")
   local state = require("unified.state")
   state.file_tree_win = nil
   state.file_tree_buf = nil
+  state.main_win = nil
   require("unified.config").setup({})
 end
 
@@ -246,6 +250,49 @@ function M.test_jump_to_first_hunk_false_keeps_cursor()
   assert(vim.api.nvim_win_get_cursor(win)[1] == 1, "cursor should stay put when jump_to_first_hunk is disabled")
 
   utils.cleanup_git_repo(repo)
+  return true
+end
+
+-- Regression: opening a file from the tree must never leak into another tab.
+-- get_main_window used to scan every window across all tabs (nvim_list_wins), so
+-- with the tree in a fresh tab it could return a window in the original tab and
+-- open the file there. It must only ever return a window in the current tab.
+function M.test_get_main_window_scoped_to_current_tab()
+  local state = require("unified.state")
+
+  -- Original tab: a normal (buftype "") window that must be left untouched.
+  vim.cmd("tabonly")
+  vim.cmd("enew")
+  local original_tab = vim.api.nvim_get_current_tabpage()
+  local original_win = vim.api.nvim_get_current_win()
+
+  -- New tab: a content window plus a fake tree window on the left, mimicking the
+  -- layout after `:tabnew` then `:Unified`.
+  vim.cmd("tabnew")
+  local current_tab = vim.api.nvim_get_current_tabpage()
+  local content_win = vim.api.nvim_get_current_win()
+  vim.cmd("topleft vsplit")
+  local tree_win = vim.api.nvim_get_current_win()
+  local tree_buf = vim.api.nvim_create_buf(false, true)
+  vim.bo[tree_buf].filetype = "unified_tree"
+  vim.api.nvim_win_set_buf(tree_win, tree_buf)
+
+  state.file_tree_win = tree_win
+  state.main_win = nil -- as when :Unified is launched from a non-file buffer
+
+  -- Files are opened while the tree window is focused.
+  vim.api.nvim_set_current_win(tree_win)
+  local win = state.get_main_window()
+
+  assert(win ~= nil, "a content window should be found in the current tab")
+  assert(win ~= tree_win, "the tree window must never be chosen as the content window")
+  assert(win ~= original_win, "must not reuse a window from the original tab")
+  assert(
+    vim.api.nvim_win_get_tabpage(win) == current_tab,
+    "the content window must belong to the current tab, not tab " .. tostring(original_tab)
+  )
+  assert(win == content_win, "should reuse the content window that lives in the current tab")
+
   return true
 end
 

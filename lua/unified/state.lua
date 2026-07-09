@@ -23,17 +23,29 @@ M.auto_refresh_augroup = nil
 -- quickfix, ...): a file diff has no business replacing those. When unified is
 -- launched from such a buffer there may be no content window yet -- returning nil
 -- tells the caller (file_tree.actions) to create a real split instead.
+--
+-- The tree and its content window always live in a single tab page, so both the
+-- cached fast-path and the fallback search are scoped to the *current* tab page.
+-- nvim_list_wins() spans every tab; using it here let a file opened from a tree
+-- in one tab leak into a window belonging to another tab (e.g. after `:tabnew`
+-- then `:Unified`).
 function M.get_main_window()
+  local current_tab = vim.api.nvim_get_current_tabpage()
+
+  local function in_current_tab(win)
+    return vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_tabpage(win) == current_tab
+  end
+
   if
     M.main_win
-    and vim.api.nvim_win_is_valid(M.main_win)
+    and in_current_tab(M.main_win)
     and (not M.file_tree_win or not vim.api.nvim_win_is_valid(M.file_tree_win) or M.main_win ~= M.file_tree_win)
   then
     return M.main_win
   end
 
   local valid_file_tree_win = M.file_tree_win and vim.api.nvim_win_is_valid(M.file_tree_win)
-  for _, win in ipairs(vim.api.nvim_list_wins()) do
+  for _, win in ipairs(vim.api.nvim_tabpage_list_wins(current_tab)) do
     local is_tree = valid_file_tree_win and win == M.file_tree_win
     if not is_tree and vim.bo[vim.api.nvim_win_get_buf(win)].buftype == "" then
       M.main_win = win
