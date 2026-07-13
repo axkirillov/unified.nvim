@@ -50,7 +50,7 @@ local function test_commit_file_tree()
     vim.api.nvim_win_close(state.file_tree_win, true)
   end
 
-  state.reset_file_tree_state()
+  require("unified.file_tree.state").reset_state()
 
   print("All file tree commit tests passed!")
   return true

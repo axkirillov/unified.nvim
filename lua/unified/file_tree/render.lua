@@ -17,10 +17,6 @@ local function get_shortened_display_parts(full_path)
   elseif #parts == 1 then
     return { "", parts[1] } -- File in root
   else
-    local shortened_parts = {}
-    for i = 1, #parts - 1 do
-      table.insert(shortened_parts, string.sub(parts[i], 1, 1))
-    end
     -- Shorten all parts except the last directory part
     local display_parts = {}
     for i = 1, #parts - 2 do -- Shorten initial parts
@@ -115,7 +111,6 @@ function M.render_tree(tree, buffer)
     local parts = get_shortened_display_parts(relative_path)
     local shortened_path = parts[1]
     local filename = parts[2]
-    local filename = parts[2]
 
     if not grouped_files[shortened_path] then
       grouped_files[shortened_path] = {}
@@ -128,7 +123,7 @@ function M.render_tree(tree, buffer)
   table.sort(group_keys)
 
   -- Sort files within each group alphabetically by filename
-  for key, files_in_group in pairs(grouped_files) do
+  for _, files_in_group in pairs(grouped_files) do
     table.sort(files_in_group, function(a, b)
       return a.name < b.name
     end)
@@ -140,7 +135,7 @@ function M.render_tree(tree, buffer)
   local status_line = ""
   if has_git_dir then
     local changed_count = 0
-    for _, file_node in ipairs(collect_and_filter_files(tree.root, true)) do -- Count all changed files
+    for _, _ in ipairs(collect_and_filter_files(tree.root, true)) do -- Count all changed files
       changed_count = changed_count + 1
     end
 
@@ -167,7 +162,7 @@ function M.render_tree(tree, buffer)
   local extmarks = {}
   local current_line = #lines - 1 -- 0-based index for buffer lines
 
-  for group_idx, shortened_path in ipairs(group_keys) do
+  for _, shortened_path in ipairs(group_keys) do
     local files_in_group = grouped_files[shortened_path]
     local is_root_group = (shortened_path == "")
 
@@ -185,7 +180,7 @@ function M.render_tree(tree, buffer)
     end
 
     -- Render Files in Group
-    for file_idx, file_info in ipairs(files_in_group) do
+    for _, file_info in ipairs(files_in_group) do
       current_line = current_line + 1
       local node = file_info.node
       local indent = is_root_group and "" or "  " -- Indent files under path headers

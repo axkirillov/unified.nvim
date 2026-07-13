@@ -303,7 +303,7 @@ function M.move_cursor_file_only(direction, count)
   local current_line = vim.api.nvim_win_get_cursor(0)[1] - 1 -- 0-based
   for _ = 1, count do
     local next_line = current_line
-    for _i = 1, total_lines do
+    for _ = 1, total_lines do
       next_line = (next_line + direction + total_lines) % total_lines
       local node = tree_state.line_to_node[next_line]
       if node and not node.is_dir then
