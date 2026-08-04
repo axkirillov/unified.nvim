@@ -62,6 +62,95 @@ function M.test_list_commits_returns_history_newest_first()
   return true
 end
 
+-- An initialized repository without commits has no history to offer.
+function M.test_list_commits_returns_nil_for_empty_history()
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  local called = false
+  local result
+  require("unified.git").list_commits(repo.repo_dir, 100, function(commits)
+    called = true
+    result = commits
+  end)
+
+  assert(
+    wait_until(function()
+      return called
+    end),
+    "list_commits should invoke its callback for an empty repository"
+  )
+  assert(result == nil, "an empty repository should not return any commits")
+
+  utils.cleanup_git_repo(repo)
+  return true
+end
+
+-- The picker reports a useful warning instead of opening outside a git repository.
+function M.test_picker_warns_outside_git_repository()
+  local outside = vim.fn.tempname()
+  vim.fn.mkdir(outside, "p")
+  local old_dir = vim.fn.getcwd()
+  vim.cmd("lcd " .. vim.fn.fnameescape(outside))
+
+  local orig_echo = vim.api.nvim_echo
+  local orig_select = vim.ui.select
+  local message
+  local selected = false
+  vim.api.nvim_echo = function(chunks)
+    message = chunks[1][1]
+  end
+  vim.ui.select = function()
+    selected = true
+  end
+
+  require("unified.commit_picker").pick()
+
+  vim.api.nvim_echo = orig_echo
+  vim.ui.select = orig_select
+  vim.cmd("lcd " .. vim.fn.fnameescape(old_dir))
+  vim.fn.delete(outside, "rf")
+
+  assert(message == "Not in a git repository.", "the picker should explain why it cannot open")
+  assert(not selected, "the picker should not open outside a git repository")
+  return true
+end
+
+-- An empty repository is valid, but there is nothing for the picker to display.
+function M.test_picker_warns_for_empty_history()
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  local orig_echo = vim.api.nvim_echo
+  local orig_select = vim.ui.select
+  local message
+  local selected = false
+  vim.api.nvim_echo = function(chunks)
+    message = chunks[1][1]
+  end
+  vim.ui.select = function()
+    selected = true
+  end
+
+  require("unified.commit_picker").pick()
+  local warned = wait_until(function()
+    return message ~= nil
+  end)
+
+  vim.api.nvim_echo = orig_echo
+  vim.ui.select = orig_select
+  utils.cleanup_git_repo(repo)
+
+  assert(warned, "the picker should report an empty history")
+  assert(message == "No commits to pick from.", "the picker should explain that the history is empty")
+  assert(not selected, "the picker should not open when no commits are available")
+  return true
+end
+
 -- Bare `:Unified` opens the picker; choosing a commit diffs the current buffer.
 function M.test_no_args_opens_picker_and_diffs_choice()
   local repo = utils.create_git_repo()
