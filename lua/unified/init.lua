@@ -4,9 +4,11 @@ function M.setup(opts)
   local config = require("unified.config")
   local command = require("unified.command")
   local file_tree = require("unified.file_tree")
+  local virt_scroll = require("unified.virt_scroll")
   config.setup(opts)
   command.setup()
   file_tree.setup()
+  virt_scroll.setup()
 end
 
 function M.toggle()
