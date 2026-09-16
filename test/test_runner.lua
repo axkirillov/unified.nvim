@@ -14,6 +14,7 @@ local test_options = require("test.test_options")
 local test_commit_picker = require("test.test_commit_picker")
 local test_command = require("test.test_command")
 local test_commit_tree = require("test.test_filetree.test_commit_tree")
+local test_virt_scroll = require("test.test_virt_scroll")
 -- Helper to run a group of tests
 local function run_test_group(group, group_name)
   local function is_test_function(name)
@@ -81,6 +82,7 @@ function M.run_all_tests()
     { name = "test_commit_picker", module = test_commit_picker },
     { name = "test_command", module = test_command },
     { name = "test_commit_tree", module = test_commit_tree },
+    { name = "test_virt_scroll", module = test_virt_scroll },
   }
 
   local all_results = {}

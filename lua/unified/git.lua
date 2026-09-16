@@ -83,6 +83,7 @@ local function clear_diff(buf)
   vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
   vim.fn.sign_unplace("unified_diff", { buffer = buf })
   Hunk.clear(buf)
+  require("unified.virt_scroll").forget(buf)
 end
 
 function M.is_git_repo(path)

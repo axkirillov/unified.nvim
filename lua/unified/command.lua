@@ -205,6 +205,7 @@ function M.reset()
       vim.api.nvim_buf_clear_namespace(buf, ns_id, 0, -1)
       vim.fn.sign_unplace("unified_diff", { buffer = buf })
       hunk_store.clear(buf)
+      require("unified.virt_scroll").forget(buf)
     end
   end
 

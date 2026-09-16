@@ -11,6 +11,7 @@ A Neovim plugin for displaying inline unified diffs directly in your buffer.
 * **Git Gutter Signs**: Gutter signs are used to indicate added, modified, and deleted lines.
 * **Customizable**: Configure the signs, highlights, and line symbols to your liking.
 * **Auto-refresh**: The diff view automatically refreshes as you make changes to the buffer.
+* **Horizontal Scrolling**: Deleted lines scroll sideways together with the buffer when `wrap` is off, instead of staying fixed and truncated.
 
 ## Requirements
 

@@ -315,4 +315,52 @@ function M.test_file_tree_show_vsplit_from_hsplit()
   return true
 end
 
+-- Each git status renders as its own letter. Added files used to share the "M" branch
+-- with modified ones, so every new file in a diff showed up as modified.
+function M.test_render_shows_one_letter_per_status()
+  local utils = require("test.test_utils")
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  local FileTree = require("unified.file_tree.tree")
+  local render = require("unified.file_tree.render")
+  local tree_state = require("unified.file_tree.state")
+
+  local tree = FileTree.new(repo.repo_dir)
+  local expected = { added = "A", modified = "M", deleted = "D", renamed = "R", untracked = "?" }
+  tree:add_file(repo.repo_dir .. "/added.txt", "A ")
+  tree:add_file(repo.repo_dir .. "/modified.txt", "M ")
+  tree:add_file(repo.repo_dir .. "/deleted.txt", "D ")
+  tree:add_file(repo.repo_dir .. "/renamed.txt", "R ")
+  tree:add_file(repo.repo_dir .. "/untracked.txt", "??")
+
+  local buffer = vim.api.nvim_create_buf(false, true)
+  tree_state.diff_only = true
+  render.render_tree(tree, buffer)
+
+  -- The status letter is an overlay extmark on the file's line.
+  local ns = vim.api.nvim_create_namespace("unified_file_tree")
+  local letters = {}
+  for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(buffer, ns, 0, -1, { details = true })) do
+    local virt = mark[4].virt_text
+    if virt and mark[4].virt_text_pos == "overlay" then
+      local node = tree_state.line_to_node[mark[2]]
+      if node and not node.is_dir then
+        letters[vim.fn.fnamemodify(node.path, ":t:r")] = virt[1][1]
+      end
+    end
+  end
+
+  for name, letter in pairs(expected) do
+    assert(letters[name] == letter, name .. ".txt should show " .. letter .. ", got " .. tostring(letters[name]))
+  end
+
+  vim.api.nvim_buf_delete(buffer, { force = true })
+  tree_state.reset_state()
+  utils.cleanup_git_repo(repo)
+  return true
+end
+
 return M

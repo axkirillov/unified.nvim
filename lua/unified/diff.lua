@@ -79,6 +79,7 @@ function M.display_inline_diff(buffer, hunks)
   local ns_id = config.ns_id
 
   vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
+  require("unified.virt_scroll").forget(buffer)
 
   -- Clear existing signs
   vim.fn.sign_unplace("unified_diff", { buffer = buffer })
@@ -192,6 +193,8 @@ function M.display_inline_diff(buffer, hunks)
       })
       if mark_id > 0 then
         mark_count = mark_count + #deleted_lines
+        -- Keep the unpadded text so the lines can follow horizontal scrolling.
+        require("unified.virt_scroll").remember(buffer, mark_id, deleted_lines, deleted_attach_line > 0)
       end
 
       deleted_lines = {}

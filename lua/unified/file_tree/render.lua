@@ -190,9 +190,12 @@ function M.render_tree(tree, buffer)
       -- Format status indicator
       local status_char = " "
       local status_hl = "Normal"
-      if node.status and node.status:match("[AM]") then
+      if node.status and node.status:match("[A]") then
+        status_char = "A"
+        status_hl = "DiffAdd" -- Added
+      elseif node.status and node.status:match("[M]") then
         status_char = "M"
-        status_hl = "DiffAdd" -- Use DiffAdd for Modified/Added for visibility
+        status_hl = "DiffChange" -- Modified
       elseif node.status and node.status:match("[D]") then
         status_char = "D"
         status_hl = "DiffDelete"
